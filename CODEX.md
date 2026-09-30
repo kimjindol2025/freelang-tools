@@ -11,7 +11,7 @@ init → inspect → check/test → review → report → deploy
 ```
 
 - `fl-tools init <path>`: `.freelang/worklog.md` 작업 기록 공간을 만든다.
-- `fl-tools detect <path>`: FreeLang 계열과 런너를 판별한다.
+- `fl-tools detect <path>`: FreeLang/AIRC 계열과 런너를 판별한다.
 - `fl-tools inspect <path>`: detect, route, doctor, status를 통합 실행한다.
 - `fl-tools pipeline <path>`: init, inspect, review, report, handoff를 자동 실행한다.
 - `fl-tools start <path>`: 작업 시작 컨텍스트와 준비 상태를 출력한다.
@@ -21,7 +21,13 @@ init → inspect → check/test → review → report → deploy
 - `fl-tools handoff <path>`: 다음 작업자를 위한 `.freelang/handoff.md`를 생성한다.
 - `fl-tools evidence --json <path>`: 검증 결과와 원시 출력을 JSON으로 보존한다.
 - `fl-tools adapter list <path>`: AFJ, FX, AIA, Script, Front 런너 상태를 출력한다.
+- `fl-tools airc [path] <command>`: AIRC 프로젝트의 `airc.fl` CLI를 기존 v11 runner로 실행한다.
 - `fl-tools deploy <path>`: review 통과 후 프로젝트가 제공한 배포·smoke 계약만 실행한다.
+
+AIRC 프로젝트는 `airc.fl` 또는 `SPEC.airc`와 `.airc` 파일을 기준으로 감지한다.
+기존 FreeLang v11 runner를 사용하며, 다른 환경에서는
+`FREELANG_AIRC_RUNNER=/path/to/bootstrap.js` 또는
+`FREELANG_V11_RUNNER=/path/to/bootstrap.js`를 지정한다.
 
 `pipeline`은 기본적으로 배포와 push를 실행하지 않는다. 배포가 명시적으로
 필요할 때만 `fl-tools pipeline <path> --deploy`를 사용한다. 이 모드도 dirty

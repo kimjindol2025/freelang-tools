@@ -10,6 +10,7 @@
     "handoff": "./scripts/fl-handoff",
     "evidence": "./scripts/fl-evidence --json",
     "adapter": "./scripts/fl-adapter list",
+    "airc": "./scripts/fl-airc",
     "review": "./scripts/fl-review",
     "deploy": "./scripts/fl-deploy",
     "test": "./scripts/fl-test",

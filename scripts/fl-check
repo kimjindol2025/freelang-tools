@@ -12,6 +12,21 @@ DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 DETECTED_RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 RUNNER="${FREELANG_AFJ_RUNNER:-$DETECTED_RUNNER}"
 
+if [[ "$DIALECT" == "AIRC" ]]; then
+  if [[ "$RUNNER" == "none" || ! -f "$RUNNER" ]]; then
+    echo "FREELANG_CHECK=BLOCKED"
+    echo "CAUSE=AIRC runner not found: $RUNNER" >&2
+    exit 2
+  fi
+  mapfile -t SOURCES < <(find "$ROOT" -maxdepth 1 -type f -name '*.fl' -print | sort)
+  for source in "${SOURCES[@]}"; do
+    echo "[fl-check] $source"
+    node "$RUNNER" check "$source"
+  done
+  echo "FREELANG_CHECK=PASS"
+  exit 0
+fi
+
 if [[ "$DIALECT" != "AFJ" ]]; then
   echo "FREELANG_CHECK=DEFERRED"
   echo "DIALECT=$DIALECT"

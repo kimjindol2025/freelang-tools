@@ -16,6 +16,7 @@ TEST_FILES="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^TEST_FILES=//p')"
 
 DEV_COMMAND=UNKNOWN
 case "$DIALECT" in
+  AIRC) DEV_COMMAND="node $RUNNER run airc.fl <명령>" ;;
   AIA) DEV_COMMAND="tools/verify-aia-cold-boot.sh" ;;
   FRONT) DEV_COMMAND="fl-front-build.js 또는 기존 PM2 명령" ;;
   SCRIPT) DEV_COMMAND="bin/fl-script-unified.js" ;;

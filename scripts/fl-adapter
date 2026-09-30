@@ -56,5 +56,11 @@ AIA_RUNNER=none
 [[ -x "$ROOT/tools/verify-aia-cold-boot.sh" ]] && AIA_RUNNER="$ROOT/tools/verify-aia-cold-boot.sh"
 report_adapter AIA "$AIA_RUNNER"
 
+AIRC_RUNNER=none
+if [[ "$SELECTED" == AIRC && "$DETECTED_RUNNER" != none ]]; then
+  AIRC_RUNNER="$DETECTED_RUNNER"
+fi
+report_adapter AIRC "$AIRC_RUNNER"
+
 printf 'SELECTED_DIALECT=%s\n' "$SELECTED"
 echo "ADAPTER_LIST=PASS"

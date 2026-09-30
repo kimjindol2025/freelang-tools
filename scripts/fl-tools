@@ -17,11 +17,12 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools handoff [경로]   다음 작업자를 위한 인수인계 문서 생성
   fl-tools evidence --json  검증 증거를 JSON으로 출력
   fl-tools adapter list      런너·어댑터 상태 확인
+  fl-tools airc [경로] <명령> AIRC CLI 실행
   fl-tools review [경로]     수정 내용 전체 검토
   fl-tools deploy [경로]     검토된 프로젝트 배포 계약 실행
   fl-tools test             FreeLang deftest 테스트 실행
   fl-tools check            FreeLang 소스·테스트 검사
-  fl-tools detect [경로]    FreeLang 계열 자동 판별
+  fl-tools detect [경로]    FreeLang/AIRC 계열 자동 판별
   fl-tools status [경로]    프로젝트·Git·테스트 상태 출력
   fl-tools route [경로]     프로젝트 작업 경로·명령 요약
   fl-tools doctor [경로]    프로젝트 건강검진
@@ -60,6 +61,9 @@ case "$command_name" in
     ;;
   adapter)
     exec "$ROOT/scripts/fl-adapter" "$@"
+    ;;
+  airc)
+    exec "$ROOT/scripts/fl-airc" "$@"
     ;;
   review)
     exec "$ROOT/scripts/fl-review" "$@"

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET="."
+
+if [[ -n "${1:-}" && -d "$1" ]]; then
+  TARGET="$1"
+  shift
+fi
+
+ROOT="$(cd -- "$TARGET" && pwd -P)"
+DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
+DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
+RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
+
+if [[ "$DIALECT" != AIRC ]]; then
+  echo "AIRC=BLOCKED"
+  echo "CAUSE=project is not detected as AIRC: $ROOT" >&2
+  exit 2
+fi
+if [[ "$RUNNER" == none || ! -f "$RUNNER" ]]; then
+  echo "AIRC=BLOCKED"
+  echo "CAUSE=AIRC runner not found: $RUNNER" >&2
+  exit 2
+fi
+if [[ ! -f "$ROOT/airc.fl" ]]; then
+  echo "AIRC=BLOCKED"
+  echo "CAUSE=airc.fl not found: $ROOT" >&2
+  exit 2
+fi
+
+COMMAND="${1:-status}"
+shift || true
+echo "AIRC_PROJECT=$ROOT"
+echo "AIRC_RUNNER=$RUNNER"
+echo "AIRC_COMMAND=$COMMAND"
+exec node "$RUNNER" run "$ROOT/airc.fl" "$COMMAND" "$@"

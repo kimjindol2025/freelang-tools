@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FreeLang Tools 사용 설명서">
+  <title>FreeLang Tools 사용 설명서</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#start" aria-label="FreeLang Tools 홈">
+      <span class="brand-mark">FL</span>
+      <span><strong>FreeLang Tools</strong><small>사용 설명서</small></span>
+    </a>
+    <div class="top-actions">
+      <a href="https://github.com/kimjindol2025/freelang-tools" target="_blank" rel="noreferrer">GitHub ↗</a>
+      <button id="theme-toggle" type="button" aria-label="테마 전환">◐</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="search-wrap">
+        <label for="search">명령 검색</label>
+        <input id="search" type="search" placeholder="예: review, AIRC, 배포" autocomplete="off">
+      </div>
+      <nav id="nav" aria-label="도구 목록"></nav>
+      <div class="sidebar-note">
+        <span class="status-dot"></span>
+        <span>정적 매뉴얼<br><small>외부 서버·로그인 불필요</small></span>
+      </div>
+    </aside>
+
+    <main id="content" class="content" tabindex="-1">
+      <section id="start" class="hero page-section">
+        <div class="eyebrow">FREE LANG DEVELOPMENT GATEWAY</div>
+        <h1>코딩을 시작하고,<br><em>검증하고, 배포하는</em> 공통 도구</h1>
+        <p class="hero-copy">FreeLang 계열 프로젝트를 처음 만났을 때 무엇을 실행해야 하는지, 작업을 끝낸 뒤 무엇을 확인해야 하는지 한 곳에서 찾는 사용 설명서입니다.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#quickstart">빠른 시작 보기</a>
+          <button class="button secondary" data-copy="fl-tools start .">시작 명령 복사</button>
+        </div>
+        <div class="flow" aria-label="표준 작업 흐름">
+          <div><span>01</span><strong>START</strong><small>프로젝트 이해</small></div>
+          <b>→</b>
+          <div><span>02</span><strong>CODING</strong><small>작업 진행</small></div>
+          <b>→</b>
+          <div><span>03</span><strong>REVIEW</strong><small>안전성 증명</small></div>
+          <b>→</b>
+          <div><span>04</span><strong>DEPLOY</strong><small>검증된 것만 배포</small></div>
+        </div>
+      </section>
+
+      <section id="quickstart" class="page-section">
+        <div class="section-heading"><div><div class="eyebrow">GET STARTED</div><h2>처음에는 세 명령만</h2></div><span class="section-number">01</span></div>
+        <div class="quick-grid">
+          <article class="quick-card"><span class="step">01</span><h3>작업 시작</h3><p>현재 프로젝트의 방언, runner, entrypoint, Git 상태를 파악합니다.</p><code>fl-tools start .</code></article>
+          <article class="quick-card"><span class="step">02</span><h3>작업 검토</h3><p>check, test, diff, 계약 drift를 묶어서 변경을 검증합니다.</p><code>fl-tools review .</code></article>
+          <article class="quick-card"><span class="step">03</span><h3>배포</h3><p>프로젝트가 정의한 배포·smoke 계약이 있을 때만 실행합니다.</p><code>fl-tools deploy .</code></article>
+        </div>
+        <div class="callout"><strong>원칙</strong><span>실제 실행 결과가 없는 항목은 PASS로 추정하지 않습니다. 실행 불가 상태는 BLOCKED 또는 UNRESOLVED로 남깁니다.</span></div>
+      </section>
+
+      <section id="commands" class="page-section">
+        <div class="section-heading"><div><div class="eyebrow">COMMAND REFERENCE</div><h2>명령어 설명</h2></div><span class="section-number">02</span></div>
+        <div id="command-list" class="command-list"></div>
+        <div id="empty-state" class="empty-state" hidden>검색 결과가 없습니다.</div>
+      </section>
+
+      <section id="principles" class="page-section principles">
+        <div class="section-heading"><div><div class="eyebrow">PROJECT RULES</div><h2>도구가 지키는 경계</h2></div><span class="section-number">03</span></div>
+        <div class="principle-grid">
+          <div><strong>언어는 프로젝트가 소유</strong><p>compiler, runtime, builtin 의미를 공통 도구에 넣지 않습니다.</p></div>
+          <div><strong>배포는 계약으로만</strong><p><code>.freelang/deploy.sh</code>와 smoke 계약이 없으면 배포하지 않습니다.</p></div>
+          <div><strong>사용자 변경 보존</strong><p>dirty worktree를 자동 stage·commit하거나 덮어쓰지 않습니다.</p></div>
+          <div><strong>방언을 섞지 않음</strong><p>AFJ, FX, AIA, AIRC, Script, Front를 감지 후 각 runner로 연결합니다.</p></div>
+        </div>
+      </section>
+
+      <footer><span>FreeLang Tools</span><span>공통 개발 관문 · 정적 사용 설명서</span></footer>
+    </main>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -20,12 +20,33 @@ has_glob '*.fl' && EXTENSIONS+=(.fl)
 has_glob '*.fls' && EXTENSIONS+=(.fls)
 has_glob '*.flx' && EXTENSIONS+=(.flx)
 has_glob '*.aia' && EXTENSIONS+=(.aia)
+has_glob '*.airc' && EXTENSIONS+=(.airc)
 
 DIALECT="UNKNOWN"
 FAMILY="UNKNOWN"
 RUNNER="none"
 
-if has_file "tools/verify-aia-cold-boot.sh" || has_file "aia-seed/aia" || has_glob '*.aia'; then
+if has_file "airc.fl" || (has_file "SPEC.airc" && has_glob '*.airc'); then
+  DIALECT="AIRC"
+  FAMILY="AIRC"
+  if [[ -n "${FREELANG_AIRC_RUNNER:-}" && -f "$FREELANG_AIRC_RUNNER" ]]; then
+    RUNNER="$FREELANG_AIRC_RUNNER"
+  elif [[ -n "${FREELANG_V11_RUNNER:-}" && -f "$FREELANG_V11_RUNNER" ]]; then
+    RUNNER="$FREELANG_V11_RUNNER"
+  else
+    for candidate in \
+      "$ROOT/bootstrap.js" \
+      "/home/kim/kim/platform/freelang-v11-fx/bootstrap.js" \
+      "/home/kim/kim/platform/freelang-v11/bootstrap.js" \
+      "/home/kim/freelang-v11/bootstrap.js" \
+      "/home/kimjin/freelang-v11/bootstrap.js"; do
+      if [[ -f "$candidate" ]]; then
+        RUNNER="$candidate"
+        break
+      fi
+    done
+  fi
+elif has_file "tools/verify-aia-cold-boot.sh" || has_file "aia-seed/aia" || has_glob '*.aia'; then
   DIALECT="AIA"
   FAMILY="AIA"
   [[ -x "$ROOT/tools/verify-aia-cold-boot.sh" ]] && RUNNER="$ROOT/tools/verify-aia-cold-boot.sh"
