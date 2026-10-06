@@ -22,7 +22,9 @@ init → inspect → check/test → review → report → deploy
 - `fl-tools evidence --json <path>`: 검증 결과와 원시 출력을 JSON으로 보존한다.
 - `fl-tools adapter list <path>`: AFJ, FX, AIA, Script, Front 런너 상태를 출력한다.
 - `fl-tools airc [path] <command>`: AIRC 프로젝트의 `airc.fl` CLI를 기존 v11 runner로 실행한다.
-- `fl-tools deploy <path>`: review 통과 후 프로젝트가 제공한 배포·smoke 계약만 실행한다.
+- `fl-tools deploy <path>`: review 통과 후 프로젝트가 제공한 외부 배포·smoke 계약만 실행한다.
+- `fl-tools deploy --internal <path>`: 고정 Git 커밋을 현재 서버 내부 release/current 경로에
+  반영하는 `.freelang/internal-deploy.sh` 계약을 실행한다. SSH, 공용 포트, PM2는 사용하지 않는다.
 
 AIRC 프로젝트는 `airc.fl` 또는 `SPEC.airc`와 `.airc` 파일을 기준으로 감지한다.
 기존 FreeLang v11 runner를 사용하며, 다른 환경에서는

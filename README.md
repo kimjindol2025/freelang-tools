@@ -106,6 +106,7 @@ fl-test
 | `fl-tools pipeline [경로]` | init → inspect → review → report → handoff 자동 실행 (`fl-pipeline`) |
 | `fl-tools pipeline [경로] --deploy` | 검증 통과 후 프로젝트 배포 계약까지 실행 |
 | `fl-tools deploy [경로]` | review, dirty worktree, deploy, smoke, artifact hash 확인 (`fl-deploy`) |
+| `fl-tools deploy --internal [경로]` | 고정 Git 커밋을 서버 내부 release/current 경로에 반영하고 smoke 실행 (`fl-internal-deploy`) |
 | `fl-tools airc [경로] <명령>` | AIRC의 `airc.fl` CLI를 v11 runner로 실행 (`fl-airc`) |
 | `fl-tools release-check` | CHANGELOG, tag, worktree, artifact hash 릴리즈 준비 검사 (`fl-release-check`) |
 | `fl-tools safe-push` | push 전 원격·worktree 안전성 검사 (`fl-safe-push`) |
@@ -150,7 +151,12 @@ npm run test:deploy-fixture
 `.freelang/handoff.md`를 만들고, `evidence --json`은 검증 결과를 JSON으로
 보존한다. `adapter list`는 현재 프로젝트에서 사용할 수 있는 런너를 보여준다.
 `pipeline`은 init부터 inspect, review, report, handoff까지 자동 실행한다.
-배포가 필요하면 `fl-tools pipeline . --deploy`를 사용하며, push는 실행하지 않는다.
+외부·상용 계약 배포가 필요하면 `fl-tools pipeline . --deploy`를 사용하며, push는 실행하지 않는다.
+이 서버에서 코딩용 내부 배포만 할 때는 `fl-tools deploy --internal .`을 사용한다.
+내부 배포는 SSH, 공용 포트, PM2를 사용하지 않고 프로젝트의
+`.freelang/internal-deploy.sh` 계약만 실행한다. 계약은 고정 커밋을
+`releases/<commit>`에 복사하고 `current` 심볼릭 링크를 원자적으로 교체하며,
+프로젝트별 DB는 내부 배포 루트의 `shared/db`에 둔다.
 `--deploy`도 dirty worktree 보호를 유지하므로, 작업 기록 파일을 먼저 commit하거나
 명시적으로 `FREELANG_ALLOW_DIRTY_DEPLOY=1`을 설정해야 한다.
 
