@@ -66,6 +66,7 @@ fl-tools session status
 fl-tools journal show
 fl-tools release-check
 fl-tools safe-push --help
+fl-tools safety show
 fl-test
 ```
 
@@ -110,6 +111,7 @@ fl-test
 | `fl-tools airc [경로] <명령>` | AIRC의 `airc.fl` CLI를 v11 runner로 실행 (`fl-airc`) |
 | `fl-tools release-check` | CHANGELOG, tag, worktree, artifact hash 릴리즈 준비 검사 (`fl-release-check`) |
 | `fl-tools safe-push` | push 전 원격·worktree 안전성 검사 (`fl-safe-push`) |
+| `fl-tools safety [show|set]` | Skill Atlas 안전정책 모드 조회·변경 (`fl-safety`) |
 
 ### 세션·운영 기록
 

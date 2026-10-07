@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SAFETY_STATE="${FREELANG_SAFETY_STATE:-/home/kim/kim/projects/skill-atlas/safety-state.json}"
+MODE="${1:-show}"
+
+usage() {
+  cat <<'EOF'
+사용법: fl-tools safety [show|set strict|set advisory|set off]
+
+Skill Atlas의 안전정책 상태를 읽거나 변경한다.
+이 설정은 추가 정책의 모드만 바꾸며 운영체제 권한과 명시적 사용자 승인은 우회하지 않는다.
+FREELANG_SAFETY_STATE로 상태 파일을 재지정할 수 있다.
+EOF
+}
+
+if [[ "$MODE" == "--help" || "$MODE" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "$MODE" == "set" ]]; then
+  NEXT="${2:-}"
+  case "$NEXT" in strict|advisory|off) ;; *) echo "SAFETY=INVALID"; echo "CAUSE=mode must be strict, advisory, or off"; exit 2 ;; esac
+  STATE_FILE="$SAFETY_STATE" NEXT_MODE="$NEXT" python3 - <<'PY'
+import datetime as dt
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["STATE_FILE"])
+path.parent.mkdir(parents=True, exist_ok=True)
+body = {
+    "schema": "fl-safety/v1",
+    "mode": os.environ["NEXT_MODE"],
+    "enabled": os.environ["NEXT_MODE"] != "off",
+    "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+}
+tmp = path.with_suffix(path.suffix + ".tmp")
+tmp.write_text(json.dumps(body, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+os.replace(tmp, path)
+PY
+fi
+
+if [[ "$MODE" != "show" && "$MODE" != "set" ]]; then
+  usage >&2
+  exit 2
+fi
+
+STATE_FILE="$SAFETY_STATE" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["STATE_FILE"])
+try:
+    body = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    body = {"mode": "strict", "enabled": True}
+mode = body.get("mode", "strict")
+if mode not in {"strict", "advisory", "off"}:
+    mode = "strict"
+print(f"SAFETY_MODE={mode}")
+print(f"SAFETY_ENABLED={'YES' if mode != 'off' else 'NO'}")
+print(f"SAFETY_STATE={path}")
+print("SAFETY=PASS")
+PY

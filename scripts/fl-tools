@@ -31,6 +31,7 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools journal <명령>   작업 저널 기록
   fl-tools release-check    릴리즈 준비 상태 검사
   fl-tools safe-push        원격 push 전 안전 검사
+  fl-tools safety [명령]    안전정책 상태 조회·변경
   fl-tools help             도움말
 EOF
 }
@@ -105,6 +106,9 @@ case "$command_name" in
     ;;
   safe-push)
     exec "$ROOT/scripts/fl-safe-push" "$@"
+    ;;
+  safety)
+    exec "$ROOT/scripts/fl-safety" "$@"
     ;;
   help|-h|--help)
     usage
