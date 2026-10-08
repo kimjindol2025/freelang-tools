@@ -178,7 +178,103 @@ diagnostic: structured error?
 - `error`: parser·runner·도구 내부 오류
 - `skipped`: 명시적으로 제외된 case
 
-## 6. 10단계 실행 플랜
+## 6. 본구현 착수 전 판정·실행 계약 게이트
+
+검수 결과에 따라 기능 구현보다 먼저 다음 다섯 계약을 통과해야 한다. 이 게이트를 통과하지 못하면 구현 상태를 `BLOCKED`로 두고 PASS로 승격하지 않는다.
+
+### 6.1 첫 실행기 고정
+
+첫 구현 대상은 반드시 다음을 기록한다.
+
+```text
+dialect: <FreeLang dialect>
+runtime: <runner path or identifier>
+commit: <runtime commit>
+```
+
+고정된 실행기로 다음 최소 fixture를 실제 실행한다.
+
+- 함수 등록과 호출
+- 예외 포착과 expected throw
+- 모듈 로딩
+- Effect Tape capability 조회
+
+fixture와 원시 stdout/stderr가 없으면 해당 capability를 지원한다고 판정하지 않는다.
+
+### 6.2 PASS 조건과 상태 전이 통일
+
+공통 상태는 다음으로 고정한다.
+
+```text
+PASS       = 선택된 테스트가 하나 이상 실행되고 모두 성공
+FAIL       = 테스트 실행 후 assertion/effect 조건 불충족
+BLOCKED    = runner·capability·timeout·도구 경계 문제로 판정 불가
+NOT_RUN    = 선택된 테스트가 0개이거나 모두 명시적으로 제외됨
+ERROR      = 깨진 입력·JSON·결과 schema·테스터 자체 오류
+```
+
+기본 PASS 금지 조건:
+
+- 테스트 0개
+- 전부 skipped
+- 결과 레코드 누락
+- 깨진 JSON 또는 schema 불일치
+- 실행되지 않은 runner
+- Effect 기록 불가
+
+`fl-status`, `fl-review`, `fl-evidence`, 세 native tester는 이 상태와 종료 코드를 공유한다. 기존 `NO_TESTS`/`NOT_RUN`과 review PASS의 충돌은 본 구현 전에 제거한다.
+
+### 6.3 단일 실행·결과 공유
+
+한 invocation에서 테스트 프로그램은 한 번만 실행한다.
+
+```text
+collect
+  → execute once
+  → immutable result artifact
+       ├─ fl-jest reporter
+       ├─ fl-effect reporter
+       └─ fl-ci gate
+```
+
+`fl-evidence`가 같은 AFJ 테스트를 다시 실행하지 않도록 실행 결과 artifact를 입력으로 받는다. 파일 쓰기·네트워크·상태 변경은 원 실행의 Tape와 결과를 공유하며, reporter가 프로그램을 재실행하지 않는다.
+
+### 6.4 Effect 기록·차단·오류 분리
+
+각 effect 정책은 실행 전 차단인지 실행 후 위반 기록인지 명시한다.
+
+```text
+DENY_BEFORE_RUN      = 실행 전 차단, effect 미발생
+OBSERVE_THEN_FAIL    = 실행 후 Tape 기록, 결과는 FAIL
+RECORDING_UNAVAILABLE= Tape 기록 자체 불가, PASS 금지 → BLOCKED/ERROR
+```
+
+다음 결과도 서로 구분한다.
+
+- 기대한 예외 발생: 테스트 조건 충족 가능
+- 예외 미발생: FAIL
+- 함수 미등록·모듈 로딩 실패: ERROR
+- 테스터 내부 오류: ERROR
+- Tape 기록 불가: BLOCKED 또는 ERROR
+
+### 6.5 멈춤·시간·임시 경로 책임
+
+- FreeLang 판정기는 결과 의미와 상태 전이를 담당한다.
+- 외부 bootstrap/host는 timeout, child process 종료, 잔여 프로세스 정리를 담당한다.
+- timeout은 테스트 실패가 아니라 `BLOCKED` 또는 `ERROR`로 기록한다.
+- 시간·난수·임시 경로는 Tape에서 정규화하거나 명시적인 deterministic fixture로 바꾼다.
+- 결과 비교에서 runtime timestamp와 임시 절대 경로를 그대로 비교하지 않는다.
+
+### 6.6 착수 순서
+
+```text
+실행기·결과 schema·상태/종료코드·격리 계약 확정
+→ 수집 → 실행 → assertion → JSON → 종료코드 한 경로 완성
+→ Effect Tape 연결
+→ CI 연결
+```
+
+## 7. 10단계 실행 플랜
 
 ### 1단계 — 범위·용어·성공 기준 고정
 
@@ -300,7 +396,7 @@ diagnostic: structured error?
 
 검증: clean checkout에서 외부 Jest와 GitHub API 없이 전체 native 흐름을 재현.
 
-## 7. 검증 계획
+## 8. 검증 계획
 
 각 단계에서 다음 순서를 지킨다.
 
@@ -314,7 +410,7 @@ FreeLang syntax check
 
 검증하지 않은 기능은 `PASS`로 보고하지 않는다. native Tape API가 없으면 Phase 2를 `BLOCKED`로 기록하고 API를 임의로 흉내 내지 않는다.
 
-## 8. 금지 범위
+## 9. 금지 범위
 
 - Jest/npm 패키지 설치
 - Bash/Node에 핵심 assertion·matcher·Tape 비교 로직 작성
@@ -322,12 +418,12 @@ FreeLang syntax check
 - native runtime이 지원하지 않는 문법을 확정 API로 문서화
 - 병렬 실행을 먼저 도입하여 결정론성을 훼손
 
-## 9. 현재 판정
+## 10. 현재 판정
 
 ```text
 PLAN = PROPOSED
 IMPLEMENTATION = NOT_STARTED
 NATIVE_FREELANG_CORE = REQUIRED
 GITHUB_RUNTIME_DEPENDENCY = NONE
-NEXT = PHASE_0_RUNTIME_CONTRACT_RESEARCH
+NEXT = PRE_IMPLEMENTATION_CONTRACT_GATE
 ```
