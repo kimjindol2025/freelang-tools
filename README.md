@@ -72,6 +72,9 @@ fl-test
 
 ## 전체 도구 목록
 
+Native FreeLang 테스트 프레임워크의 구현 기획은
+[`docs/NATIVE-TEST-FRAMEWORK-PLAN.md`](docs/NATIVE-TEST-FRAMEWORK-PLAN.md)에 있다.
+
 `fl-tools`는 아래 명령을 하나의 공통 진입점으로 제공한다. 괄호 안의 파일은
 각 명령이 실제로 호출하는 내부 도구다.
 
