@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Official native CI entrypoint.
+# fl-cli owns the single check/run/protocol boundary; this command must not
+# call the FreeLang target, reporter, or evidence generator a second time.
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+
+if [[ "$#" -lt 1 ]]; then
+  echo "usage: fl-ci <free-lang-file> [timeout-seconds]" >&2
+  exit 2
+fi
+
+exec "$TOOLS_ROOT/scripts/fl-cli" "$@"

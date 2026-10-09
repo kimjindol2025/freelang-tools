@@ -15,6 +15,7 @@
     "deploy": "./scripts/fl-deploy",
     "test": "./scripts/fl-test",
     "cli": "./scripts/fl-cli",
+    "ci": "./scripts/fl-ci",
     "check": "./scripts/fl-check",
     "detect": "./scripts/fl-detect",
     "status": "./scripts/fl-status",
