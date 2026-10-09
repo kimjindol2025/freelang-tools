@@ -1,0 +1,28 @@
+;; Native collector plan tests. Bodies are not executed by this module.
+(load "../src/test/collector.fl")
+
+(define pass-body (fn [] 42))
+(define cases
+  [(collector-case "math" "add" 2 pass-body)
+   (collector-case "math" "subtract" 1 pass-body)
+   (collector-case "text" "contains" 3 pass-body)])
+
+(deftest "collector sorts declarations by fixed order" (is= "math/subtract"
+  (collector-key (first (get (collector-plan cases "") "selected")))))
+(deftest "collector keeps deterministic selected count" (is= 2
+  (get (collector-plan cases "math") "selected_count")))
+(deftest "collector filter preserves matching suite" (is= "math/add"
+  (collector-key (last (get (collector-plan cases "math") "selected")))))
+(deftest "empty selection is not run" (is= "NOT_RUN"
+  (get (collector-plan cases "network") "status")))
+(deftest "duplicate declarations are error" (is= "ERROR"
+  (get (collector-plan
+         [(collector-case "math" "add" 1 pass-body)
+          (collector-case "math" "add" 2 pass-body)] "")
+       "status")))
+(deftest "invalid declaration is error" (is= "ERROR"
+  (get (collector-plan
+         [{"schema" "wrong" "suite" "math" "name" "broken" "order" -1}] "")
+       "status")))
+
+(run-tests)

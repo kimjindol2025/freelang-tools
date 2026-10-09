@@ -1,0 +1,74 @@
+;; FreeLang-native collection plan.
+;; This module plans declarations only; it does not execute test bodies.
+
+(defn collector-case [suite name order body]
+  {"schema" "freelang-tools/collector-case/v1"
+   "suite" suite
+   "name" name
+   "order" order
+   "body" body})
+
+(defn collector-valid-case [entry]
+  (and (map? entry)
+       (json_has entry "schema")
+       (json_has entry "suite")
+       (json_has entry "name")
+       (json_has entry "order")
+       (json_has entry "body")
+       (= (get entry "schema") "freelang-tools/collector-case/v1")
+       (string? (get entry "suite"))
+       (string? (get entry "name"))
+       (integer? (get entry "order"))
+       (>= (get entry "order") 0)
+       (fn? (get entry "body"))))
+
+(defn collector-key [entry]
+  (str (get entry "suite") "/" (get entry "name")))
+
+(defn collector-duplicate-count [entries]
+  (if (not (array? entries))
+    0
+    (reduce (fn [total entry]
+              (+ total
+                 (length (filter (fn [other]
+                                   (= (collector-key entry) (collector-key other)))
+                                 (rest (drop-while (fn [item]
+                                                     (not (= item entry)))
+                                                   entries))))))
+            0
+            entries)))
+
+(defn collector-selected [entries filter-text]
+  (let [ordered (sort-by (fn [entry] (get entry "order")) entries)]
+    (if (or (nil? filter-text) (= filter-text ""))
+      ordered
+      (filter (fn [entry]
+                (contains? (collector-key entry) filter-text))
+              ordered))))
+
+(defn collector-plan [entries filter-text]
+  (let [input-valid (array? entries)
+        invalid-count (if input-valid
+                        (length (filter (fn [entry]
+                                          (not (collector-valid-case entry)))
+                                        entries))
+                        1)
+        duplicate-count (if input-valid
+                          (collector-duplicate-count
+                            (filter collector-valid-case entries))
+                          0)
+        selected (if (and input-valid (= invalid-count 0) (= duplicate-count 0))
+                   (collector-selected entries filter-text)
+                   [])
+        selected-count (length selected)
+        status (if (or (not input-valid) (> invalid-count 0) (> duplicate-count 0))
+                 "ERROR"
+                 (if (= selected-count 0) "NOT_RUN" "READY"))]
+    {"schema" "freelang-tools/collector-plan/v1"
+     "status" status
+     "filter" (if (nil? filter-text) "" filter-text)
+     "declared_count" (if input-valid (length entries) 0)
+     "selected_count" selected-count
+     "invalid_count" invalid-count
+     "duplicate_count" duplicate-count
+     "selected" selected}))
