@@ -1,0 +1,30 @@
+;; Isolation context contract tests. No runtime snapshot claim is made here.
+(load "../src/test/collector.fl")
+(load "../src/test/isolation.fl")
+
+(define body (fn [] 1))
+(define entries
+  [(collector-case "state" "first" 1 body)
+   (collector-case "state" "second" 2 body)])
+(define contexts (isolation-contexts entries {"value" 0}))
+(define leaked-contexts [(assoc (first contexts) "state_leaked" true)])
+(define empty-contexts [])
+
+(deftest "contexts preserve one initial state per case" (is= true
+  (and (= (get (first contexts) "before_state") {"value" 0})
+       (= (get (last contexts) "before_state") {"value" 0}))))
+(deftest "valid contexts are ready" (is= "READY"
+  (get (isolation-validate contexts {"value" 0}) "status")))
+(deftest "reset restores explicit state boundary" (is= {"value" 0}
+  (get (isolation-reset
+         (assoc (first contexts) "current_state" {"value" 9})
+         {"value" 0})
+       "current_state")))
+(deftest "state leak is error" (is= "ERROR"
+  (get (isolation-validate leaked-contexts {"value" 0}) "status")))
+(deftest "invalid context is error" (is= "ERROR"
+  (get (isolation-validate [{"schema" "wrong"}] {}) "status")))
+(deftest "empty isolation selection is not run" (is= "NOT_RUN"
+  (get (isolation-validate empty-contexts {}) "status")))
+
+(run-tests)

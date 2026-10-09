@@ -1,0 +1,70 @@
+;; Native isolation context contract.
+;; This models explicit state boundaries; it does not fake runtime snapshots.
+
+(defn isolation-context [entry initial-state]
+  {"schema" "freelang-tools/isolation-context/v1"
+   "key" (str (get entry "suite") "/" (get entry "name"))
+   "before_state" initial-state
+   "current_state" initial-state
+   "reset_required" true
+   "state_leaked" false
+   "reset_count" 0})
+
+(defn isolation-contexts [entries initial-state]
+  (map (fn [entry]
+         (isolation-context entry initial-state))
+       entries))
+
+(defn isolation-valid-context [context]
+  (and (map? context)
+       (json_has context "schema")
+       (json_has context "key")
+       (json_has context "before_state")
+       (json_has context "current_state")
+       (json_has context "reset_required")
+       (json_has context "state_leaked")
+       (json_has context "reset_count")
+       (= (get context "schema") "freelang-tools/isolation-context/v1")
+       (string? (get context "key"))
+       (boolean? (get context "reset_required"))
+       (boolean? (get context "state_leaked"))
+       (integer? (get context "reset_count"))
+       (>= (get context "reset_count") 0)))
+
+(defn isolation-reset [context initial-state]
+  (assoc (assoc (assoc (assoc context
+                             "before_state" initial-state)
+                      "current_state" initial-state)
+                "state_leaked" false)
+         "reset_count" (+ (get context "reset_count") 1)))
+
+(defn isolation-validate [context_list initial-state]
+  (if (= (length context_list) 0)
+    {"schema" "freelang-tools/isolation-report/v1"
+     "status" "NOT_RUN"
+     "context_count" 0
+     "invalid_count" 0
+     "leaked_count" 0
+     "reset_required" true}
+    (let [input-valid (array? context_list)
+        invalid-count (if input-valid
+                        (length (filter (fn [context]
+                                          (not (isolation-valid-context context)))
+                                        context_list))
+                        1)
+        leaked-count (if input-valid
+                       (length (filter (fn [context]
+                                         (and (isolation-valid-context context)
+                                              (get context "state_leaked")))
+                                       context_list))
+                       0)
+        context-count (if input-valid (length context_list) 0)
+        status (if (or (not input-valid) (> invalid-count 0) (> leaked-count 0))
+                 "ERROR"
+                 (if (= context-count 0) "NOT_RUN" "READY"))]
+    {"schema" "freelang-tools/isolation-report/v1"
+     "status" status
+     "context_count" context-count
+     "invalid_count" invalid-count
+     "leaked_count" leaked-count
+     "reset_required" true})))

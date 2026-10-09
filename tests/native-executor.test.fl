@@ -1,0 +1,25 @@
+;; Native executor tests. Each selected body is called once by execute-case.
+(load "../src/test/executor.fl")
+(load "../src/test/assert.fl")
+
+(define pass-case (collector-case "math" "pass" 1 (fn [] (to_be 2 2))))
+(define fail-case (collector-case "math" "fail" 2 (fn [] (to_be 2 3))))
+(define blocked-case (collector-case "math" "blocked" 3 (fn [] (to_throw (fn [] (error "unknown"))))))
+(define error-case (collector-case "math" "error" 4 (fn [] (error "body-error"))))
+
+(deftest "executor maps passing assertion" (is= "PASS"
+  (get (execute-case pass-case) "status")))
+(deftest "executor maps failing assertion and preserves value" (is= 2
+  (get (get (execute-case fail-case) "assertion") "actual")))
+(deftest "executor preserves blocked matcher" (is= "BLOCKED"
+  (get (execute-case blocked-case) "status")))
+(deftest "executor classifies body error as error" (is= "ERROR"
+  (get (execute-case error-case) "status")))
+(deftest "executor aggregates selected cases once" (is= "FAIL"
+  (get (get (execute-selected [pass-case fail-case] "") "aggregate") "status")))
+(deftest "executor filter with no cases is not run" (is= "NOT_RUN"
+  (get (get (execute-selected [pass-case] "missing") "aggregate") "status")))
+(deftest "executor invalid declaration is error" (is= "ERROR"
+  (get (get (execute-selected [{"schema" "wrong"}] "") "aggregate") "status")))
+
+(run-tests)

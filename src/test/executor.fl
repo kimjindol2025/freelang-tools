@@ -1,0 +1,37 @@
+;; Native FreeLang executor for a collector plan.
+;; Each selected body is invoked once. Errors remain ERROR; no error text guessing.
+
+(load "../src/test/collector.fl")
+(load "../src/test/result.fl")
+
+(define assertion-statuses ["PASS" "FAIL" "ERROR" "BLOCKED" "SKIPPED"])
+
+(defn execute-case [entry]
+  (if (not (collector-valid-case entry))
+    (test-result-with-diagnostic
+      "" "" "ERROR" 0 "INVALID_COLLECTOR_CASE")
+    (let [outcome (try-call (get entry "body"))
+          suite (get entry "suite")
+          name (get entry "name")]
+      (if (err? outcome)
+        (test-result-with-diagnostic suite name "ERROR" 0 outcome)
+        (let [value (unwrap outcome)]
+          (if (and (map? value)
+                   (json_has value "status")
+                   (contains? assertion-statuses (get value "status")))
+            (assoc (test-result suite name (get value "status") 1)
+                   "assertion" value)
+            (test-result suite name "PASS" 0)))))))
+
+(defn execute-selected [entries filter-text]
+  (let [plan (collector-plan entries filter-text)
+        selected (get plan "selected")
+        results (map (fn [entry] (execute-case entry)) selected)
+        expected (get plan "selected_count")
+        aggregate (if (= (get plan "status") "ERROR")
+                    (result-aggregate [] (get plan "declared_count"))
+                    (result-aggregate results expected))]
+    {"schema" "freelang-tools/execution/v1"
+     "plan" plan
+     "results" results
+     "aggregate" aggregate}))

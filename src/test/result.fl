@@ -8,7 +8,11 @@
    "suite" suite
    "name" name
    "status" status
-   "assertions" assertions})
+   "assertions" assertions
+   "diagnostic" ""})
+
+(defn test-result-with-diagnostic [suite name status assertions diagnostic]
+  (assoc (test-result suite name status assertions) "diagnostic" diagnostic))
 
 (defn valid-count [value]
   (and (integer? value) (>= value 0)))
