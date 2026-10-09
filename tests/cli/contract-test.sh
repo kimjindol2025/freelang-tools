@@ -35,6 +35,8 @@ run_case "runtime-error" tests/cli/error.fl 2
 run_case "effect-blocked" tests/cli/blocked.fl 2
 run_case "not-run" tests/cli/not-run.fl 3
 run_case "broken-final-json" tests/cli/broken.fl 2
+run_case "duplicate-final-result" tests/cli/duplicate.fl 2
+run_case "incomplete-final-protocol" tests/cli/incomplete.fl 2
 run_case "process-error" tests/cli/process-error.fl 2
 run_case "pass-process-error" tests/cli/pass-process-error.fl 2
 run_case "missing-target" tests/cli/missing.fl 2

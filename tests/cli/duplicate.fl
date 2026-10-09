@@ -1,0 +1,7 @@
+(load "../../src/test/result.fl")
+(load "../../src/test/report.fl")
+(load "../../src/test/cli.fl")
+(emit-final-result
+  (result-aggregate [(test-result "cli" "duplicate" "PASS" 1)] 1))
+(emit-final-result
+  (result-aggregate [(test-result "cli" "duplicate" "PASS" 1)] 1))
