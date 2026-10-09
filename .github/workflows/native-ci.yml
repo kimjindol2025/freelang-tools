@@ -1,0 +1,75 @@
+name: FreeLang Native CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FREELANG_RUNTIME_REPOSITORY: kimjindol2025/freelang-v11
+  FREELANG_RUNTIME_REF: 3eba7f1def12000e5327265677f3d9a786330fae
+  FREELANG_CLI_TIMEOUT_SECONDS: 8
+
+jobs:
+  native-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout freelang-tools
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned FreeLang runtime
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FREELANG_RUNTIME_REPOSITORY }}
+          ref: ${{ env.FREELANG_RUNTIME_REF }}
+          path: runtime
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: runtime/package-lock.json
+
+      - name: Install and build runtime
+        working-directory: runtime
+        run: |
+          npm ci --prefer-offline
+          npm run build
+
+      - name: Run native CLI contract
+        env:
+          FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
+        run: npm run test:cli-contract
+
+      - name: Run native timeout and signal isolation
+        env:
+          FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
+        run: npm run test:cli-isolation
+
+      - name: Run deterministic native comparison
+        env:
+          FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
+        run: npm run determinism -- tests/cli/pass.fl
+
+      - name: Run FreeLang native regression
+        env:
+          FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
+        run: npm test
+
+      - name: Upload native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freelang-native-evidence-${{ github.run_id }}
+          path: |
+            /tmp/freelang-cli.*
+            /tmp/freelang-determinism.*
+          if-no-files-found: ignore
+          retention-days: 7
