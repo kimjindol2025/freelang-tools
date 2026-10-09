@@ -14,6 +14,9 @@ TARGET="$(readlink -f -- "$TARGET_INPUT")"
 RUNNER="${FREELANG_AFJ_RUNNER:-/root/freelang-surface-v0-clean-ek3qo2/v11/bootstrap.js}"
 EVIDENCE_DIR="${FREELANG_CLI_EVIDENCE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/freelang-cli.XXXXXX")}" 
 mkdir -p "$EVIDENCE_DIR"
+
+trap 'exit_code=$?; trap - EXIT; node "$TOOLS_ROOT/scripts/fl-evidence-manifest.js" "$EVIDENCE_DIR" "$exit_code" >/dev/null 2>&1 || true; exit "$exit_code"' EXIT
+
 STDOUT_FILE="$EVIDENCE_DIR/stdout.log"
 STDERR_FILE="$EVIDENCE_DIR/stderr.log"
 CHECK_STDOUT_FILE="$EVIDENCE_DIR/check.stdout.log"
