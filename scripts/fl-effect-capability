@@ -10,8 +10,9 @@ PROBE="$TOOLS_ROOT/tests/capability/effect-tape-probe.fl"
 STAMP="${TMPDIR:-/tmp}/freelang-effect-capability.$$"
 CHECK_OUT="${STAMP}.check.log"
 RUN_OUT="${STAMP}.run.log"
+API_DOC_OUT="${STAMP}.api-doc.log"
 
-cleanup() { rm -f -- "$CHECK_OUT" "$RUN_OUT"; }
+cleanup() { rm -f -- "$CHECK_OUT" "$RUN_OUT" "$API_DOC_OUT"; }
 trap cleanup EXIT INT TERM
 
 if [[ ! -f "$RUNTIME" || ! -f "$PROBE" ]]; then
@@ -23,16 +24,23 @@ fi
 set +e
 node "$RUNTIME" check "$PROBE" >"$CHECK_OUT" 2>&1
 CHECK_CODE=$?
+node "$RUNTIME" fn-doc trace_effects >"$API_DOC_OUT" 2>&1
+API_DOC_CODE=$?
 node "$RUNTIME" run "$PROBE" >"$RUN_OUT" 2>&1
 RUN_CODE=$?
 set -e
 
 echo "RUNTIME=$RUNTIME"
+RUNTIME_COMMIT="$(git -C "$(dirname -- "$RUNTIME")" rev-parse HEAD 2>/dev/null || echo UNKNOWN)"
+echo "RUNTIME_COMMIT=$RUNTIME_COMMIT"
 echo "PROBE=$PROBE"
 echo "CHECK_EXIT=$CHECK_CODE"
+echo "API_DOC_EXIT=$API_DOC_CODE"
 echo "RUN_EXIT=$RUN_CODE"
 echo "--- CHECK ---"
 cat "$CHECK_OUT"
+echo "--- API DOC ---"
+cat "$API_DOC_OUT"
 echo "--- RUN ---"
 cat "$RUN_OUT"
 
@@ -40,8 +48,41 @@ if [[ "$CHECK_CODE" -ne 0 ]]; then
   echo "EFFECT_TAPE_PROBE=ERROR"
   exit 2
 fi
+if [[ "$API_DOC_CODE" -gt 1 ]]; then
+  echo "EFFECT_TAPE_PROBE=ERROR"
+  echo "CAUSE=effect-api-doc-command-failed" >&2
+  exit 2
+fi
+
+API_STATUS="$(node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+if (!value || typeof value !== "object" || typeof value.found !== "boolean") process.exit(2);
+process.stdout.write(value.found ? "AVAILABLE" : "UNAVAILABLE");
+' "$API_DOC_OUT")" || {
+  echo "EFFECT_TAPE_PROBE=ERROR"
+  echo "CAUSE=invalid-effect-api-doc-json" >&2
+  exit 2
+}
+echo "API_DOC_STATUS=$API_STATUS"
+
+if [[ "$API_STATUS" == "AVAILABLE" && "$RUN_CODE" -ne 0 ]]; then
+  echo "EFFECT_TAPE_PROBE=ERROR"
+  echo "CAUSE=declared-effect-api-failed-at-runtime" >&2
+  exit 2
+fi
+if [[ "$API_STATUS" == "AVAILABLE" && "$RUN_CODE" -eq 0 ]]; then
+  if ! grep -q '^EFFECT_TAPE_PROBE_BODY_EXECUTED$' "$RUN_OUT"; then
+    echo "EFFECT_TAPE_PROBE=ERROR"
+    echo "CAUSE=effect-api-run-produced-no-observable-body" >&2
+    exit 2
+  fi
+  echo "EFFECT_TAPE_PROBE=SUPPORTED"
+  exit 0
+fi
 if [[ "$RUN_CODE" -eq 0 ]]; then
-  echo "EFFECT_TAPE_PROBE=UNEXPECTED_SUCCESS"
+  echo "EFFECT_TAPE_PROBE=ERROR"
+  echo "CAUSE=runtime-succeeded-while-api-doc-denied-capability" >&2
   exit 2
 fi
 if grep -q '^EFFECT_TAPE_PROBE_BODY_EXECUTED$' "$RUN_OUT"; then

@@ -43,6 +43,13 @@ jobs:
           npm ci --prefer-offline
           npm run build
 
+      - name: Verify runtime checkout SHA
+        working-directory: runtime
+        run: |
+          actual="$(git rev-parse HEAD)"
+          echo "RUNTIME_COMMIT=$actual"
+          test "$actual" = "${FREELANG_RUNTIME_REF}"
+
       - name: Run native CLI contract
         env:
           FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
@@ -52,6 +59,11 @@ jobs:
         env:
           FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
         run: npm run test:cli-isolation
+
+      - name: Verify Effect Tape capability boundary
+        env:
+          FREELANG_AFJ_RUNNER: ${{ github.workspace }}/runtime/bootstrap.js
+        run: npm run test:effect-capability
 
       - name: Run deterministic native comparison
         env:
