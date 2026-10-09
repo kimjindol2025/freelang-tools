@@ -1,0 +1,48 @@
+;; Native FreeLang result model for the test framework.
+;; This module is intentionally pure: it does not execute tests or effects.
+
+(defn test-result [suite name status assertions]
+  {"schema" "freelang-tools/test-result/v1"
+   "suite" suite
+   "name" name
+   "status" status
+   "assertions" assertions})
+
+(defn result-count [results status]
+  (length (filter (fn [result]
+                    (= (get result "status") status))
+                  results)))
+
+(defn result-aggregate [results expected-count]
+  (let [actual-count (length results)
+        missing-count (- expected-count actual-count)
+        pass-count (result-count results "PASS")
+        fail-count (result-count results "FAIL")
+        error-count (result-count results "ERROR")
+        blocked-count (result-count results "BLOCKED")
+        skipped-count (result-count results "SKIPPED")
+        executed-count (- actual-count skipped-count)
+        status (if (<= expected-count 0)
+                 "NOT_RUN"
+                 (if (not (= missing-count 0))
+                   "ERROR"
+                   (if (= executed-count 0)
+                     "NOT_RUN"
+                     (if (> error-count 0)
+                       "ERROR"
+                       (if (> blocked-count 0)
+                         "BLOCKED"
+                         (if (> fail-count 0)
+                           "FAIL"
+                           "PASS"))))))]
+    {"schema" "freelang-tools/test-result/v1"
+     "status" status
+     "expected_count" expected-count
+     "actual_count" actual-count
+     "missing_count" missing-count
+     "executed_count" executed-count
+     "pass_count" pass-count
+     "fail_count" fail-count
+     "error_count" error-count
+     "blocked_count" blocked-count
+     "skipped_count" skipped-count}))

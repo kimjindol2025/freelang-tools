@@ -1,0 +1,32 @@
+;; Phase 1 native result schema tests.
+(load "../src/test/result.fl")
+
+(deftest "pass aggregate" (is= "PASS"
+  (get (result-aggregate
+         [(test-result "math" "add" "PASS" 1)] 1)
+       "status")))
+(deftest "assertion failure aggregate" (is= "FAIL"
+  (get (result-aggregate
+         [(test-result "math" "add" "FAIL" 1)] 1)
+       "status")))
+(deftest "error dominates failure" (is= "ERROR"
+  (get (result-aggregate
+         [(test-result "math" "add" "FAIL" 1)
+          (test-result "math" "load" "ERROR" 0)] 2)
+       "status")))
+(deftest "blocked aggregate" (is= "BLOCKED"
+  (get (result-aggregate
+         [(test-result "effects" "write" "BLOCKED" 0)] 1)
+       "status")))
+(deftest "empty is not pass" (is= "NOT_RUN"
+  (get (result-aggregate [] 0) "status")))
+(deftest "all skipped is not pass" (is= "NOT_RUN"
+  (get (result-aggregate
+         [(test-result "math" "skip" "SKIPPED" 0)] 1)
+       "status")))
+(deftest "missing result is error" (is= "ERROR"
+  (get (result-aggregate
+         [(test-result "math" "add" "PASS" 1)] 2)
+       "status")))
+
+(run-tests)
