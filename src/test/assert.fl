@@ -1,0 +1,31 @@
+;; Native FreeLang assertion matchers.
+;; Matchers return data; the runner decides how to aggregate and report it.
+
+(defn assertion [status matcher actual expected message]
+  {"schema" "freelang-tools/assertion/v1"
+   "status" status
+   "matcher" matcher
+   "actual" actual
+   "expected" expected
+   "message" message})
+
+(defn to_be [actual expected]
+  (if (= actual expected)
+    (assertion "PASS" "to_be" actual expected "")
+    (assertion "FAIL" "to_be" actual expected "values are not identical")))
+
+(defn to_equal [actual expected]
+  (if (= actual expected)
+    (assertion "PASS" "to_equal" actual expected "")
+    (assertion "FAIL" "to_equal" actual expected "values are not deeply equal")))
+
+(defn to_contain [actual expected]
+  (if (contains? actual expected)
+    (assertion "PASS" "to_contain" actual expected "")
+    (assertion "FAIL" "to_contain" actual expected "value does not contain expected item")))
+
+(defn to_throw [fn_ref]
+  (let [outcome (try-call fn_ref)]
+    (if (err? outcome)
+      (assertion "PASS" "to_throw" "THREW" true "")
+      (assertion "FAIL" "to_throw" "RETURNED" true "function did not throw"))))

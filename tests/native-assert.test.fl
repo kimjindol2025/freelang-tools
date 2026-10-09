@@ -1,0 +1,19 @@
+;; Phase 2 native assertion matcher tests.
+(load "../src/test/assert.fl")
+
+(deftest "to_be passes equal scalar values" (is= "PASS"
+  (get (to_be 3 3) "status")))
+(deftest "to_be fails different scalar values" (is= "FAIL"
+  (get (to_be 3 4) "status")))
+(deftest "to_equal compares nested values" (is= "PASS"
+  (get (to_equal {"items" [1 2]} {"items" [1 2]}) "status")))
+(deftest "to_contain finds list item" (is= "PASS"
+  (get (to_contain ["red" "blue"] "blue") "status")))
+(deftest "to_contain reports missing item" (is= "FAIL"
+  (get (to_contain ["red" "blue"] "green") "status")))
+(deftest "to_throw recognizes an error" (is= "PASS"
+  (get (to_throw (fn [] (error "expected"))) "status")))
+(deftest "to_throw rejects a normal return" (is= "FAIL"
+  (get (to_throw (fn [] 42)) "status")))
+
+(run-tests)
