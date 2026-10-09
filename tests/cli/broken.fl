@@ -1,0 +1,3 @@
+(println "FREELANG_FINAL_RESULT={broken-json")
+(println "FREELANG_EXIT_CODE=0")
+(println "FREELANG_FINAL_COMPLETE=1")

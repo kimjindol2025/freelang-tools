@@ -25,8 +25,12 @@
 
 (deftest "summary preserves pass counts and status" (is= "PASS"
   (get (report-summary pass-run) "status")))
+(deftest "pass report carries exit zero" (is= 0
+  (get (report-summary pass-run) "exit_code")))
 (deftest "summary preserves blocked status" (is= "BLOCKED"
   (get (report-summary blocked-run) "status")))
+(deftest "blocked report carries exit two" (is= 2
+  (get (report-summary blocked-run) "exit_code")))
 (deftest "json report round trips status" (is= "PASS"
   (get (json-parse (report-json pass-run)) "status")))
 (deftest "json report keeps non-pass status" (is= "BLOCKED"
@@ -35,6 +39,8 @@
   (get (json-parse (report-json error-run)) "error_count")))
 (deftest "json report keeps not-run status" (is= "NOT_RUN"
   (get (json-parse (report-json not-run)) "status")))
+(deftest "not-run report carries exit three" (is= 3
+  (get (report-summary not-run) "exit_code")))
 (deftest "text report exposes counts and status" (is= true
   (and (contains? (report-text pass-run) "status=PASS")
        (contains? (report-text pass-run) "expected=2")

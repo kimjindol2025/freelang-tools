@@ -1,0 +1,5 @@
+(load "../../src/test/result.fl")
+(load "../../src/test/report.fl")
+(load "../../src/test/cli.fl")
+(emit-final-result
+  (result-aggregate [(test-result "cli" "error" "ERROR" 0)] 1))

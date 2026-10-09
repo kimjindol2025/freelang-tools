@@ -3,7 +3,13 @@
 
 (defn report-summary [aggregate]
   {"schema" "freelang-tools/report/v1"
+   "complete" true
    "status" (get aggregate "status")
+   "exit_code" (if (= (get aggregate "status") "PASS")
+                0
+                (if (= (get aggregate "status") "FAIL")
+                  1
+                  (if (= (get aggregate "status") "NOT_RUN") 3 2)))
    "expected_count" (get aggregate "expected_count")
    "actual_count" (get aggregate "actual_count")
    "missing_count" (get aggregate "missing_count")

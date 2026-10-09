@@ -1,0 +1,8 @@
+;; Minimal native final-result protocol for the host CLI boundary.
+;; The host must consume this artifact once and must not infer status from logs.
+
+(defn emit-final-result [aggregate]
+  (let [report (report-summary aggregate)]
+    (println (str "FREELANG_FINAL_RESULT=" (report-json aggregate)))
+    (println (str "FREELANG_EXIT_CODE=" (get report "exit_code")))
+    (println "FREELANG_FINAL_COMPLETE=1")))

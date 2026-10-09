@@ -1,0 +1,6 @@
+(load "../../src/test/result.fl")
+(load "../../src/test/report.fl")
+(load "../../src/test/cli.fl")
+(file-write "/tmp/freelang-tools-cli-side-effect.txt" "1")
+(emit-final-result
+  (result-aggregate [(test-result "cli" "once" "PASS" 1)] 1))

@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET_INPUT="${1:-}"
+if [[ -z "$TARGET_INPUT" ]]; then
+  echo "usage: fl-cli <free-lang-file> [timeout-seconds]" >&2
+  exit 2
+fi
+shift || true
+TIMEOUT_SECONDS="${1:-${FREELANG_CLI_TIMEOUT_SECONDS:-8}}"
+TARGET="$(readlink -f -- "$TARGET_INPUT")"
+RUNNER="${FREELANG_AFJ_RUNNER:-/root/freelang-surface-v0-clean-ek3qo2/v11/bootstrap.js}"
+EVIDENCE_DIR="${FREELANG_CLI_EVIDENCE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/freelang-cli.XXXXXX")}" 
+mkdir -p "$EVIDENCE_DIR"
+STDOUT_FILE="$EVIDENCE_DIR/stdout.log"
+STDERR_FILE="$EVIDENCE_DIR/stderr.log"
+CHECK_STDOUT_FILE="$EVIDENCE_DIR/check.stdout.log"
+CHECK_STDERR_FILE="$EVIDENCE_DIR/check.stderr.log"
+FINAL_FILE="$EVIDENCE_DIR/final-result.json"
+META_FILE="$EVIDENCE_DIR/process.meta"
+MARKERS_FILE="$EVIDENCE_DIR/markers.txt"
+
+runtime_commit="unknown"
+runtime_root="$(cd -- "$(dirname -- "$RUNNER")" && pwd -P)"
+if git -C "$runtime_root" rev-parse HEAD >/dev/null 2>&1; then
+  runtime_commit="$(git -C "$runtime_root" rev-parse HEAD)"
+fi
+{
+  printf 'TOOL_HEAD=%s\n' "$(git -C "$TOOLS_ROOT" rev-parse HEAD)"
+  printf 'RUNTIME=%s\nRUNTIME_COMMIT=%s\nTARGET=%s\nTIMEOUT_SECONDS=%s\n' "$RUNNER" "$runtime_commit" "$TARGET" "$TIMEOUT_SECONDS"
+  printf 'RUN_COMMAND=timeout --kill-after=1s %ss node %q run %q\n' "$TIMEOUT_SECONDS" "$RUNNER" "$TARGET"
+} >"$META_FILE"
+
+if [[ ! -f "$TARGET" || ! -f "$RUNNER" ]]; then
+  echo "CLI_ERROR=missing-target-or-runner" >&2
+  printf 'PROCESS_EXIT=2\nCAUSE=missing-target-or-runner\n' >>"$META_FILE"
+  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+  exit 2
+fi
+
+set +e
+timeout --kill-after=1s "${TIMEOUT_SECONDS}s" node "$RUNNER" check "$TARGET" >"$CHECK_STDOUT_FILE" 2>"$CHECK_STDERR_FILE"
+check_exit=$?
+set -e
+printf 'CHECK_EXIT=%s\n' "$check_exit" >>"$META_FILE"
+if [[ "$check_exit" -ne 0 ]]; then
+  if [[ "$check_exit" -eq 124 || "$check_exit" -eq 137 ]]; then
+    printf 'CAUSE=TIMEOUT_CHECK\n' >>"$META_FILE"
+  elif [[ "$check_exit" -ge 128 ]]; then
+    printf 'CAUSE=SIGNAL_CHECK:%s\n' "$((check_exit - 128))" >>"$META_FILE"
+  else
+    printf 'CAUSE=CHECK_FAILURE\n' >>"$META_FILE"
+  fi
+  echo "CLI_ERROR=check-failed" >&2
+  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+  exit 2
+fi
+
+set +e
+timeout --kill-after=1s "${TIMEOUT_SECONDS}s" node "$RUNNER" run "$TARGET" >"$STDOUT_FILE" 2>"$STDERR_FILE"
+run_exit=$?
+set -e
+printf 'RUN_EXIT=%s\n' "$run_exit" >>"$META_FILE"
+if [[ "$run_exit" -eq 124 || "$run_exit" -eq 137 ]]; then
+  printf 'CAUSE=TIMEOUT\n' >>"$META_FILE"
+elif [[ "$run_exit" -ge 128 ]]; then
+  printf 'CAUSE=SIGNAL:%s\n' "$((run_exit - 128))" >>"$META_FILE"
+elif [[ "$run_exit" -ne 0 ]]; then
+  printf 'CAUSE=PROCESS_FAILURE\n' >>"$META_FILE"
+fi
+
+grep -F 'FREELANG_FINAL_RESULT=' "$STDOUT_FILE" >"$MARKERS_FILE" || true
+marker_count="$(wc -l <"$MARKERS_FILE")"
+if [[ "$marker_count" -ne 1 ]]; then
+  echo "CLI_ERROR=final-result-count:$marker_count" >&2
+  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+  exit 2
+fi
+sed 's/^FREELANG_FINAL_RESULT=//' "$MARKERS_FILE" >"$FINAL_FILE"
+
+exit_marker_lines="$EVIDENCE_DIR/exit-markers.txt"
+complete_marker_lines="$EVIDENCE_DIR/complete-markers.txt"
+grep -F 'FREELANG_EXIT_CODE=' "$STDOUT_FILE" >"$exit_marker_lines" || true
+grep -F 'FREELANG_FINAL_COMPLETE=1' "$STDOUT_FILE" >"$complete_marker_lines" || true
+if [[ "$(wc -l <"$exit_marker_lines")" -ne 1 || "$(wc -l <"$complete_marker_lines")" -ne 1 ]]; then
+  echo "CLI_ERROR=incomplete-final-protocol" >&2
+  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+  exit 2
+fi
+exit_marker="$(sed 's/^FREELANG_EXIT_CODE=//' "$exit_marker_lines")"
+
+set +e
+protocol_output="$(node "$TOOLS_ROOT/scripts/fl-protocol-check.js" "$FINAL_FILE" "$exit_marker" "$run_exit" 2>"$EVIDENCE_DIR/protocol.stderr.log")"
+protocol_exit=$?
+set -e
+printf '%s\n' "$protocol_output" >"$EVIDENCE_DIR/protocol.stdout.log"
+if [[ "$protocol_exit" -ne 0 ]]; then
+  echo "CLI_ERROR=invalid-final-result" >&2
+  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+  exit 2
+fi
+
+status="$(sed -n 's/^PROTO_STATUS=//p' "$EVIDENCE_DIR/protocol.stdout.log")"
+verdict_exit="$(sed -n 's/^PROTO_EXIT_CODE=//p' "$EVIDENCE_DIR/protocol.stdout.log")"
+if [[ "$run_exit" -ne 0 ]]; then
+  echo "CLI_ERROR=runtime-exit:$run_exit" >&2
+  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+  exit 2
+fi
+printf 'FINAL_STATUS=%s\nFINAL_EXIT=%s\n' "$status" "$verdict_exit" >>"$META_FILE"
+echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+exit "$verdict_exit"
