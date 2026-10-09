@@ -6,7 +6,7 @@ const allowed = new Set(["PASS", "FAIL", "ERROR", "BLOCKED", "NOT_RUN"]);
 const required = [
   "schema", "complete", "status", "exit_code", "expected_count", "actual_count",
   "missing_count", "excess_count", "invalid_count", "executed_count", "pass_count",
-  "fail_count", "error_count", "blocked_count", "skipped_count"
+  "fail_count", "error_count", "blocked_count", "skipped_count", "diagnostic"
 ];
 
 function fail(message) {
@@ -26,6 +26,7 @@ for (const key of required) if (!Object.prototype.hasOwnProperty.call(value, key
 if (value.schema !== "freelang-tools/report/v1") fail("schema-mismatch");
 if (value.complete !== true) fail("incomplete-result");
 if (!allowed.has(value.status)) fail("unknown-status");
+if (typeof value.diagnostic !== "string") fail("invalid-diagnostic");
 
 const countKeys = [
   "expected_count", "actual_count", "missing_count", "excess_count", "invalid_count",

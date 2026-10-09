@@ -16,6 +16,7 @@
     "test": "./scripts/fl-test",
     "cli": "./scripts/fl-cli",
     "ci": "./scripts/fl-ci",
+    "test:cli-contract": "./tests/cli/contract-test.sh",
     "check": "./scripts/fl-check",
     "detect": "./scripts/fl-detect",
     "status": "./scripts/fl-status",
