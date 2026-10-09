@@ -2,7 +2,7 @@
 
 ## Scope
 
-이 문서는 `/root/freelang-tools` 저장소에만 적용된다. 상위 workspace의
+이 문서는 `/root/kilo-freelang/projects/freelang-tools` 저장소에만 적용된다. 상위 workspace의
 보안·Git·보고 규칙도 함께 준수한다.
 
 ## Repository role
@@ -10,6 +10,59 @@
 이 저장소는 FreeLang 계열 프로젝트를 감지하고, 테스트·리뷰·배포 계약을
 안전하게 실행하는 공용 개발 도구다. 주요 실행 파일은 `scripts/`에 있고,
 테스트는 `tests/`에 있다.
+
+## Official FreeLang native tester
+
+이 저장소의 공식 테스트 방식은 외부 Jest를 감싸는 방식이 아니라
+FreeLang native runner를 기준으로 한다. 테스트 의미·assertion·집계·최종
+상태는 FreeLang 코드가 소유하고, host CLI는 프로세스 감독·증거 보존·종료코드
+전달만 담당한다.
+
+세 실행 모드는 하나의 테스트 실행 결과를 공유한다.
+
+- `fl-test`: `describe`, `test`, `expect` 기반 단위 테스트 실행
+- `fl-effect`: Effect Tape 관찰·정책 판정. 런타임 API가 없으면 `BLOCKED`
+- `fl-ci`: schema 검증, 최종 JSON 출력, shell exit code 전달
+
+고정 canonical runtime은 FreeLang v11 runtime commit
+`e73c58378a1bb1afb776b7abc4b43eb859006530`이다. 경로를 임의로 바꾸거나
+다른 테스트 엔진을 성공 판정의 기준으로 사용하지 않는다.
+
+공식 상태와 종료코드는 다음과 같다.
+
+| 상태 | shell exit code |
+|---|---:|
+| `PASS` | 0 |
+| `FAIL` | 1 |
+| `ERROR` | 2 |
+| `BLOCKED` | 2 |
+| `NOT_RUN` | 3 |
+
+테스트 0개, 전부 `SKIPPED`, 결과 누락·깨진 JSON·schema 오류·timeout·signal은
+`PASS`가 될 수 없다. Effect Tape 미지원도 가짜 결과를 만들지 않고
+`BLOCKED`로 보존한다. 동일 invocation의 테스트는 한 번만 실행한다.
+
+### Native tester commands
+
+```bash
+npm test
+./scripts/fl-test
+./scripts/fl-cli tests/cli/pass.fl
+./scripts/fl-cli tests/cli/fail.fl       # expected exit 1
+./scripts/fl-cli tests/cli/error.fl      # expected exit 2
+./scripts/fl-cli tests/cli/blocked.fl    # expected exit 2
+./scripts/fl-cli tests/cli/not-run.fl    # expected exit 3
+```
+
+각 CLI 실행은 최종 JSON, raw stdout/stderr, process metadata를 evidence
+디렉터리에 보존한다. `duration`, PID 같은 실행 메타정보는 반복 비교에서
+제외할 수 있지만 assertion 값·effect 대상·인자·순서는 삭제하거나 정규화하지
+않는다.
+
+GitHub Actions는 테스트 엔진이 아니다. 연결할 때는 `freelang-tools`의
+`scripts/fl-cli`를 호출하고 최종 FreeLang JSON과 실제 shell exit code를
+검증한다. 기존 Jest 결과나 로그 문구를 정규식으로 해석해 FreeLang 테스트의
+성공 여부를 추정하지 않는다.
 
 ## Required workflow
 
