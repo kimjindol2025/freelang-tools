@@ -33,8 +33,39 @@ fi
 {
   printf 'TOOL_HEAD=%s\n' "$(git -C "$TOOLS_ROOT" rev-parse HEAD)"
   printf 'RUNTIME=%s\nRUNTIME_COMMIT=%s\nTARGET=%s\nTIMEOUT_SECONDS=%s\n' "$RUNNER" "$runtime_commit" "$TARGET" "$TIMEOUT_SECONDS"
-  printf 'RUN_COMMAND=timeout --kill-after=1s %ss node %q run %q\n' "$TIMEOUT_SECONDS" "$RUNNER" "$TARGET"
+  printf 'RUN_COMMAND=setsid --wait timeout --foreground --kill-after=1s %ss node %q run %q\n' "$TIMEOUT_SECONDS" "$RUNNER" "$TARGET"
 } >"$META_FILE"
+
+run_guarded() {
+  local seconds="$1"
+  shift
+  local guard_pid guard_pgid guard_exit
+
+  setsid --wait timeout --foreground --kill-after=1s "${seconds}s" "$@" &
+  guard_pid=$!
+  guard_pgid="$(ps -o pgid= -p "$guard_pid" | tr -d ' ')"
+  GUARD_PID="$guard_pid"
+  GUARD_PGID="$guard_pgid"
+
+  wait "$guard_pid"
+  guard_exit=$?
+
+  GUARD_CLEANUP="NOT_NEEDED"
+  GUARD_RESIDUAL="0"
+  if [[ "$guard_exit" -ne 0 && -n "$guard_pgid" ]]; then
+    GUARD_CLEANUP="TERM_THEN_KILL"
+    kill -TERM -- "-$guard_pgid" 2>/dev/null || true
+    sleep 0.05
+    if kill -0 -- "-$guard_pgid" 2>/dev/null; then
+      kill -KILL -- "-$guard_pgid" 2>/dev/null || true
+      sleep 0.05
+    fi
+    if kill -0 -- "-$guard_pgid" 2>/dev/null; then
+      GUARD_RESIDUAL="1"
+    fi
+  fi
+  return "$guard_exit"
+}
 
 if [[ ! -f "$TARGET" || ! -f "$RUNNER" ]]; then
   echo "CLI_ERROR=missing-target-or-runner" >&2
@@ -44,10 +75,11 @@ if [[ ! -f "$TARGET" || ! -f "$RUNNER" ]]; then
 fi
 
 set +e
-timeout --kill-after=1s "${TIMEOUT_SECONDS}s" node "$RUNNER" check "$TARGET" >"$CHECK_STDOUT_FILE" 2>"$CHECK_STDERR_FILE"
+run_guarded "$TIMEOUT_SECONDS" node "$RUNNER" check "$TARGET" >"$CHECK_STDOUT_FILE" 2>"$CHECK_STDERR_FILE"
 check_exit=$?
 set -e
-printf 'CHECK_EXIT=%s\n' "$check_exit" >>"$META_FILE"
+printf 'CHECK_EXIT=%s\nCHECK_GUARD_PID=%s\nCHECK_GUARD_PGID=%s\nCHECK_CLEANUP=%s\nCHECK_RESIDUAL=%s\n' \
+  "$check_exit" "$GUARD_PID" "$GUARD_PGID" "$GUARD_CLEANUP" "$GUARD_RESIDUAL" >>"$META_FILE"
 if [[ "$check_exit" -ne 0 ]]; then
   if [[ "$check_exit" -eq 124 || "$check_exit" -eq 137 ]]; then
     printf 'CAUSE=TIMEOUT_CHECK\n' >>"$META_FILE"
@@ -62,10 +94,11 @@ if [[ "$check_exit" -ne 0 ]]; then
 fi
 
 set +e
-timeout --kill-after=1s "${TIMEOUT_SECONDS}s" node "$RUNNER" run "$TARGET" >"$STDOUT_FILE" 2>"$STDERR_FILE"
+run_guarded "$TIMEOUT_SECONDS" node "$RUNNER" run "$TARGET" >"$STDOUT_FILE" 2>"$STDERR_FILE"
 run_exit=$?
 set -e
-printf 'RUN_EXIT=%s\n' "$run_exit" >>"$META_FILE"
+printf 'RUN_EXIT=%s\nRUN_GUARD_PID=%s\nRUN_GUARD_PGID=%s\nRUN_CLEANUP=%s\nRUN_RESIDUAL=%s\n' \
+  "$run_exit" "$GUARD_PID" "$GUARD_PGID" "$GUARD_CLEANUP" "$GUARD_RESIDUAL" >>"$META_FILE"
 if [[ "$run_exit" -eq 124 || "$run_exit" -eq 137 ]]; then
   printf 'CAUSE=TIMEOUT\n' >>"$META_FILE"
 elif [[ "$run_exit" -ge 128 ]]; then

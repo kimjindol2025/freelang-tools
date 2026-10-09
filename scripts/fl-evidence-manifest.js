@@ -50,6 +50,10 @@ const manifest = {
   check_exit: meta.CHECK_EXIT === undefined ? null : Number(meta.CHECK_EXIT),
   run_exit: meta.RUN_EXIT === undefined ? null : Number(meta.RUN_EXIT),
   cause: meta.CAUSE ?? null,
+  check_cleanup: meta.CHECK_CLEANUP ?? null,
+  check_residual: meta.CHECK_RESIDUAL === undefined ? null : Number(meta.CHECK_RESIDUAL),
+  run_cleanup: meta.RUN_CLEANUP ?? null,
+  run_residual: meta.RUN_RESIDUAL === undefined ? null : Number(meta.RUN_RESIDUAL),
 };
 
 fs.writeFileSync(path.join(evidenceDir, "evidence-manifest.json"), `${JSON.stringify(manifest)}\n`);

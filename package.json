@@ -17,6 +17,7 @@
     "cli": "./scripts/fl-cli",
     "ci": "./scripts/fl-ci",
     "test:cli-contract": "./tests/cli/contract-test.sh",
+    "test:cli-isolation": "./tests/cli/timeout-signal-test.sh",
     "check": "./scripts/fl-check",
     "detect": "./scripts/fl-detect",
     "status": "./scripts/fl-status",
