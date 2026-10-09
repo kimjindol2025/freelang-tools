@@ -1,0 +1,28 @@
+;; Phase 3 native reporter tests.
+(load "../src/test/result.fl")
+(load "../src/test/report.fl")
+
+(define pass-run
+  (result-aggregate
+    [(test-result "math" "add" "PASS" 1)
+     (test-result "math" "even" "PASS" 1)]
+    2))
+
+(define blocked-run
+  (result-aggregate
+    [(test-result "effects" "write" "BLOCKED" 0)]
+    1))
+
+(deftest "summary preserves pass counts and status" (is= "PASS"
+  (get (report-summary pass-run) "status")))
+(deftest "summary preserves blocked status" (is= "BLOCKED"
+  (get (report-summary blocked-run) "status")))
+(deftest "json report round trips status" (is= "PASS"
+  (get (json-parse (report-json pass-run)) "status")))
+(deftest "json report keeps non-pass status" (is= "BLOCKED"
+  (get (json-parse (report-json blocked-run)) "status")))
+(deftest "text report exposes counts and status" (is= true
+  (and (contains? (report-text pass-run) "2 passed")
+       (contains? (report-text pass-run) "status=PASS"))))
+
+(run-tests)

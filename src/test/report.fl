@@ -1,0 +1,25 @@
+;; Native FreeLang reporters for the shared test-result contract.
+;; Reporting is a pure projection; process exit codes remain a host boundary concern.
+
+(defn report-summary [aggregate]
+  {"schema" "freelang-tools/report/v1"
+   "status" (get aggregate "status")
+   "expected_count" (get aggregate "expected_count")
+   "actual_count" (get aggregate "actual_count")
+   "missing_count" (get aggregate "missing_count")
+   "executed_count" (get aggregate "executed_count")
+   "pass_count" (get aggregate "pass_count")
+   "fail_count" (get aggregate "fail_count")
+   "error_count" (get aggregate "error_count")
+   "blocked_count" (get aggregate "blocked_count")
+   "skipped_count" (get aggregate "skipped_count")})
+
+(defn report-json [aggregate]
+  (json-stringify (report-summary aggregate)))
+
+(defn report-text [aggregate]
+  (str "Test Results: "
+       (get aggregate "pass_count") " passed, "
+       (get aggregate "fail_count") " failed, "
+       (get aggregate "error_count") " errors, status="
+       (get aggregate "status")))
