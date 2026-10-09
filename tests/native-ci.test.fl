@@ -1,0 +1,25 @@
+;; Native CI orchestration tests. Inputs are artifacts; no test is rerun.
+(load "../src/test/result.fl")
+(load "../src/test/ci.fl")
+
+(define pass-results [(test-result "math" "pass" "PASS" 1)])
+(define fail-results [(test-result "math" "fail" "FAIL" 1)])
+
+(deftest "clean artifacts produce PASS exit zero" (is= 0
+  (get (ci-run pass-results 1 "PASS" "PASS") "exit_code")))
+(deftest "test failure produces FAIL exit one" (is= "FAIL"
+  (get (ci-run fail-results 1 "PASS" "PASS") "status")))
+(deftest "effect blocked dominates clean test" (is= "BLOCKED"
+  (get (ci-run pass-results 1 "BLOCKED" "PASS") "status")))
+(deftest "effect error dominates test failure" (is= "ERROR"
+  (get (ci-run fail-results 1 "ERROR" "PASS") "status")))
+(deftest "not-run is preserved" (is= 3
+  (get (ci-run [] 0 "PASS" "PASS") "exit_code")))
+(deftest "source error blocks success" (is= "ERROR"
+  (get (ci-run pass-results 1 "PASS" "ERROR") "status")))
+(deftest "source blocked remains blocked" (is= "BLOCKED"
+  (get (ci-run pass-results 1 "PASS" "BLOCKED") "status")))
+(deftest "orchestration never reruns input" (is= 0
+  (get (ci-run pass-results 1 "PASS" "PASS") "rerun_count")))
+
+(run-tests)

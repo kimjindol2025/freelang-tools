@@ -1,0 +1,32 @@
+;; Native FreeLang CI orchestration over immutable result artifacts.
+;; It combines results; it never reruns tests or infers status from logs.
+
+(defn ci-status [test-status effect-status source-status]
+  (if (not (= source-status "PASS"))
+    (if (= source-status "BLOCKED") "BLOCKED" "ERROR")
+    (if (= test-status "ERROR")
+      "ERROR"
+      (if (= effect-status "ERROR")
+        "ERROR"
+        (if (or (= test-status "BLOCKED") (= effect-status "BLOCKED"))
+          "BLOCKED"
+          (if (or (= test-status "FAIL") (= effect-status "FAIL"))
+            "FAIL"
+            (if (= test-status "NOT_RUN") "NOT_RUN" "PASS")))))))
+
+(defn ci-run [results expected-count effect-status source-status]
+  (let [test-aggregate (result-aggregate results expected-count)
+        status (ci-status (get test-aggregate "status") effect-status source-status)]
+    {"schema" "freelang-tools/ci-report/v1"
+     "complete" true
+     "status" status
+     "exit_code" (if (= status "PASS")
+                   0
+                   (if (= status "FAIL")
+                     1
+                     (if (= status "NOT_RUN") 3 2)))
+     "test" test-aggregate
+     "effect_status" effect-status
+     "source_status" source-status
+     "rerun_count" 0
+     "diagnostic" (if (= status "PASS") "" "combined artifact requires attention")}))
