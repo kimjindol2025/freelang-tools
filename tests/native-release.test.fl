@@ -1,0 +1,21 @@
+;; Release contract tests. No publish/deploy/GitHub operation is performed.
+(load "../src/test/release.fl")
+
+(define complete-components
+  {"collector" "PASS" "executor" "PASS" "isolation" "PASS" "ci" "PASS"})
+
+(deftest "complete native contracts are release ready" (is= true
+  (get (release-gate complete-components "PASS" "PASS") "release_allowed")))
+(deftest "Tape blocked prevents release" (is= "BLOCKED"
+  (get (release-gate complete-components "BLOCKED" "PASS") "status")))
+(deftest "CLI error prevents release" (is= "ERROR"
+  (get (release-gate complete-components "PASS" "ERROR") "status")))
+(deftest "missing component is error" (is= "ERROR"
+  (get (release-gate {"collector" "PASS"} "PASS" "PASS") "status")))
+(deftest "failed component is error" (is= "ERROR"
+  (get (release-gate
+         {"collector" "PASS" "executor" "FAIL" "isolation" "PASS" "ci" "PASS"}
+         "PASS" "PASS")
+       "status")))
+
+(run-tests)

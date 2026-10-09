@@ -1,0 +1,29 @@
+;; Local release contract. It does not publish, deploy, or call GitHub.
+
+(defn release-gate [component-status effect-status cli-status]
+  (let [required ["collector" "executor" "isolation" "ci"]
+        input-valid (and (map? component-status)
+                         (json_has component-status "collector")
+                         (json_has component-status "executor")
+                         (json_has component-status "isolation")
+                         (json_has component-status "ci"))
+        missing-or-failed (if input-valid
+                            (length (filter (fn [name]
+                                              (not (= (get component-status name) "PASS")))
+                                            required))
+                            1)
+        status (if (not input-valid)
+                 "ERROR"
+                 (if (not (= cli-status "PASS"))
+                   "ERROR"
+                   (if (> missing-or-failed 0)
+                     "ERROR"
+                     (if (= effect-status "BLOCKED")
+                       "BLOCKED"
+                       (if (= effect-status "PASS") "READY" "ERROR")))))]
+    {"schema" "freelang-tools/release-gate/v1"
+     "status" status
+     "release_allowed" (= status "READY")
+     "effect_status" effect-status
+     "cli_status" cli-status
+     "missing_or_failed" missing-or-failed}))
