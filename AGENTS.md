@@ -48,6 +48,7 @@ FreeLang native runner를 기준으로 한다. 테스트 의미·assertion·집�
 npm test
 ./scripts/fl-test
 ./scripts/fl-ci tests/cli/pass.fl
+./scripts/fl-determinism tests/cli/pass.fl
 ./scripts/fl-cli tests/cli/pass.fl
 ./scripts/fl-cli tests/cli/fail.fl       # expected exit 1
 ./scripts/fl-cli tests/cli/error.fl      # expected exit 2

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -u
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET_INPUT="${1:-}"
+TIMEOUT_SECONDS="${2:-${FREELANG_CLI_TIMEOUT_SECONDS:-8}}"
+if [[ -z "$TARGET_INPUT" ]]; then
+  echo "usage: fl-determinism <free-lang-file> [timeout-seconds]" >&2
+  exit 2
+fi
+TARGET="$(readlink -f -- "$TARGET_INPUT")"
+CLI="$TOOLS_ROOT/scripts/fl-ci"
+LEFT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/freelang-determinism.XXXXXX")"
+RIGHT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/freelang-determinism.XXXXXX")"
+
+FREELANG_CLI_EVIDENCE_DIR="$LEFT_DIR" "$CLI" "$TARGET" "$TIMEOUT_SECONDS" >"$LEFT_DIR/cli.stdout" 2>"$LEFT_DIR/cli.stderr"
+left_exit=$?
+FREELANG_CLI_EVIDENCE_DIR="$RIGHT_DIR" "$CLI" "$TARGET" "$TIMEOUT_SECONDS" >"$RIGHT_DIR/cli.stdout" 2>"$RIGHT_DIR/cli.stderr"
+right_exit=$?
+
+if [[ "$left_exit" -ne "$right_exit" ]]; then
+  echo "DETERMINISM_MISMATCH=exit left=$left_exit right=$right_exit" >&2
+  echo "LEFT_EVIDENCE_DIR=$LEFT_DIR"
+  echo "RIGHT_EVIDENCE_DIR=$RIGHT_DIR"
+  exit 2
+fi
+
+node "$TOOLS_ROOT/scripts/fl-determinism-compare.js" \
+  "$LEFT_DIR/final-result.json" "$RIGHT_DIR/final-result.json"
+compare_exit=$?
+if [[ "$compare_exit" -ne 0 ]]; then
+  echo "LEFT_EVIDENCE_DIR=$LEFT_DIR"
+  echo "RIGHT_EVIDENCE_DIR=$RIGHT_DIR"
+  exit 2
+fi
+
+echo "DETERMINISM_STATUS=PASS"
+echo "RUN_EXIT=$left_exit"
+echo "LEFT_EVIDENCE_DIR=$LEFT_DIR"
+echo "RIGHT_EVIDENCE_DIR=$RIGHT_DIR"
+exit 0
