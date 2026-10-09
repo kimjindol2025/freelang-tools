@@ -1,0 +1,13 @@
+;; Phase 0 fixture for the pinned FreeLang v11 runtime.
+;; Run from this directory so the relative load contract is observable.
+(load "module.fl")
+
+(println (str "CAP_FUNCTION=" (phase0_add 2 3)))
+(println (str "CAP_MODULE=" (if (= (phase0_add 1 1) 2) "PASS" "FAIL")))
+(println (str "CAP_EXCEPTION="
+  (try
+    (throw "phase0-expected")
+    (catch $e "PASS"))))
+
+;; No native FreeLang trace_effects/effect-tape user API was found in the pinned runtime.
+(println "CAP_EFFECT_TAPE=BLOCKED")

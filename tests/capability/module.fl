@@ -1,0 +1,3 @@
+;; Phase 0 capability module fixture.
+(defn phase0_add [a b]
+  (+ a b))

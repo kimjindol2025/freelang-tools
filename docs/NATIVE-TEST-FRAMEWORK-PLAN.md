@@ -203,14 +203,23 @@ fixture와 원시 stdout/stderr가 없으면 해당 capability를 지원한다�
 
 ### 6.2 PASS 조건과 상태 전이 통일
 
-공통 상태는 다음으로 고정한다.
+개별 테스트 상태와 전체 실행 상태를 분리하되, 전체 상태는 아래 우선순위로 계산한다.
+
+| 개별 상태 | 의미 | 전체 집계에 미치는 영향 |
+|---|---|---|
+| `PASS` | 테스트가 실행되고 모든 assertion 통과 | 실패·오류가 없으면 성공 후보 |
+| `FAIL` | assertion 또는 기대 effect 불일치 | 전체 `FAIL` 후보 |
+| `ERROR` | 테스트 내부가 아닌 parser·module·tester 오류 | 전체 `ERROR` |
+| `SKIPPED` | 명시적으로 실행 제외 | 전부 skipped면 `NOT_RUN` |
+
+전체 실행 상태와 종료 코드는 다음으로 고정한다.
 
 ```text
-PASS       = 선택된 테스트가 하나 이상 실행되고 모두 성공
-FAIL       = 테스트 실행 후 assertion/effect 조건 불충족
-BLOCKED    = runner·capability·timeout·도구 경계 문제로 판정 불가
-NOT_RUN    = 선택된 테스트가 0개이거나 모두 명시적으로 제외됨
-ERROR      = 깨진 입력·JSON·결과 schema·테스터 자체 오류
+PASS       = 실행된 테스트가 하나 이상이고 FAIL/ERROR/BLOCKED가 없음 → exit 0
+FAIL       = 하나 이상의 FAIL이 있고 ERROR/BLOCKED가 없음 → exit 1
+ERROR      = FAIL과 ERROR가 함께 있거나 결과 누락·깨진 schema/JSON 발생 → exit 2
+BLOCKED    = runner·capability·timeout·도구 경계 문제로 판정 불가 → exit 2
+NOT_RUN    = 선택 테스트 0개이거나 전부 SKIPPED → exit 3
 ```
 
 기본 PASS 금지 조건:
@@ -223,6 +232,8 @@ ERROR      = 깨진 입력·JSON·결과 schema·테스터 자체 오류
 - Effect 기록 불가
 
 `fl-status`, `fl-review`, `fl-evidence`, 세 native tester는 이 상태와 종료 코드를 공유한다. 기존 `NO_TESTS`/`NOT_RUN`과 review PASS의 충돌은 본 구현 전에 제거한다.
+
+결과 집계기는 개별 결과 수, 실행된 case 수, 누락된 결과 수를 함께 보존한다. 결과 레코드가 예상 개수보다 적으면 테스트가 성공했더라도 `ERROR`로 판정한다.
 
 ### 6.3 단일 실행·결과 공유
 
@@ -257,15 +268,25 @@ RECORDING_UNAVAILABLE= Tape 기록 자체 불가, PASS 금지 → BLOCKED/ERROR
 - 테스터 내부 오류: ERROR
 - Tape 기록 불가: BLOCKED 또는 ERROR
 
-### 6.5 멈춤·시간·임시 경로 책임
+### 6.5 FreeLang 판정기와 bootstrap 책임
 
-- FreeLang 판정기는 결과 의미와 상태 전이를 담당한다.
-- 외부 bootstrap/host는 timeout, child process 종료, 잔여 프로세스 정리를 담당한다.
+“bootstrap은 호출·인자 전달만 한다”는 문구를 다음처럼 확장한다.
+
+- FreeLang 판정기: 수집, 실행 의미, assertion, effect 정책, 상태 전이, 결과 schema를 담당한다.
+- 외부 bootstrap/host: 고정 runtime 실행, 인자 전달, wall-clock timeout, child process 종료, signal 전달, 임시 경로 정리, stdout/stderr 캡처를 담당한다.
+- bootstrap은 PASS/FAIL을 임의로 바꾸지 않고 FreeLang 결과와 프로세스 종료 원인을 보존한다.
+- bootstrap timeout과 강제 종료는 테스트 `FAIL`이 아니라 전체 `BLOCKED` 또는 `ERROR`로 전달한다.
+
+### 6.6 멈춤·시간·임시 경로 책임
+
 - timeout은 테스트 실패가 아니라 `BLOCKED` 또는 `ERROR`로 기록한다.
-- 시간·난수·임시 경로는 Tape에서 정규화하거나 명시적인 deterministic fixture로 바꾼다.
-- 결과 비교에서 runtime timestamp와 임시 절대 경로를 그대로 비교하지 않는다.
+- wall-clock `duration`, 실행 시각, PID, host 임시 디렉터리의 절대 경로는 결정론 비교 대상에서 제외한다.
+- assertion의 actual/expected 값은 정규화로 삭제하거나 대체하지 않는다.
+- Effect Tape의 tag, target, 인자, 발생 순서는 반드시 비교 대상에 포함한다.
+- 시간·난수·임시 경로가 assertion 값이나 effect 대상에 들어가면 고정 fixture 또는 명시적 입력으로 주입한다.
+- 비결정적 값을 단순히 지워서 일치시키지 않고, 필요한 경우 `NONDETERMINISTIC` effect로 표시해 정책에서 판단한다.
 
-### 6.6 착수 순서
+### 6.7 착수 순서
 
 ```text
 실행기·결과 schema·상태/종료코드·격리 계약 확정
@@ -422,8 +443,8 @@ FreeLang syntax check
 
 ```text
 PLAN = PROPOSED
-IMPLEMENTATION = NOT_STARTED
+IMPLEMENTATION = PHASE_0_IN_PROGRESS
 NATIVE_FREELANG_CORE = REQUIRED
 GITHUB_RUNTIME_DEPENDENCY = NONE
-NEXT = PRE_IMPLEMENTATION_CONTRACT_GATE
+NEXT = CAPABILITY_REPORT_REVIEW
 ```
