@@ -1,6 +1,8 @@
 ;; Native FreeLang result model for the test framework.
 ;; This module is intentionally pure: it does not execute tests or effects.
 
+(define allowed-statuses ["PASS" "FAIL" "ERROR" "BLOCKED" "SKIPPED"])
+
 (defn test-result [suite name status assertions]
   {"schema" "freelang-tools/test-result/v1"
    "suite" suite
@@ -8,41 +10,83 @@
    "status" status
    "assertions" assertions})
 
+(defn valid-count [value]
+  (and (integer? value) (>= value 0)))
+
+(defn valid-result-record [record]
+  (and (map? record)
+       (json_has record "schema")
+       (json_has record "suite")
+       (json_has record "name")
+       (json_has record "status")
+       (json_has record "assertions")
+       (= (get record "schema") "freelang-tools/test-result/v1")
+       (string? (get record "suite"))
+       (string? (get record "name"))
+       (contains? allowed-statuses (get record "status"))
+       (valid-count (get record "assertions"))))
+
 (defn result-count [results status]
-  (length (filter (fn [result]
-                    (= (get result "status") status))
-                  results)))
+  (if (array? results)
+    (length (filter (fn [result]
+                      (and (valid-result-record result)
+                           (= (get result "status") status)))
+                    results))
+    0))
 
 (defn result-aggregate [results expected-count]
-  (let [actual-count (length results)
-        missing-count (- expected-count actual-count)
+  (let [input-valid (and (array? results) (valid-count expected-count))
+        actual-count (if (array? results) (length results) 0)
+        missing-count (if (and input-valid (< actual-count expected-count))
+                        (- expected-count actual-count)
+                        0)
+        excess-count (if (and input-valid (> actual-count expected-count))
+                       (- actual-count expected-count)
+                       0)
+        invalid-count (if (array? results)
+                        (length (filter (fn [result]
+                                          (not (valid-result-record result)))
+                                        results))
+                        1)
         pass-count (result-count results "PASS")
         fail-count (result-count results "FAIL")
         error-count (result-count results "ERROR")
         blocked-count (result-count results "BLOCKED")
         skipped-count (result-count results "SKIPPED")
         executed-count (- actual-count skipped-count)
-        status (if (<= expected-count 0)
-                 "NOT_RUN"
-                 (if (not (= missing-count 0))
-                   "ERROR"
+        malformed (or (not input-valid)
+                      (> invalid-count 0)
+                      (> missing-count 0)
+                      (> excess-count 0))
+        status (if malformed
+                 "ERROR"
+                 (if (= expected-count 0)
+                   "NOT_RUN"
                    (if (= executed-count 0)
                      "NOT_RUN"
                      (if (> error-count 0)
                        "ERROR"
                        (if (> blocked-count 0)
                          "BLOCKED"
-                         (if (> fail-count 0)
-                           "FAIL"
-                           "PASS"))))))]
+                         (if (> fail-count 0) "FAIL" "PASS"))))))
+        diagnostic (if (not input-valid)
+                     "INVALID_AGGREGATE_INPUT"
+                     (if (> invalid-count 0)
+                       "INVALID_RESULT_RECORD"
+                       (if (or (> missing-count 0) (> excess-count 0))
+                         "RESULT_COUNT_MISMATCH"
+                         "")))]
     {"schema" "freelang-tools/test-result/v1"
      "status" status
-     "expected_count" expected-count
+     "expected_count" (if (valid-count expected-count) expected-count 0)
      "actual_count" actual-count
      "missing_count" missing-count
+     "excess_count" excess-count
+     "invalid_count" invalid-count
      "executed_count" executed-count
      "pass_count" pass-count
      "fail_count" fail-count
      "error_count" error-count
      "blocked_count" blocked-count
-     "skipped_count" skipped-count}))
+     "skipped_count" skipped-count
+     "diagnostic" diagnostic}))

@@ -11,8 +11,10 @@
   (get (to_contain ["red" "blue"] "blue") "status")))
 (deftest "to_contain reports missing item" (is= "FAIL"
   (get (to_contain ["red" "blue"] "green") "status")))
-(deftest "to_throw recognizes an error" (is= "PASS"
+(deftest "to_throw blocks unclassified try-call errors" (is= "BLOCKED"
   (get (to_throw (fn [] (error "expected"))) "status")))
+(deftest "to_throw preserves try-call diagnostic" (is= "E_TRY_CALL"
+  (get (get (to_throw (fn [] (error "expected"))) "diagnostic") "code")))
 (deftest "to_throw rejects a normal return" (is= "FAIL"
   (get (to_throw (fn [] 42)) "status")))
 

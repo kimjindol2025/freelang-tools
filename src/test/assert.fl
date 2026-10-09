@@ -7,7 +7,17 @@
    "matcher" matcher
    "actual" actual
    "expected" expected
-   "message" message})
+   "message" message
+   "diagnostic" nil})
+
+(defn assertion-with-diagnostic [status matcher actual expected message diagnostic]
+  {"schema" "freelang-tools/assertion/v1"
+   "status" status
+   "matcher" matcher
+   "actual" actual
+   "expected" expected
+   "message" message
+   "diagnostic" diagnostic})
 
 (defn to_be [actual expected]
   (if (= actual expected)
@@ -27,5 +37,11 @@
 (defn to_throw [fn_ref]
   (let [outcome (try-call fn_ref)]
     (if (err? outcome)
-      (assertion "PASS" "to_throw" "THREW" true "")
-      (assertion "FAIL" "to_throw" "RETURNED" true "function did not throw"))))
+      (assertion-with-diagnostic
+        "BLOCKED"
+        "to_throw"
+        "UNCLASSIFIED_ERROR"
+        true
+        "try-call cannot distinguish expected exception from runner error"
+        outcome)
+      (assertion "FAIL" "to_throw" (unwrap outcome) true "function did not throw"))))

@@ -7,19 +7,29 @@
    "expected_count" (get aggregate "expected_count")
    "actual_count" (get aggregate "actual_count")
    "missing_count" (get aggregate "missing_count")
+   "excess_count" (get aggregate "excess_count")
+   "invalid_count" (get aggregate "invalid_count")
    "executed_count" (get aggregate "executed_count")
    "pass_count" (get aggregate "pass_count")
    "fail_count" (get aggregate "fail_count")
    "error_count" (get aggregate "error_count")
    "blocked_count" (get aggregate "blocked_count")
-   "skipped_count" (get aggregate "skipped_count")})
+   "skipped_count" (get aggregate "skipped_count")
+   "diagnostic" (get aggregate "diagnostic")})
 
 (defn report-json [aggregate]
   (json-stringify (report-summary aggregate)))
 
 (defn report-text [aggregate]
-  (str "Test Results: "
+  (str "Test Results: status="
+       (get aggregate "status") ", expected="
+       (get aggregate "expected_count") ", actual="
+       (get aggregate "actual_count") ", missing="
+       (get aggregate "missing_count") ", excess="
+       (get aggregate "excess_count") ", invalid="
+       (get aggregate "invalid_count") ", "
        (get aggregate "pass_count") " passed, "
        (get aggregate "fail_count") " failed, "
-       (get aggregate "error_count") " errors, status="
-       (get aggregate "status")))
+       (get aggregate "error_count") " errors, blocked="
+       (get aggregate "blocked_count") ", skipped="
+       (get aggregate "skipped_count")))

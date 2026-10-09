@@ -28,5 +28,40 @@
   (get (result-aggregate
          [(test-result "math" "add" "PASS" 1)] 2)
        "status")))
+(deftest "unknown status is error" (is= "ERROR"
+  (get (result-aggregate
+         [(test-result "math" "unknown" "MAYBE" 1)] 1)
+       "status")))
+(deftest "missing required field is error" (is= "ERROR"
+  (get (result-aggregate
+         [{"schema" "freelang-tools/test-result/v1"
+           "suite" "math"
+           "name" "broken"
+           "status" "PASS"}] 1)
+       "status")))
+(deftest "invalid assertion count is error" (is= "ERROR"
+  (get (result-aggregate
+         [(test-result "math" "broken" "PASS" -1)] 1)
+       "status")))
+(deftest "extra result is error" (is= "ERROR"
+  (get (result-aggregate
+         [(test-result "math" "a" "PASS" 1)
+          (test-result "math" "b" "PASS" 1)] 1)
+       "status")))
+(deftest "fail and error is error" (is= "ERROR"
+  (get (result-aggregate
+         [(test-result "math" "a" "FAIL" 1)
+          (test-result "math" "b" "ERROR" 0)] 2)
+       "status")))
+(deftest "schema mismatch is error" (is= "ERROR"
+  (get (result-aggregate
+         [{"schema" "wrong/schema"
+           "suite" "math"
+           "name" "broken"
+           "status" "PASS"
+           "assertions" 1}] 1)
+       "status")))
+(deftest "invalid expected count is error" (is= "ERROR"
+  (get (result-aggregate [] -1) "status")))
 
 (run-tests)

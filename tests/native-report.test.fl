@@ -13,6 +13,16 @@
     [(test-result "effects" "write" "BLOCKED" 0)]
     1))
 
+(define error-run
+  (result-aggregate
+    [(test-result "math" "broken" "ERROR" 0)]
+    1))
+
+(define not-run
+  (result-aggregate
+    [(test-result "math" "skip" "SKIPPED" 0)]
+    1))
+
 (deftest "summary preserves pass counts and status" (is= "PASS"
   (get (report-summary pass-run) "status")))
 (deftest "summary preserves blocked status" (is= "BLOCKED"
@@ -21,8 +31,13 @@
   (get (json-parse (report-json pass-run)) "status")))
 (deftest "json report keeps non-pass status" (is= "BLOCKED"
   (get (json-parse (report-json blocked-run)) "status")))
+(deftest "json report keeps error status and count" (is= 1
+  (get (json-parse (report-json error-run)) "error_count")))
+(deftest "json report keeps not-run status" (is= "NOT_RUN"
+  (get (json-parse (report-json not-run)) "status")))
 (deftest "text report exposes counts and status" (is= true
-  (and (contains? (report-text pass-run) "2 passed")
-       (contains? (report-text pass-run) "status=PASS"))))
+  (and (contains? (report-text pass-run) "status=PASS")
+       (contains? (report-text pass-run) "expected=2")
+       (contains? (report-text pass-run) "2 passed"))))
 
 (run-tests)
