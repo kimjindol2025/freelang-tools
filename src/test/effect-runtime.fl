@@ -1,0 +1,16 @@
+;; Runtime Effect Tape adapter boundary.
+;; No public Tape API means the body is not executed and the result is BLOCKED.
+
+(load "../src/test/effect.fl")
+
+(defn effect-runtime-run [body]
+  (let [capability (effect-capability)]
+    (if (= (get capability "status") "BLOCKED")
+      {"schema" "freelang-tools/effect-runtime/v1"
+       "status" "BLOCKED"
+       "executed" false
+       "diagnostic" capability}
+      {"schema" "freelang-tools/effect-runtime/v1"
+       "status" "ERROR"
+       "executed" false
+       "diagnostic" "runtime adapter is not implemented"})))

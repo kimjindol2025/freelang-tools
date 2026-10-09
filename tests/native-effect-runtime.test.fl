@@ -1,0 +1,13 @@
+;; Effect runtime boundary tests. No fake Tape is created.
+(load "../src/test/effect-runtime.fl")
+
+(define body-that-must-not-run (fn [] (error "must not execute without Tape")))
+
+(deftest "missing public Tape blocks runtime execution" (is= "BLOCKED"
+  (get (effect-runtime-run body-that-must-not-run) "status")))
+(deftest "blocked effect body is not executed" (is= false
+  (get (effect-runtime-run body-that-must-not-run) "executed")))
+(deftest "blocked result preserves capability diagnostic" (is= "trace_effects"
+  (get (get (effect-runtime-run body-that-must-not-run) "diagnostic") "api")))
+
+(run-tests)
