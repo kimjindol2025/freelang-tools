@@ -1,0 +1,17 @@
+;; Phase 4 Effect Tape capability and policy tests.
+(load "../src/test/effect.fl")
+
+(deftest "missing tape capability is blocked" (is= "BLOCKED"
+  (get (effect-capability) "status")))
+(deftest "missing tape API is never reported as available" (is= false
+  (get (effect-capability) "api_available")))
+(deftest "recording unavailable is blocked" (is= "BLOCKED"
+  (get (effect-decision "OBSERVE_THEN_FAIL" false false) "status")))
+(deftest "deny policy is blocked before execution" (is= "BEFORE_RUN"
+  (get (effect-decision "DENY_BEFORE_RUN" true false) "phase")))
+(deftest "observed matching effect passes" (is= "PASS"
+  (get (effect-decision "OBSERVE_THEN_FAIL" true true) "status")))
+(deftest "observed violating effect fails" (is= "FAIL"
+  (get (effect-decision "OBSERVE_THEN_FAIL" true false) "status")))
+
+(run-tests)

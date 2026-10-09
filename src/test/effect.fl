@@ -1,0 +1,31 @@
+;; Effect Tape capability and policy boundary.
+;; This module intentionally does not fabricate tape entries when the runtime
+;; does not expose a user-level tracing API.
+
+(defn effect-capability []
+  {"schema" "freelang-tools/effect-capability/v1"
+   "status" "BLOCKED"
+   "api_available" false
+   "api" "trace_effects"
+   "reason" "canonical runtime exposes no user-level Effect Tape API"})
+
+(defn effect-decision [policy tape-available matched]
+  (if (not tape-available)
+    {"status" "BLOCKED"
+     "policy" policy
+     "phase" "CAPABILITY"
+     "reason" "effect recording is unavailable"}
+    (if (= policy "DENY_BEFORE_RUN")
+      {"status" "BLOCKED"
+       "policy" policy
+       "phase" "BEFORE_RUN"
+       "reason" "effect denied before execution"}
+      (if matched
+        {"status" "PASS"
+         "policy" policy
+         "phase" "AFTER_RUN"
+         "reason" "observed effect matched policy"}
+        {"status" "FAIL"
+         "policy" policy
+         "phase" "AFTER_RUN"
+         "reason" "observed effect violated policy"}))))
