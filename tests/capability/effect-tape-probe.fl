@@ -1,0 +1,11 @@
+;; Direct capability probe for the pinned runtime.
+;; A successful run is the only evidence that a public Effect Tape API exists.
+;; Do not replace this call with a fabricated tape or a log-based assumption.
+
+(defn probe-effect-tape []
+  (trace_effects (fn []
+    (println "EFFECT_TAPE_PROBE_BODY_EXECUTED"))))
+
+(println "EFFECT_TAPE_PROBE_BEGIN")
+(probe-effect-tape)
+(println "EFFECT_TAPE_PROBE_AVAILABLE")

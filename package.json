@@ -18,6 +18,7 @@
     "ci": "./scripts/fl-ci",
     "test:cli-contract": "./tests/cli/contract-test.sh",
     "test:cli-isolation": "./tests/cli/timeout-signal-test.sh",
+    "test:effect-capability": "./tests/capability/effect-tape-probe.sh",
     "determinism": "./scripts/fl-determinism",
     "check": "./scripts/fl-check",
     "detect": "./scripts/fl-detect",
