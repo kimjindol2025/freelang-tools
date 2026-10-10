@@ -9,6 +9,16 @@ if [[ "${1:-}" == "--approve" ]]; then
   shift
 fi
 TARGET="${1:-.}"
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  cat <<'EOF'
+사용법: fl-tools deploy [경로]
+
+review, clean worktree, deploy 계약과 smoke 계약을 확인한 뒤 배포 계약을 실행한다.
+EOF
+  exit 0
+fi
+
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 
 REVIEW_OUTPUT=""

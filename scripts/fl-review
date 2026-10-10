@@ -18,6 +18,11 @@ run_gate() {
   code=$?
   set -e
   printf '%s\n' "$output"
+  if [[ "$name" == TEST && "$code" -eq 3 ]] && grep -q '^FREELANG_TEST=NOT_RUN$' <<<"$output"; then
+    echo "TEST=NOT_RUN"
+    FAIL=1
+    return
+  fi
   if [[ "$code" -eq 0 ]]; then
     echo "$name=PASS"
   else

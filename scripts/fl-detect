@@ -95,6 +95,15 @@ fi
 
 TEST_ROOT="$ROOT/tests"
 TEST_FILES="$(find "$TEST_ROOT" -type f \( -name '*.test.fl' -o -name '*.test.flx' -o -name '*.test.fls' \) -print 2>/dev/null | sort | paste -sd, - || true)"
+TEST_CONTRACT="${FREELANG_TEST_CONTRACT:-none}"
+if [[ "$TEST_CONTRACT" == none ]]; then
+  for candidate in "$ROOT/.freelang/test.sh" "$ROOT/scripts/verify.sh" "$ROOT/scripts/test"; do
+    if [[ -x "$candidate" ]]; then
+      TEST_CONTRACT="${candidate#"$ROOT/"}"
+      break
+    fi
+  done
+fi
 
 printf 'PROJECT=%s\n' "$(basename "$ROOT")"
 printf 'ROOT=%s\n' "$ROOT"
@@ -104,3 +113,4 @@ printf 'EXTENSIONS=%s\n' "${EXTENSIONS[*]:-none}"
 printf 'RUNNER=%s\n' "$RUNNER"
 printf 'TEST_ROOT=%s\n' "$TEST_ROOT"
 printf 'TEST_FILES=%s\n' "${TEST_FILES:-none}"
+printf 'TEST_CONTRACT=%s\n' "$TEST_CONTRACT"

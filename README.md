@@ -200,6 +200,9 @@ dirty worktree가 있다는 뜻이지 trust 통과를 의미하지 않는다.
 `evidence --json`은 검증 결과를 JSON으로 보존한다. `adapter list`는 현재
 프로젝트에서 사용할 수 있는 런너를 보여준다.
 `pipeline`은 init부터 inspect, review, report, handoff까지 자동 실행한다.
+검증만 수행하고 대상 프로젝트에 작업 기록 파일을 만들지 않으려면
+`fl-tools pipeline . --read-only`를 사용한다. 이 모드에서는 init/handoff를
+건너뛴다.
 외부·상용 계약 배포가 필요하면 `fl-tools pipeline . --deploy`를 사용하며, push는 실행하지 않는다.
 배포·rollback·push 같은 위험 계약은 계약 검증만으로 실행되지 않으며, 반드시
 `--approve`를 명시해야 한다. 승인이 없으면 `APPROVAL=WAITING`과 함께 차단된다.
@@ -211,8 +214,12 @@ dirty worktree가 있다는 뜻이지 trust 통과를 의미하지 않는다.
 `--deploy`도 dirty worktree 보호를 유지하므로, 작업 기록 파일을 먼저 commit하거나
 명시적으로 `FREELANG_ALLOW_DIRTY_DEPLOY=1`을 설정해야 한다.
 
-`fl-test`는 현재 프로젝트의 `tests/**/*.test.fl`을 자동 발견하고, AFJ
+`fl-test`는 먼저 명시적 테스트 계약(`FREELANG_TEST_CONTRACT`,
+`.freelang/test.sh`, `scripts/verify.sh`, `scripts/test`)을 찾고 실행한다.
+계약이 없으면 현재 프로젝트의 `tests/**/*.test.fl`을 자동 발견하고, AFJ
 런타임의 `check → run`과 `deftest`/`is`/`is=`/`run-tests` 결과를 검사한다.
+테스트가 없으면 `FREELANG_TEST=NOT_RUN`, 종료코드 3을 반환하며
+review/report/deploy를 통과시키지 않는다.
 
 AIRC 프로젝트는 다음처럼 기존 `airc.fl` CLI를 공통 도구에서 호출할 수 있다.
 

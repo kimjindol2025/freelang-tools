@@ -57,9 +57,55 @@ if [[ ! -f "$RUNNER" ]]; then
   exit 2
 fi
 
+TEST_CONTRACT="${FREELANG_TEST_CONTRACT:-}"
+if [[ -z "$TEST_CONTRACT" ]]; then
+  for candidate in "$ROOT/.freelang/test.sh" "$ROOT/scripts/verify.sh" "$ROOT/scripts/test"; do
+    if [[ -x "$candidate" ]]; then
+      TEST_CONTRACT="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -n "$TEST_CONTRACT" ]]; then
+  if [[ "$TEST_CONTRACT" != /* ]]; then
+    TEST_CONTRACT="$ROOT/$TEST_CONTRACT"
+  fi
+  if [[ ! -x "$TEST_CONTRACT" ]]; then
+    echo "FREELANG_TEST=BLOCKED"
+    echo "CAUSE=test contract is not executable: $TEST_CONTRACT" >&2
+    exit 2
+  fi
+  echo "[fl-test] contract ${TEST_CONTRACT#"$ROOT/"}"
+  contract_code=0
+  if command -v timeout >/dev/null 2>&1; then
+    set +e
+    (cd "$ROOT" && timeout --foreground "${FREELANG_TEST_TIMEOUT_SECONDS:-300}" "$TEST_CONTRACT")
+    contract_code=$?
+    set -e
+  else
+    set +e
+    (cd "$ROOT" && "$TEST_CONTRACT")
+    contract_code=$?
+    set -e
+  fi
+  if [[ "$contract_code" -eq 0 ]]; then
+    echo "FREELANG_TEST=PASS"
+    exit 0
+  fi
+  if [[ "$contract_code" -eq 124 || "$contract_code" -eq 137 ]]; then
+    echo "FREELANG_TEST=ERROR"
+    echo "CAUSE=test contract timeout: ${FREELANG_TEST_TIMEOUT_SECONDS:-300}s" >&2
+    exit 2
+  fi
+  echo "FREELANG_TEST=FAIL"
+  exit 1
+fi
+
 if [[ ! -d "$TEST_ROOT" ]]; then
-  echo "FREELANG_TEST=NO_TESTS"
-  exit 0
+  echo "FREELANG_TEST=NOT_RUN"
+  echo "CAUSE=NO_TESTS"
+  exit 3
 fi
 
 TEST_LIST_FILE="$(mktemp)"
@@ -72,8 +118,9 @@ find "$TEST_ROOT" -type f -name '*.test.fl' -print | sort > "$TEST_LIST_FILE"
 mapfile -t TEST_FILES < "$TEST_LIST_FILE"
 
 if [[ "${#TEST_FILES[@]}" -eq 0 ]]; then
-  echo "FREELANG_TEST=NO_TESTS"
-  exit 0
+  echo "FREELANG_TEST=NOT_RUN"
+  echo "CAUSE=NO_TESTS"
+  exit 3
 fi
 
 for test_file in "${TEST_FILES[@]}"; do

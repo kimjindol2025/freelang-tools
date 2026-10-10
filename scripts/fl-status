@@ -37,6 +37,8 @@ if [[ "$TEST_CODE" -eq 0 ]]; then
   else
     echo "TEST=NOT_RUN"
   fi
+elif [[ "$TEST_CODE" -eq 3 ]] && grep -q '^FREELANG_TEST=NOT_RUN$' <<<"$TEST_OUTPUT"; then
+  echo "TEST=NOT_RUN"
 else
   echo "TEST=FAIL"
 fi

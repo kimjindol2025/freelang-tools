@@ -9,6 +9,16 @@ if [[ "${1:-}" == "--approve" ]]; then
   shift
 fi
 TARGET="${1:-.}"
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  cat <<'EOF'
+사용법: fl-tools deploy --internal [경로]
+
+고정 Git 커밋을 프로젝트 내부 release/current 계약에 반영한다.
+EOF
+  exit 0
+fi
+
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 
 if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

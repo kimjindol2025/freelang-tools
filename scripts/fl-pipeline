@@ -5,19 +5,22 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="."
 DEPLOY=NO
+READ_ONLY=NO
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --deploy) DEPLOY=YES ;;
+    --read-only|--verify-only) READ_ONLY=YES ;;
     --help|-h)
       cat <<'EOF'
-사용법: fl-tools pipeline [경로] [--deploy]
+사용법: fl-tools pipeline [경로] [--deploy] [--read-only]
 
 기본 흐름:
   init → inspect → review → report → handoff
 
 --deploy를 지정하면 review/report 통과 후 프로젝트 배포 계약도 실행한다.
 Git push는 이 명령으로 실행하지 않는다.
+--read-only를 지정하면 init/handoff 파일을 만들지 않고 검증 단계만 실행한다.
 EOF
       exit 0
       ;;
@@ -53,7 +56,11 @@ run_step() {
   fi
 }
 
-run_step INIT "$TOOLS_ROOT/scripts/fl-init" "$ROOT"
+if [[ "$READ_ONLY" == YES ]]; then
+  echo "STEP_INIT=SKIPPED"
+else
+  run_step INIT "$TOOLS_ROOT/scripts/fl-init" "$ROOT"
+fi
 run_step INSPECT "$TOOLS_ROOT/scripts/fl-inspect" "$ROOT"
 run_step REVIEW "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
 run_step REPORT "$TOOLS_ROOT/scripts/fl-report" "$ROOT"
@@ -68,7 +75,11 @@ else
   echo "STEP_DEPLOY=SKIPPED"
 fi
 
-run_step HANDOFF "$TOOLS_ROOT/scripts/fl-handoff" "$ROOT"
+if [[ "$READ_ONLY" == YES ]]; then
+  echo "STEP_HANDOFF=SKIPPED"
+else
+  run_step HANDOFF "$TOOLS_ROOT/scripts/fl-handoff" "$ROOT"
+fi
 
 if [[ "$FAIL" -eq 0 ]]; then
   echo "PUSH=NOT_PERFORMED"
