@@ -3,19 +3,56 @@ set -Eeuo pipefail
 
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-ACTION="trust"
+ACTION="start"
 TARGET="."
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    trust|review) ACTION="$1" ;;
-    --help|-h) echo "사용법: fl-tools ai [trust|review] [경로]"; exit 0 ;;
+    start|work|verify|release|trust|review) ACTION="$1" ;;
+    --help|-h) echo "사용법: fl-tools ai [start|work|verify|release] [경로]"; exit 0 ;;
     *) TARGET="$1" ;;
   esac
   shift
 done
 
-if [[ "$ACTION" == review ]]; then
-  exec "$TOOLS_ROOT/scripts/fl-trust" "$TARGET"
-fi
+TMP_DIR="$(mktemp -d)"
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT INT TERM
 
-exec "$TOOLS_ROOT/scripts/fl-trust" "$TARGET"
+TRUST_CODE=0
+set +e
+"$TOOLS_ROOT/scripts/fl-trust" "$TARGET" >"$TMP_DIR/trust.json" 2>"$TMP_DIR/trust.err"
+TRUST_CODE=$?
+set -e
+
+node - "$ACTION" "$TARGET" "$TRUST_CODE" "$TMP_DIR/trust.json" <<'NODE'
+const fs = require('fs');
+const [action, target, code, file] = process.argv.slice(2);
+let trust;
+try { trust = JSON.parse(fs.readFileSync(file, 'utf8')); }
+catch (error) {
+  trust = { verdict: 'BLOCKED', decision: { source: 'unavailable', command: 'trust-core' },
+    limitations: [`trust output invalid: ${error.message}`] };
+}
+const safeGate = trust.verdict === 'TRUSTED' || trust.verdict === 'TRUSTED_WITH_APPROVAL';
+const canProceed = action === 'release' ? trust.verdict === 'TRUSTED' : safeGate;
+const result = {
+  protocol: 'freelang.ai/v1',
+  action: action === 'trust' || action === 'review' ? 'verify' : action,
+  project: trust.project || { root: target },
+  verdict: trust.verdict || 'BLOCKED',
+  decision: trust.decision || { source: 'unavailable', command: 'trust-core' },
+  gates: trust.gates || {},
+  approvalRequired: trust.approvalRequired === true,
+  canProceed,
+  execution: 'not-run',
+  next: action === 'release' && trust.verdict === 'TRUSTED_WITH_APPROVAL' ?
+    'obtain-user-approval-before-release' :
+    action === 'release' && trust.verdict === 'TRUSTED' ? 'explicit-release-command-required' :
+    trust.next || 'fix-blocked-gates-and-rerun',
+  limitations: trust.limitations || [],
+  evidence: trust.evidence || { commands: [], artifacts: [] },
+  trustExitCode: Number(code),
+  trust
+};
+process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+NODE

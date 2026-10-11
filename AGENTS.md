@@ -77,6 +77,15 @@ AI가 이 저장소의 FreeLang 프로젝트를 작업할 때는 호스트 명�
 fl-tools ai trust <project>
 ```
 
+작업 단계가 필요하면 다음 네 개의 AI protocol만 사용한다.
+
+```bash
+fl-tools ai start <project>
+fl-tools ai work <project>
+fl-tools ai verify <project>
+fl-tools ai release <project>
+```
+
 출력 JSON의 `verdict`와 `decision.source`를 읽는다. `TRUSTED`만 안전한 읽기·수정
 작업의 기본 진입 상태로 보고, `TRUSTED_WITH_APPROVAL`은 배포·계약 변경 전 사용자
 승인을 요구한다. `UNTRUSTED`와 `BLOCKED`는 원인을 해결하기 전 진행하지 않는다.

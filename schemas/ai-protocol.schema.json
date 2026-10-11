@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.tools/schemas/ai-protocol.schema.json",
+  "title": "FreeLang AI Protocol",
+  "type": "object",
+  "required": ["protocol", "action", "project", "verdict", "decision", "canProceed", "execution", "next"],
+  "properties": {
+    "protocol": { "const": "freelang.ai/v1" },
+    "action": { "enum": ["start", "work", "verify", "release"] },
+    "project": { "type": "object" },
+    "verdict": { "enum": ["TRUSTED", "TRUSTED_WITH_APPROVAL", "UNTRUSTED", "BLOCKED"] },
+    "decision": {
+      "type": "object",
+      "required": ["source", "command"],
+      "properties": { "source": { "type": "string" }, "command": { "const": "trust-core" } },
+      "additionalProperties": false
+    },
+    "canProceed": { "type": "boolean" },
+    "approvalRequired": { "type": "boolean" },
+    "execution": { "const": "not-run" },
+    "next": { "type": "string" },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "evidence": { "type": "object" },
+    "trustExitCode": { "type": "integer" },
+    "trust": { "type": "object" }
+  },
+  "additionalProperties": false
+}

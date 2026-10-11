@@ -10,7 +10,7 @@
     "handoff": "./scripts/fl-tools handoff .",
     "evidence": "./scripts/fl-tools evidence --json .",
     "trust": "./scripts/fl-tools trust .",
-    "ai": "./scripts/fl-tools ai trust .",
+    "ai": "./scripts/fl-tools ai start .",
     "capabilities": "./scripts/fl-tools capabilities .",
     "native-core": "./scripts/fl-tools native-core",
     "native-trust": "./scripts/fl-tools native-trust",

@@ -22,6 +22,7 @@ init → inspect → check/test → review → report → deploy
 - `fl-tools evidence --json <path>`: 검증 결과와 원시 출력을 JSON으로 보존한다.
 - `fl-tools ai trust <path>`: AI가 사용하는 정식 단일 진입점이다. 최종 verdict는
   `native/trust-core.fl`이 계산하며 `decision.source=freelang-native`를 요구한다.
+- `fl-tools ai start|work|verify|release <path>`: AI protocol `freelang.ai/v1`의 표준 작업 단계다.
 - `fl-tools native-trust --input <file>`: FreeLang native trust decision core를 직접 실행한다.
 - `fl-tools adapter list <path>`: AFJ, FX, AIA, Script, Front 런너 상태를 출력한다.
 - `fl-tools airc [path] <command>`: AIRC 프로젝트의 `airc.fl` CLI를 기존 v11 runner로 실행한다.
