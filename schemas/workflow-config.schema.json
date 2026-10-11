@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/workflow-config/v1",
+  "title": "FreeLang Tools project workflow configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commandTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "cpuSeconds": { "type": "integer", "minimum": 1 },
+        "totalTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "maxCommands": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

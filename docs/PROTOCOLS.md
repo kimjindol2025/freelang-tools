@@ -52,6 +52,12 @@ FreeLang native 테스트의 정본 상태와 종료코드는 다음과 같다.
 
 외부 `npm`, Jest, Vitest는 실행 어댑터다. 결과는 반드시
 `freelang.workflow/v1`로 변환한 뒤 `native/workflow-core.fl`이 검증한다.
+기본 workflow는 프로젝트의 `test:fast` 프로필을 우선 실행한다. 전체 테스트
+스크립트는 `fl-tools workflow-test --all-tests`를 명시했을 때만 실행한다.
+wall-clock·CPU·명령 수 제한 초과는 테스트 실패가 아니라 `BLOCKED`로 보존한다.
+프로젝트가 기본 제한을 조정해야 하면 루트의 `freelang-tools.json`에
+`workflow` 계약을 선언한다. 정본 형식은 `schemas/workflow-config.schema.json`이며,
+환경변수는 CI·진단용 명시적 override로만 사용한다.
 
 ## 승인 경계
 

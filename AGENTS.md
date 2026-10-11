@@ -119,7 +119,9 @@ fl-tools review <project>
 ```
 
 `ai verify --deep`는 FreeLang 테스트뿐 아니라 프로젝트 `npm test`/`test:*` 및
-Jest/Vitest 스크립트를 `fl-tools workflow-test`로 실행한다. 기본 `ai verify`는
+Jest/Vitest 스크립트를 `fl-tools workflow-test`로 실행한다. 기본 workflow는
+프로젝트의 빠른 테스트 프로필(`test:fast` 우선)만 실행하고, 전체 테스트는
+`--all-tests` 승인 경계로 둔다. 기본 `ai verify`는
 check와 diff 중심의 경량 관문만 실행한다. GitHub Actions는 `--workflows`로
 테스트성 `run` 단계만 허용 목록으로 실행하고 deploy/push 단계는 실행하지 않는다.
 외부 npm/Jest/Vitest 실행 결과의 최종 형식과 유효성은 `freelang.workflow/v1` 계약과

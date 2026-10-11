@@ -115,7 +115,7 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools trust [경로]` | check/test/review/evidence/diff/capability를 실제 실행하고 AI용 신뢰 판정 JSON 출력 (`fl-trust`) |
 | `fl-tools ai trust [경로]` | AI 전용 단일 진입점. 최종 판정은 FreeLang native `trust-core.fl`이 계산 |
 | `fl-tools ai start/work/verify/release [경로]` | AI 표준 작업 protocol `freelang.ai/v1` |
-| `fl-tools workflow-test [--workflows] [경로]` | 프로젝트 `npm test`/`test:*`, Jest/Vitest, 안전한 CI 테스트 단계 실행·증거화 |
+| `fl-tools workflow-test [--workflows] [--all-tests] [경로]` | 기본 빠른 테스트 프로필 또는 명시한 전체 npm/Jest/Vitest/CI 테스트 실행·증거화 |
 | `fl-tools native-workflow --input 파일` | 외부 테스트 결과를 `freelang.workflow/v1` FreeLang 계약으로 검증 |
 | 계약 기준 문서 | [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md) |
 | `fl-tools native-trust --input 파일` | FreeLang native 신뢰 판정 core 직접 실행 (`fl-native-trust`) |
@@ -247,7 +247,11 @@ ln -s "$PWD/scripts/fl-test" "$HOME/.local/bin/fl-test"
 판별하고 현재 연결된 어댑터가 없으면 `BLOCKED` 또는 `UNRESOLVED`로 보고한다.
 
 Node/MCP 프로젝트는 `NODE/MCP` 프로파일로 감지한다. workflow 테스트는 기본적으로
-명령당 45초 wall-clock, 30초 CPU, 전체 180초, 최대 6개 명령으로 제한된다.
+`test:fast` 프로필을 우선 실행하고, 전체 테스트는 `--all-tests`를 명시해야 한다.
+명령당 45초 wall-clock, 30초 CPU, 전체 180초, 최대 6개 명령으로 제한되며 제한
+초과는 테스트 실패가 아닌 `BLOCKED`로 기록된다.
+프로젝트별로 더 긴 제한이 필요하면 루트 `freelang-tools.json`의 `workflow`
+계약에서 양의 정수 초/명령 수를 선언할 수 있다.
 배포·릴리스·push 명령은 자동 실행하지 않는다.
 
 ## 운영 명령

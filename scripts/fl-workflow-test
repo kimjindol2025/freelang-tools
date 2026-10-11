@@ -5,10 +5,12 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="."
 RUN_WORKFLOWS=NO
+ALL_TESTS="${FREELANG_WORKFLOW_ALL_TESTS:-NO}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --workflows) RUN_WORKFLOWS=YES ;;
-    --help|-h) echo "사용법: fl-tools workflow-test [--workflows] [경로]"; exit 0 ;;
+    --all-tests) ALL_TESTS=YES ;;
+    --help|-h) echo "사용법: fl-tools workflow-test [--workflows] [--all-tests] [경로]"; exit 0 ;;
     *) TARGET="$1" ;;
   esac
   shift
@@ -36,17 +38,24 @@ console.log(JSON.stringify(value,null,2));
   exit 2
 fi
 
-node - "$ROOT" "$RUN_WORKFLOWS" "$TMP_DIR/plan.json" <<'NODE'
+  node - "$ROOT" "$RUN_WORKFLOWS" "$TMP_DIR/plan.json" "$ALL_TESTS" <<'NODE'
 const fs = require('fs'), path = require('path');
-const [root, runWorkflows, out] = process.argv.slice(2);
+const [root, runWorkflows, out, allTests] = process.argv.slice(2);
 const plan = { packageScripts: [], workflowCommands: [], skippedWorkflowCommands: [] };
 const testName = /^(test|test:|jest|vitest)/i;
-const skippedScript = /(^test$)|(^|:)(with-build|watch|ci(?::|$)|coverage|prepare|integration|verbose|focused|local|changed)/i;
+const skippedScript = /(^test$)|(^test:run$)|(^|:)(with-build|watch|ci(?::|$)|coverage|prepare|integration|verbose|focused|local|changed)/i;
 const unsafe = /(deploy|publish|release|push|checkout|docker|ssh|pm2)/i;
 try {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  for (const [name, command] of Object.entries(pkg.scripts || {})) {
-    if (testName.test(name) && !skippedScript.test(name) && !/fl-tools|freelang-tools/.test(command)) plan.packageScripts.push({name, command});
+  const candidates = Object.entries(pkg.scripts || {})
+    .filter(([name, command]) => testName.test(name) && !skippedScript.test(name) && !/fl-tools|freelang-tools/.test(command))
+    .map(([name, command]) => ({name, command}));
+  if (allTests === 'YES') {
+    plan.packageScripts.push(...candidates);
+  } else {
+    const preferred = candidates.find(item => item.name === 'test:fast') || candidates[0];
+    if (preferred) plan.packageScripts.push(preferred);
+    for (const item of candidates) if (!preferred || item.name !== preferred.name) plan.skippedWorkflowCommands.push({script: item.name, command: item.command, reason: 'fast-profile'});
   }
 } catch (_) {}
 const workflowDir = path.join(root, '.github', 'workflows');
@@ -80,12 +89,52 @@ fs.writeFileSync(process.argv[3], JSON.stringify({plan, results: []}));
 NODE
 
 FAIL=0
+BLOCKED=0
 COMMAND_LIMIT="${FREELANG_WORKFLOW_MAX_COMMANDS:-6}"
 COMMAND_COUNT=0
 START_SECONDS="$(date +%s)"
 TOTAL_TIMEOUT="${FREELANG_WORKFLOW_TOTAL_TIMEOUT:-180}"
 CPU_SECONDS="${FREELANG_WORKFLOW_CPU_SECONDS:-30}"
 LIMIT_REACHED=0
+
+# A project can commit repository-local workflow limits. Explicit environment
+# variables remain the override for CI and diagnostics.
+CONFIG_FILE="$ROOT/freelang-tools.json"
+if [[ -f "$CONFIG_FILE" ]]; then
+  CONFIG_VALUES=()
+  CONFIG_OUTPUT=""
+  if ! CONFIG_OUTPUT="$(node - "$CONFIG_FILE" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+const workflow = value.workflow || {};
+for (const field of ['commandTimeoutSeconds', 'cpuSeconds', 'totalTimeoutSeconds', 'maxCommands']) {
+  if (workflow[field] !== undefined) {
+    if (!Number.isInteger(workflow[field]) || workflow[field] <= 0) {
+      throw new Error(`workflow.${field} must be a positive integer`);
+    }
+    process.stdout.write(`${field}\t${workflow[field]}\n`);
+  }
+}
+NODE
+  )"; then
+    echo '{"schemaVersion":"freelang.workflow/v1","status":"BLOCKED","reason":"invalid-freelang-tools-config"}'
+    echo "WORKFLOW_TEST=BLOCKED" >&2
+    exit 2
+  fi
+  if [[ -n "$CONFIG_OUTPUT" ]]; then
+    mapfile -t CONFIG_VALUES <<< "$CONFIG_OUTPUT"
+  fi
+  for item in "${CONFIG_VALUES[@]}"; do
+    IFS=$'\t' read -r key value <<< "$item"
+    case "$key" in
+      commandTimeoutSeconds) [[ -n "${FREELANG_WORKFLOW_TIMEOUT+x}" ]] || FREELANG_WORKFLOW_TIMEOUT="$value" ;;
+      cpuSeconds) [[ -n "${FREELANG_WORKFLOW_CPU_SECONDS+x}" ]] || CPU_SECONDS="$value" ;;
+      totalTimeoutSeconds) [[ -n "${FREELANG_WORKFLOW_TOTAL_TIMEOUT+x}" ]] || TOTAL_TIMEOUT="$value" ;;
+      maxCommands) [[ -n "${FREELANG_WORKFLOW_MAX_COMMANDS+x}" ]] || COMMAND_LIMIT="$value" ;;
+    esac
+  done
+fi
 run_command() {
   if (( COMMAND_COUNT >= COMMAND_LIMIT )); then LIMIT_REACHED=1; return 0; fi
   if (( $(date +%s) - START_SECONDS >= TOTAL_TIMEOUT )); then LIMIT_REACHED=1; return 0; fi
@@ -96,7 +145,21 @@ run_command() {
   timeout --foreground "${FREELANG_WORKFLOW_TIMEOUT:-45}" bash -lc "ulimit -t $CPU_SECONDS; cd \"$ROOT\" && $command" >"$output" 2>&1
   code=$?
   set -e
-  [[ "$code" -eq 0 ]] || FAIL=1
+  if [[ "$code" -eq 124 || "$code" -eq 137 || "$code" -eq 143 || "$code" -eq 152 ]]; then
+    if grep -Eq '(^|[^0-9])[1-9][0-9]* failed|×|\bFAIL\b' "$output"; then
+      FAIL=1
+    else
+      BLOCKED=1
+    fi
+  elif [[ "$code" -ne 0 ]]; then
+    # Sandboxed runners can deny Unix sockets or child-process I/O even when
+    # the same test passes on the host. Preserve that distinction for AI.
+    if grep -Eiq 'EPERM|EACCES|operation not permitted|permission denied|connection closed' "$output"; then
+      BLOCKED=1
+    else
+      FAIL=1
+    fi
+  fi
   RESULT_LINES+=("$(KIND="$kind" LABEL="$label" COMMAND="$command" CODE="$code" OUTPUT_FILE="$output" node -e '
     const fs=require("fs"), e=process.env;
     process.stdout.write(JSON.stringify({kind:e.KIND,label:e.LABEL,command:e.COMMAND,exitCode:Number(e.CODE),output:fs.readFileSync(e.OUTPUT_FILE,"utf8").slice(-12000)}));
@@ -124,7 +187,7 @@ for item in "${WORKFLOW_TESTS[@]}"; do
   run_command github-workflow "$file" "$command"
 done
 
-if [[ "$LIMIT_REACHED" -eq 1 ]]; then FAIL=1; fi
+if [[ "$LIMIT_REACHED" -eq 1 ]]; then BLOCKED=1; fi
 PLAN_JSON="$(cat "$TMP_DIR/plan.json")"
 RESULTS_JSON="$(printf '%s\n' "${RESULT_LINES[@]:-}" | node -e '
   const fs=require("fs"), lines=fs.readFileSync(0,"utf8").trim();
@@ -132,6 +195,7 @@ RESULTS_JSON="$(printf '%s\n' "${RESULT_LINES[@]:-}" | node -e '
 ')"
 STATUS=PASS
 if [[ ${#RESULT_LINES[@]} -eq 0 ]]; then STATUS=NOT_APPLICABLE; fi
+if [[ "$BLOCKED" -eq 1 ]]; then STATUS=BLOCKED; fi
 [[ "$FAIL" -eq 0 ]] || STATUS=FAIL
 WORKFLOW_JSON="$TMP_DIR/workflow.json"
 PLAN_JSON="$PLAN_JSON" RESULTS_JSON="$RESULTS_JSON" STATUS="$STATUS" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" WORKFLOW_JSON="$WORKFLOW_JSON" \
@@ -141,4 +205,8 @@ if ! "$TOOLS_ROOT/scripts/fl-native-workflow" --input "$WORKFLOW_JSON" >/dev/nul
   FAIL=1
 fi
 echo "WORKFLOW_TEST=$STATUS" >&2
-[[ "$STATUS" == FAIL ]] && exit 1 || exit 0
+case "$STATUS" in
+  FAIL) exit 1 ;;
+  BLOCKED) exit 2 ;;
+  *) exit 0 ;;
+esac

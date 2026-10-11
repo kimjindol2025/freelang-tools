@@ -44,9 +44,11 @@ init → inspect → check/test → review → report → deploy
 - `fl-tools ai verify <path>`: AI가 사용하는 정식 검증 진입점이다. 최종 verdict는
   `native/trust-core.fl`이 계산하며 `decision.source=freelang-native`를 요구한다.
 - `fl-tools ai ready|work|verify|release [--deep] [path]`: AI protocol `freelang.ai/v1`의 표준 작업 단계다.
-- `fl-tools workflow-test <path>`: 프로젝트가 선언한 `npm test`/`test:*`와 선택된 CI 테스트 단계를 실행한다.
+- `fl-tools workflow-test [--all-tests] <path>`: 기본 빠른 테스트 프로필을 실행한다.
+  `--all-tests`를 명시하면 프로젝트의 전체 테스트 스크립트를 실행한다.
   Node/TypeScript/MCP 프로젝트도 `NODE` 프로필로 감지하며, 의존성이 없으면 설치하지 않고 `BLOCKED`로 남긴다.
-  CPU/시간/명령 수 제한을 기본 적용해 장시간 테스트가 서버를 점유하지 않도록 한다.
+  CPU/시간/명령 수 제한을 기본 적용하며 제한 초과는 `BLOCKED`로 분류해 장시간
+  테스트가 서버를 점유하지 않도록 한다.
 - `fl-tools native-workflow --input <file>`: npm/Jest/Vitest 어댑터 결과를
   `freelang.workflow/v1`로 검증하고 FreeLang 계약 판정을 반환한다.
 - 모든 계약의 정본 목록과 상태·종료코드는 `docs/PROTOCOLS.md`를 따른다.
