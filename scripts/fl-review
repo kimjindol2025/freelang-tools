@@ -6,6 +6,8 @@ TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 FAIL=0
+APPROVAL_REQUIRED=NO
+HARD_CONTRACT_DRIFT=NO
 
 run_gate() {
   local name="$1"
@@ -55,8 +57,14 @@ else
   echo "GENERATED_FILES=CLEAN"
 fi
 
-if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(LANGUAGE_LOCK\.md|SPEC\.airc|.*CONTRACT.*)'; then
+if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(LANGUAGE_LOCK\.md|SPEC\.airc)'; then
   echo "CONTRACT_DRIFT=DETECTED"
+  echo "APPROVAL_REQUIRED=YES"
+  APPROVAL_REQUIRED=YES
+elif printf '%s\n' "$CHANGED" | grep -Eq '(^| )(.*CONTRACT.*)'; then
+  echo "CONTRACT_DRIFT=DETECTED"
+  echo "CONTRACT_DRIFT_KIND=HARD"
+  HARD_CONTRACT_DRIFT=YES
   FAIL=1
 else
   echo "CONTRACT_DRIFT=0"
@@ -64,7 +72,11 @@ fi
 
 echo "REGRESSION=$( [[ "$FAIL" -eq 0 ]] && echo PASS || echo FAIL )"
 if [[ "$FAIL" -eq 0 ]]; then
-  echo "REVIEW=PASS"
+  if [[ "$APPROVAL_REQUIRED" == YES ]]; then
+    echo "REVIEW=PASS_WITH_APPROVAL"
+  else
+    echo "REVIEW=PASS"
+  fi
 else
   echo "REVIEW=FAIL"
   exit 1

@@ -17,13 +17,17 @@ REVIEW_OUTPUT="$($TOOLS_ROOT/scripts/fl-review "$ROOT" 2>&1)"
 REVIEW_CODE=$?
 set -e
 printf '%s\n' "$REVIEW_OUTPUT"
-if [[ "$REVIEW_CODE" -ne 0 ]] || ! grep -q '^REVIEW=PASS$' <<<"$REVIEW_OUTPUT"; then
+if [[ "$REVIEW_CODE" -ne 0 ]] || ! grep -Eq '^REVIEW=(PASS|PASS_WITH_APPROVAL)$' <<<"$REVIEW_OUTPUT"; then
   echo "REVIEW=FAIL"
   echo "DEPLOY=BLOCKED"
   echo "CAUSE=review did not pass"
   exit 3
 fi
-echo "REVIEW=PASS"
+if grep -q '^REVIEW=PASS_WITH_APPROVAL$' <<<"$REVIEW_OUTPUT"; then
+  echo "REVIEW=PASS_WITH_APPROVAL"
+else
+  echo "REVIEW=PASS"
+fi
 
 CONTRACT_OUTPUT=""
 set +e

@@ -72,7 +72,10 @@ grep -q '^TEST=PASS$' <<<"$STATUS_OUTPUT" && TEST_STATUS=PASS
 grep -q '^TEST=FAIL$' <<<"$STATUS_OUTPUT" && TEST_STATUS=FAIL
 grep -q '^TEST=NOT_RUN$' <<<"$STATUS_OUTPUT" && TEST_STATUS=NOT_RUN
 REVIEW_STATUS=FAIL
-[[ "$REVIEW_CODE" -eq 0 ]] && grep -q '^REVIEW=PASS$' <<<"$REVIEW_OUTPUT" && REVIEW_STATUS=PASS
+if [[ "$REVIEW_CODE" -eq 0 ]]; then
+  grep -q '^REVIEW=PASS$' <<<"$REVIEW_OUTPUT" && REVIEW_STATUS=PASS
+  grep -q '^REVIEW=PASS_WITH_APPROVAL$' <<<"$REVIEW_OUTPUT" && REVIEW_STATUS=PASS_WITH_APPROVAL
+fi
 
 EVIDENCE_JSON="$(
   PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" RUNNER="$RUNNER" \
@@ -84,11 +87,13 @@ EVIDENCE_JSON="$(
   REVIEW_OUTPUT="$REVIEW_OUTPUT" \
   node -e '
     const env = process.env;
+    const reviewOk = env.REVIEW_STATUS === "PASS" || env.REVIEW_STATUS === "PASS_WITH_APPROVAL";
     const status = env.TEST_STATUS === "PASS" &&
-      env.REVIEW_STATUS === "PASS" &&
+      reviewOk &&
       env.STATUS_CODE === "0" &&
       env.REVIEW_CODE === "0" &&
-      env.DIFF_CHECK === "PASS" ? "PASS" : "FAIL";
+      env.DIFF_CHECK === "PASS" ?
+        (env.REVIEW_STATUS === "PASS_WITH_APPROVAL" ? "PASS_WITH_APPROVAL" : "PASS") : "FAIL";
     const payload = {
       generatedAt: new Date().toISOString(),
       status,
@@ -116,7 +121,7 @@ else
   printf '%s' "$EVIDENCE_JSON"
 fi
 
-if [[ "$TEST_STATUS" != PASS || "$REVIEW_STATUS" != PASS || \
+if [[ "$TEST_STATUS" != PASS || ("$REVIEW_STATUS" != PASS && "$REVIEW_STATUS" != PASS_WITH_APPROVAL) || \
       "$STATUS_CODE" != 0 || "$REVIEW_CODE" != 0 || \
       "$DIFF_CHECK" != PASS ]]; then
   echo "EVIDENCE=FAIL" >&2
