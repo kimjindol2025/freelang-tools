@@ -88,10 +88,10 @@ fl-tools ai release
 
 작업 규칙:
 
-1. 작업 시작 전에 `fl-tools ai ready`를 실행한다.
+1. 작업 시작 전에 `fl-tools ai run`을 실행한다.
 2. `canProceed=true`일 때만 코드를 수정한다.
-3. 수정 후 `fl-tools ai verify`를 실행한다.
-4. 릴리즈·배포 전에는 `fl-tools ai verify --deep`와 사용자 승인을 요구한다.
+3. 수정 후 `fl-tools ai run`을 실행한다.
+4. 릴리즈·배포 전에는 `fl-tools ai run --deep`와 사용자 승인을 요구한다.
 5. 결과의 `next`, `.freelang/evidence/latest.json`, `.freelang/handoff.json`을 확인한다.
 
 서버에서 준비 확인과 기본 검증을 한 번에 실행할 때는 `fl-tools ai run`을
