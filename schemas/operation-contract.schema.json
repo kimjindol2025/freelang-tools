@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/operation-contract/v1",
+  "title": "FreeLang Operation Contract",
+  "type": "object",
+  "required": ["schemaVersion", "action", "approvalRequired", "risk"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.operation-contract/v1" },
+    "action": { "enum": ["deploy", "rollback", "push", "pull", "commit", "delete"] },
+    "approvalRequired": { "const": true },
+    "risk": { "enum": ["medium", "high", "critical"] },
+    "approvalScope": { "type": "array", "items": { "type": "string" } },
+    "smoke": { "type": "string" },
+    "rollback": { "type": "string" }
+  },
+  "additionalProperties": false
+}

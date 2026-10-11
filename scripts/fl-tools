@@ -25,8 +25,8 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools ci <파일>          FreeLang CI 경계 실행
   fl-tools determinism <파일> FreeLang 결정성 검사
   fl-tools review [경로]     수정 내용 전체 검토
-  fl-tools deploy [경로]     검토된 프로젝트 배포 계약 실행
-  fl-tools deploy --internal [경로]  서버 내부 코딩용 배포 계약 실행
+  fl-tools deploy [경로]     검토된 프로젝트 배포 계약 실행 (--approve 필요)
+  fl-tools deploy --internal [경로]  서버 내부 코딩용 배포 계약 실행 (--approve 필요)
   fl-tools test             FreeLang deftest 테스트 실행
   fl-tools check            FreeLang 소스·테스트 검사
   fl-tools detect [경로]    FreeLang/AIRC 계열 자동 판별
@@ -105,6 +105,10 @@ case "$command_name" in
     exec "$ROOT/scripts/fl-review" "$@"
     ;;
   deploy)
+    if [[ "${1:-}" == "--approve" ]]; then
+      shift
+      exec "$ROOT/scripts/fl-deploy" --approve "$@"
+    fi
     if [[ "${1:-}" == "--internal" ]]; then
       shift
       exec "$ROOT/scripts/fl-internal-deploy" "$@"

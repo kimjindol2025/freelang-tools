@@ -114,7 +114,7 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | --- | --- |
 | `fl-tools pipeline [경로]` | init → inspect → review → report → handoff 자동 실행 (`fl-pipeline`) |
 | `fl-tools pipeline [경로] --deploy` | 검증 통과 후 프로젝트 배포 계약까지 실행 |
-| `fl-tools deploy [경로]` | review, dirty worktree, deploy, smoke, artifact hash 확인 (`fl-deploy`) |
+| `fl-tools deploy --approve [경로]` | 사용자 승인 후 review, dirty worktree, deploy, smoke, artifact hash 확인 (`fl-deploy`) |
 | `fl-tools deploy --internal [경로]` | 고정 Git 커밋을 서버 내부 release/current 경로에 반영하고 smoke 실행 (`fl-internal-deploy`) |
 | `fl-tools airc [경로] <명령>` | AIRC의 `airc.fl` CLI를 v11 runner로 실행 (`fl-airc`) |
 | `fl-tools release-check` | CHANGELOG, tag, worktree, artifact hash 릴리즈 준비 검사 (`fl-release-check`) |
@@ -169,6 +169,8 @@ npm 명령을 그대로 사용해도 실행 경로는 FreeLang 도구 체계를 
 프로젝트에서 사용할 수 있는 런너를 보여준다.
 `pipeline`은 init부터 inspect, review, report, handoff까지 자동 실행한다.
 외부·상용 계약 배포가 필요하면 `fl-tools pipeline . --deploy`를 사용하며, push는 실행하지 않는다.
+배포·rollback·push 같은 위험 계약은 계약 검증만으로 실행되지 않으며, 반드시
+`--approve`를 명시해야 한다. 승인이 없으면 `APPROVAL=WAITING`과 함께 차단된다.
 이 서버에서 코딩용 내부 배포만 할 때는 `fl-tools deploy --internal .`을 사용한다.
 내부 배포는 SSH, 공용 포트, PM2를 사용하지 않고 프로젝트의
 `.freelang/internal-deploy.sh` 계약만 실행한다. 계약은 고정 커밋을

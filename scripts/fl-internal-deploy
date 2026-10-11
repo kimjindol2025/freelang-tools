@@ -3,6 +3,11 @@ set -Eeuo pipefail
 
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+APPROVE=NO
+if [[ "${1:-}" == "--approve" ]]; then
+  APPROVE=YES
+  shift
+fi
 TARGET="${1:-.}"
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 
@@ -24,6 +29,16 @@ if [[ ! -x "$CONTRACT" ]]; then
   echo 'CAUSE=no project internal deploy contract (.freelang/internal-deploy.sh)'
   exit 4
 fi
+
+echo 'CONTRACT=VALID'
+echo 'APPROVAL_REQUIRED=YES'
+if [[ "$APPROVE" != YES ]]; then
+  echo 'APPROVAL=WAITING'
+  echo 'INTERNAL_DEPLOY=BLOCKED'
+  echo 'CAUSE=user approval required; rerun with --approve'
+  exit 5
+fi
+echo 'APPROVAL=APPROVED'
 
 COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 BRANCH="$(git -C "$ROOT" branch --show-current)"

@@ -22,7 +22,7 @@ expect_output() {
 
 rm -f "$FIXTURE/.freelang/artifact"
 set +e
-PASS_OUTPUT="$("$TOOLS" deploy "$FIXTURE" 2>&1)"
+PASS_OUTPUT="$("$TOOLS" deploy --approve "$FIXTURE" 2>&1)"
 PASS_CODE=$?
 set -e
 printf '%s\n' "$PASS_OUTPUT"
@@ -38,7 +38,7 @@ echo 'DEPLOY_FIXTURE_PASS_CASE=PASS'
 
 rm -f "$FIXTURE/.freelang/artifact"
 set +e
-FAIL_OUTPUT="$(FIXTURE_SMOKE_FAIL=1 "$TOOLS" deploy "$FIXTURE" 2>&1)"
+FAIL_OUTPUT="$(FIXTURE_SMOKE_FAIL=1 "$TOOLS" deploy --approve "$FIXTURE" 2>&1)"
 FAIL_CODE=$?
 set -e
 printf '%s\n' "$FAIL_OUTPUT"
