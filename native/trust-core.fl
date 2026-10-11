@@ -1,0 +1,47 @@
+;; FreeLang-native trust decision core.
+;; 호스트는 실제 관문 결과만 수집하고, 최종 AI 사용 판정은 FreeLang이 소유한다.
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for missing trust gate fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "")) fallback value))
+
+(defn pass? [value]
+  {:context "Recognize a successful gate without coercing blocked states"
+   :returns "boolean"
+   :effects []}
+  (or (= value "PASS") (= value "PASS_WITH_APPROVAL")))
+
+(let [input-path (shell_env "FL_TOOLS_TRUST_INPUT")
+      input (if (and (string? input-path) (file-exists input-path))
+              (json-parse (file-read input-path))
+              {})
+      project (value-or (get input "project") "unknown")
+      check (value-or (get input "check") "BLOCKED")
+      test (value-or (get input "test") "BLOCKED")
+      review (value-or (get input "review") "BLOCKED")
+      evidence (value-or (get input "evidence") "BLOCKED")
+      diff-check (value-or (get input "diffCheck") "BLOCKED")
+      approval-required (= (get input "approvalRequired") true)
+      core-ready (and (pass? check) (pass? test) (pass? review)
+                      (= evidence "PASS") (= diff-check "PASS"))
+      blocked (or (= check "BLOCKED") (= test "BLOCKED")
+                  (= review "BLOCKED") (= evidence "BLOCKED"))
+      verdict (if core-ready
+                (if (or approval-required (= review "PASS_WITH_APPROVAL"))
+                  "TRUSTED_WITH_APPROVAL"
+                  "TRUSTED")
+                (if blocked "BLOCKED" "UNTRUSTED"))]
+  (println (json-stringify
+             {"schemaVersion" "freelang.trust/v1"
+              "source" "freelang-native"
+              "command" "trust-core"
+              "project" project
+              "verdict" verdict
+              "coreReady" core-ready
+              "approvalRequired" approval-required
+              "next" (case verdict
+                       "TRUSTED" "safe-to-use"
+                       "TRUSTED_WITH_APPROVAL" "obtain-user-approval-before-deploy"
+                       "fix-blocked-gates-and-rerun-trust")})))

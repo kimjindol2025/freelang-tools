@@ -3,7 +3,7 @@
   "$id": "https://freelang.tools/schemas/trust.schema.json",
   "title": "FreeLang Tools Trust Report",
   "type": "object",
-  "required": ["schemaVersion", "generatedAt", "verdict", "project", "gates", "limitations", "evidence", "next"],
+  "required": ["schemaVersion", "generatedAt", "verdict", "project", "gates", "decision", "limitations", "evidence", "next"],
   "properties": {
     "schemaVersion": { "const": "freelang.trust/v1" },
     "generatedAt": { "type": "string", "format": "date-time" },
@@ -30,6 +30,15 @@
         "evidence": { "type": "string" },
         "diffCheck": { "type": "string" },
         "capabilityCoverage": { "enum": ["FULL", "PARTIAL", "UNKNOWN"] }
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["source", "command"],
+      "properties": {
+        "source": { "type": "string" },
+        "command": { "const": "trust-core" }
       },
       "additionalProperties": false
     },

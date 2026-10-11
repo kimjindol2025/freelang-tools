@@ -13,6 +13,7 @@ process.stdout.write(JSON.stringify({
   project: { name: '', root: target, dialect: 'UNKNOWN', runner: 'none' },
   git: { branch: 'none', commit: 'none', state: 'unknown' },
   gates: { check: 'BLOCKED', test: 'BLOCKED', review: 'BLOCKED', evidence: 'BLOCKED', diffCheck: 'BLOCKED', capabilityCoverage: 'UNKNOWN' },
+  decision: { source: 'unavailable', command: 'trust-core' },
   approvalRequired: false,
   limitations: ['project directory not found'],
   evidence: { commands: ['fl-tools trust ' + target], artifacts: ['schemas/trust.schema.json'] },
@@ -94,22 +95,33 @@ if [[ "$REVIEW_STATUS" == PASS_WITH_APPROVAL ]]; then
   LIMITATIONS_JSON="$(node -e 'const a=JSON.parse(process.argv[1]); a.push("review detected contract/spec drift; explicit approval is required before deploy"); process.stdout.write(JSON.stringify(a))' "$LIMITATIONS_JSON")"
 fi
 
+node - "$TMP_DIR/decision-input.json" "$PROJECT" "$CHECK_STATUS" "$TEST_STATUS" \
+  "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$APPROVAL_REQUIRED" <<'NODE'
+const fs = require('fs');
+const [file, project, check, test, review, evidence, diffCheck, approval] = process.argv.slice(2);
+fs.writeFileSync(file, JSON.stringify({
+  project, check, test, review, evidence, diffCheck, approvalRequired: approval === 'true'
+}) + '\n');
+NODE
+run_gate native_decision "$TOOLS_ROOT/scripts/fl-native-trust" --input "$TMP_DIR/decision-input.json"
+NATIVE_CODE="$(cat "$TMP_DIR/native_decision.code")"
+NATIVE_VERDICT=BLOCKED
+NATIVE_SOURCE=unavailable
+if [[ "$NATIVE_CODE" -eq 0 ]]; then
+  NATIVE_VERDICT="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.verdict)' "$(cat "$TMP_DIR/native_decision.out")")"
+  NATIVE_SOURCE=freelang-native
+fi
+
 node - "$ROOT" "$PROJECT" "$DIALECT" "$RUNNER" "$GIT_BRANCH" "$GIT_COMMIT" "$GIT_STATE" \
   "$CHECK_STATUS" "$TEST_STATUS" "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" \
-  "$CAPABILITY_STATUS" "$APPROVAL_REQUIRED" "$LIMITATIONS_JSON" \
-  "$CHECK_CODE" "$TEST_CODE" "$REVIEW_CODE" "$EVIDENCE_CODE" <<'NODE'
+  "$CAPABILITY_STATUS" "$APPROVAL_REQUIRED" "$LIMITATIONS_JSON" "$NATIVE_VERDICT" "$NATIVE_SOURCE" <<'NODE'
 const fs = require('fs');
 const args = process.argv.slice(2);
 const [root, name, dialect, runner, branch, commit, gitState, check, test, review, evidence, diffCheck,
-  capabilityCoverage, approvalText, limitationsText, checkCode, testCode, reviewCode, evidenceCode] = args;
+  capabilityCoverage, approvalText, limitationsText, nativeVerdict, nativeSource] = args;
 const approvalRequired = approvalText === 'true';
 const limitations = JSON.parse(limitationsText);
-const coreReady = check === 'PASS' && test === 'PASS' &&
-  (review === 'PASS' || review === 'PASS_WITH_APPROVAL') && evidence === 'PASS' && diffCheck === 'PASS';
-const verdict = !coreReady ?
-  (['2', '124', '126'].includes(checkCode) || ['2', '124', '126'].includes(testCode) ||
-   ['2', '124', '126'].includes(reviewCode) || ['2', '124', '126'].includes(evidenceCode) ? 'BLOCKED' : 'UNTRUSTED') :
-  (approvalRequired || review === 'PASS_WITH_APPROVAL' ? 'TRUSTED_WITH_APPROVAL' : 'TRUSTED');
+const verdict = nativeVerdict;
 const commands = [
   'fl-tools detect ' + root,
   'fl-tools check ' + root,
@@ -125,6 +137,7 @@ const report = {
   project: { name, root, dialect, runner },
   git: { branch, commit, state: gitState },
   gates: { check, test, review, evidence, diffCheck, capabilityCoverage },
+  decision: { source: nativeSource, command: 'trust-core' },
   approvalRequired,
   limitations,
   evidence: {
@@ -139,6 +152,6 @@ process.stdout.write(JSON.stringify(report, null, 2) + '\n');
 process.stderr.write(`TRUST=${verdict}\n`);
 NODE
 
-if [[ "$CHECK_STATUS" != PASS || "$TEST_STATUS" != PASS || "$REVIEW_STATUS" != PASS && "$REVIEW_STATUS" != PASS_WITH_APPROVAL || "$EVIDENCE_STATUS" != PASS || "$DIFF_STATUS" != PASS ]]; then
+if [[ "$NATIVE_CODE" -ne 0 || "$NATIVE_VERDICT" == BLOCKED || "$NATIVE_VERDICT" == UNTRUSTED ]]; then
   exit 1
 fi

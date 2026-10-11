@@ -68,6 +68,21 @@ GitHub Actions는 테스트 엔진이 아니다. 연결할 때는 `freelang-tool
 
 ## Required workflow
 
+### AI 사용 계약
+
+AI가 이 저장소의 FreeLang 프로젝트를 작업할 때는 호스트 명령을 임의로 조합해
+성공을 추정하지 않고 다음 단일 관문을 먼저 실행한다.
+
+```bash
+fl-tools ai trust <project>
+```
+
+출력 JSON의 `verdict`와 `decision.source`를 읽는다. `TRUSTED`만 안전한 읽기·수정
+작업의 기본 진입 상태로 보고, `TRUSTED_WITH_APPROVAL`은 배포·계약 변경 전 사용자
+승인을 요구한다. `UNTRUSTED`와 `BLOCKED`는 원인을 해결하기 전 진행하지 않는다.
+최종 판정은 `native/trust-core.fl`이 계산하며 `decision.source=freelang-native`가
+아니면 신뢰 결과로 인정하지 않는다. 수정 후에도 같은 명령을 다시 실행한다.
+
 1. `git status --short --branch`로 사용자 변경을 확인한다.
 2. 새 프로젝트는 `fl-tools init <target>`으로 작업 기록을 준비한다.
 3. `fl-tools inspect <target>`으로 프로젝트 경계를 확인한다.

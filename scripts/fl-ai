@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+ACTION="trust"
+TARGET="."
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    trust|review) ACTION="$1" ;;
+    --help|-h) echo "사용법: fl-tools ai [trust|review] [경로]"; exit 0 ;;
+    *) TARGET="$1" ;;
+  esac
+  shift
+done
+
+if [[ "$ACTION" == review ]]; then
+  exec "$TOOLS_ROOT/scripts/fl-trust" "$TARGET"
+fi
+
+exec "$TOOLS_ROOT/scripts/fl-trust" "$TARGET"

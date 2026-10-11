@@ -15,6 +15,7 @@ if (value.schemaVersion !== 'freelang.trust/v1' || value.verdict !== 'TRUSTED') 
 for (const gate of ['check', 'test', 'review', 'evidence', 'diffCheck', 'capabilityCoverage']) {
   if (!(gate in value.gates)) process.exit(1);
 }
-if (!Array.isArray(value.evidence.commands) || !Array.isArray(value.limitations)) process.exit(1);
+if (!Array.isArray(value.evidence.commands) || !Array.isArray(value.limitations) ||
+    value.decision?.source !== 'freelang-native' || value.decision?.command !== 'trust-core') process.exit(1);
 console.log('TRUST_CONTRACT=PASS');
 NODE
