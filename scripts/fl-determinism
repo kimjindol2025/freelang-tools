@@ -26,7 +26,7 @@ if [[ "$left_exit" -ne "$right_exit" ]]; then
   exit 2
 fi
 
-node "$TOOLS_ROOT/scripts/fl-determinism-compare.js" \
+"$TOOLS_ROOT/scripts/fl-determinism-compare" \
   "$LEFT_DIR/final-result.json" "$RIGHT_DIR/final-result.json"
 compare_exit=$?
 if [[ "$compare_exit" -ne 0 ]]; then
