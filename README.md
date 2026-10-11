@@ -53,6 +53,8 @@ fl-tools report .
 fl-tools pipeline .
 fl-tools handoff .
 fl-tools evidence --json .
+fl-tools capabilities .
+fl-tools native-core --input evidence.json
 fl-tools adapter list .
 fl-tools airc . status
 fl-tools deploy .
@@ -101,7 +103,10 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools review [경로]` | check, test, lint, build, diff, 생성물, 계약 drift 검사 (`fl-review`) |
 | `fl-tools report [경로]` | status와 review를 완료 보고서로 출력 (`fl-report`) |
 | `fl-tools evidence --json [경로]` | 검증 결과와 원시 출력을 JSON으로 보존 (`fl-evidence`) |
-| `fl-tools handoff [경로]` | 다음 작업자를 위한 `.freelang/handoff.md` 생성 (`fl-handoff`) |
+| `fl-tools capabilities [경로]` | FreeLang native capability와 adapter 부족분을 JSON으로 출력 (`fl-capabilities`) |
+| `fl-tools native-core --input 파일` | adapter 입력을 FreeLang native route/ready/verdict로 판정 (`fl-native-core`) |
+| `fl-tools handoff [경로]` | 다음 작업자를 위한 `.freelang/handoff.md`와 `handoff.json` 생성 (`fl-handoff`) |
+| `fl-tools handoff --verify [경로]` | handoff schema와 현재 Git commit의 stale 여부 검증 |
 
 ### 실행·배포·릴리즈
 
@@ -153,8 +158,10 @@ npm run test:deploy-fixture
 `init`은 프로젝트의 `.freelang/worklog.md` 작업 기록 공간을 만든다.
 `inspect`는 감지·라우팅·건강검진·상태를 한 번에 출력하고, `report`는 테스트와
 리뷰 결과를 완료 보고서 형식으로 출력한다. `handoff`는 다음 작업자를 위한
-`.freelang/handoff.md`를 만들고, `evidence --json`은 검증 결과를 JSON으로
-보존한다. `adapter list`는 현재 프로젝트에서 사용할 수 있는 런너를 보여준다.
+`.freelang/handoff.md`와 기계 검증용 `.freelang/handoff.json`을 만들고,
+`handoff --verify`는 기록된 commit이 현재 HEAD와 같은지 확인한다.
+`evidence --json`은 검증 결과를 JSON으로 보존한다. `adapter list`는 현재
+프로젝트에서 사용할 수 있는 런너를 보여준다.
 `pipeline`은 init부터 inspect, review, report, handoff까지 자동 실행한다.
 외부·상용 계약 배포가 필요하면 `fl-tools pipeline . --deploy`를 사용하며, push는 실행하지 않는다.
 이 서버에서 코딩용 내부 배포만 할 때는 `fl-tools deploy --internal .`을 사용한다.

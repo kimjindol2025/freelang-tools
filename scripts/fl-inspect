@@ -13,6 +13,9 @@ fi
 
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 FAIL=0
+NATIVE_INPUT="$(mktemp)"
+cleanup() { rm -f "$NATIVE_INPUT"; }
+trap cleanup EXIT INT TERM
 
 run_section() {
   local name="$1"
@@ -29,10 +32,26 @@ run_section() {
   fi
 }
 
+DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
+PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')"
+DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
+RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
+GIT_STATE=not-a-repository
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  GIT_STATE=clean
+  [[ -n "$(git -C "$ROOT" status --short)" ]] && GIT_STATE=dirty
+fi
+PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" RUNNER="$RUNNER" GIT_STATE="$GIT_STATE" \
+  node -e '
+    const fs=require("fs"), e=process.env;
+    fs.writeFileSync(process.argv[1], JSON.stringify({project:e.PROJECT,root:e.ROOT,dialect:e.DIALECT,runner:e.RUNNER,git:e.GIT_STATE})+"\n");
+  ' "$NATIVE_INPUT"
+
 run_section DETECT "$TOOLS_ROOT/scripts/fl-detect" "$ROOT"
 run_section ROUTE "$TOOLS_ROOT/scripts/fl-route" "$ROOT"
 run_section DOCTOR "$TOOLS_ROOT/scripts/fl-doctor" "$ROOT"
 run_section STATUS "$TOOLS_ROOT/scripts/fl-status" "$ROOT"
+run_section NATIVE_CORE "$TOOLS_ROOT/scripts/fl-native-core" --input "$NATIVE_INPUT"
 
 if [[ "$FAIL" -eq 0 ]]; then
   echo "INSPECT=PASS"

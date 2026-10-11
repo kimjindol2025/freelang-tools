@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+INPUT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --input) INPUT="${2:?--input requires a JSON file}"; shift ;;
+    --help|-h)
+      echo "사용법: fl-tools native-core --input 파일"
+      exit 0
+      ;;
+    *) echo "알 수 없는 옵션: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
+  echo "NATIVE_CORE=BLOCKED"
+  echo "CAUSE=JSON input file is required"
+  exit 2
+fi
+
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+PROBE="$TOOLS_ROOT/native/cli-core.fl"
+if [[ ! -f "$RUNNER" ]]; then
+  echo "NATIVE_CORE=BLOCKED"
+  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
+  exit 2
+fi
+
+FL_TOOLS_CORE_INPUT="$INPUT" node "$RUNNER" check "$PROBE" >/dev/null
+OUTPUT="$(FL_TOOLS_CORE_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
+printf '%s\n' "$OUTPUT"
+if ! node -e 'const x=JSON.parse(process.argv[1]); process.exit(x.verdict === "PASS" ? 0 : 1)' "$OUTPUT"; then
+  exit 1
+fi

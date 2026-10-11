@@ -1,0 +1,49 @@
+;; FreeLang-native CLI decision core.
+;; 외부 어댑터가 수집한 입력을 AI가 이어받을 수 있는 판정 JSON으로 변환한다.
+
+(defn route-for [dialect]
+  {:context "Map detected dialect to the FreeLang runtime route"
+   :returns "runtime route string"
+   :effects []}
+  (case dialect
+    "AFJ" "FreeLang/AFJ"
+    "AIRC" "FreeLang/v11-AIRC"
+    "SCRIPT" "FreeLangScript"
+    "FRONT" "FreeLang/Front"
+    "FX" "FreeLang/FX"
+    "AIA" "AIA/native"
+    "UNKNOWN"))
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for missing adapter fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "") (= value "none")) fallback value))
+
+(let [input-path (shell_env "FL_TOOLS_CORE_INPUT")
+      input (if (and (string? input-path) (file-exists input-path))
+              (json-parse (file-read input-path))
+              {})
+      project (value-or (get input "project") "unknown")
+      root (value-or (get input "root") "unknown")
+      dialect (value-or (get input "dialect") "UNKNOWN")
+      runner (value-or (get input "runner") "none")
+      git (value-or (get input "git") "not-a-repository")
+      route (route-for dialect)
+      ready (and (not= dialect "UNKNOWN")
+                 (not= runner "none")
+                 (not= git "not-a-repository"))
+      verdict (if ready "PASS" "BLOCKED")]
+  (println (json-stringify
+             {"schemaVersion" "freelang.cli-core/v1"
+              "command" "inspect-core"
+              "source" "freelang-native"
+              "project" project
+              "root" root
+              "dialect" dialect
+              "route" route
+              "runner" runner
+              "git" git
+              "ready" ready
+              "verdict" verdict
+              "next" (if ready "review" "resolve-runtime-or-git-boundary")})))

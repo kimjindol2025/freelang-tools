@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/handoff/v1",
+  "title": "FreeLang Handoff",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "project", "git", "verification", "nextCommands"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.handoff/v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "project": {
+      "type": "object",
+      "required": ["name", "root", "dialect", "runner"],
+      "properties": {
+        "name": { "type": "string" },
+        "root": { "type": "string" },
+        "dialect": { "type": "string" },
+        "runner": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "git": {
+      "type": "object",
+      "required": ["branch", "commit", "state"],
+      "properties": {
+        "branch": { "type": "string" },
+        "commit": { "type": "string" },
+        "state": { "enum": ["clean", "dirty", "not-a-repository"] }
+      },
+      "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "required": ["report", "reportExitCode"],
+      "properties": {
+        "report": { "enum": ["PASS", "FAIL"] },
+        "reportExitCode": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "nextCommands": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "report": { "type": "string" }
+  },
+  "additionalProperties": false
+}

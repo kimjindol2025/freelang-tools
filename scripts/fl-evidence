@@ -84,8 +84,14 @@ EVIDENCE_JSON="$(
   REVIEW_OUTPUT="$REVIEW_OUTPUT" \
   node -e '
     const env = process.env;
+    const status = env.TEST_STATUS === "PASS" &&
+      env.REVIEW_STATUS === "PASS" &&
+      env.STATUS_CODE === "0" &&
+      env.REVIEW_CODE === "0" &&
+      env.DIFF_CHECK === "PASS" ? "PASS" : "FAIL";
     const payload = {
       generatedAt: new Date().toISOString(),
+      status,
       project: { name: env.PROJECT, root: env.ROOT, dialect: env.DIALECT, runner: env.RUNNER },
       git: { branch: env.BRANCH, commit: env.COMMIT, state: env.GIT_STATE, status: env.GIT_STATUS_OUTPUT },
       verification: {
@@ -109,3 +115,12 @@ if [[ -n "$OUTPUT" ]]; then
 else
   printf '%s' "$EVIDENCE_JSON"
 fi
+
+if [[ "$TEST_STATUS" != PASS || "$REVIEW_STATUS" != PASS || \
+      "$STATUS_CODE" != 0 || "$REVIEW_CODE" != 0 || \
+      "$DIFF_CHECK" != PASS ]]; then
+  echo "EVIDENCE=FAIL" >&2
+  exit 1
+fi
+
+echo "EVIDENCE=PASS" >&2

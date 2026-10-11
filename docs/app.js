@@ -1,6 +1,6 @@
 const groups = [
   { title: '작업 시작', items: ['start', 'init', 'detect', 'route', 'inspect', 'adapter', 'doctor', 'status'] },
-  { title: '검사·증거', items: ['check', 'test', 'review', 'report', 'evidence', 'handoff'] },
+  { title: '검사·증거', items: ['check', 'test', 'review', 'report', 'evidence', 'capabilities', 'native-core', 'handoff'] },
   { title: '배포·운영', items: ['pipeline', 'deploy', 'airc', 'release-check', 'safe-push', 'session', 'journal'] }
 ];
 
@@ -18,7 +18,9 @@ const commands = [
   ['review', '변경사항 전체 검토', 'check, test, lint, build, diff check, 생성물 오염, 계약 drift를 검사합니다.', 'fl-tools review .', 'REVIEW=PASS가 아니면 deploy로 넘어가지 않습니다.'],
   ['report', '완료 보고서', '상태와 review 결과를 사람이 읽는 보고서 형식으로 출력합니다.', 'fl-tools report .', '작업 결과를 사용자나 다음 에이전트에게 전달할 때 사용합니다.'],
   ['evidence', '검증 증거 JSON', '검증 결과, commit, Git 상태, 원시 출력과 exit code를 JSON으로 보존합니다.', 'fl-tools evidence --json .', 'CI나 AI 인수인계에서 기계적으로 읽을 증거입니다.'],
-  ['handoff', '작업 인수인계', '다음 작업자를 위한 .freelang/handoff.md를 생성합니다.', 'fl-tools handoff .', '현재 프로젝트와 최신 report를 다음 세션에 넘깁니다.'],
+  ['capabilities', 'Native capability probe', 'FreeLang이 직접 처리하는 기능과 adapter가 필요한 기능을 JSON으로 확인합니다.', 'fl-tools capabilities .', 'PARTIAL은 부족한 runtime/stdlib 기능을 뜻합니다.'],
+  ['native-core', 'Native CLI decision core', 'FreeLang native core가 dialect·route·ready·verdict를 판정합니다.', 'fl-tools native-core --input evidence.json', 'freelang-native 결과만 다음 AI의 판단 기준으로 사용합니다.'],
+  ['handoff', '작업 인수인계', '다음 작업자를 위한 handoff.md와 handoff.json을 생성합니다.', 'fl-tools handoff .', '현재 commit과 최신 report를 다음 세션에 넘깁니다.'],
   ['pipeline', '전체 작업 파이프라인', 'init → inspect → review → report → handoff를 순서대로 실행합니다.', 'fl-tools pipeline .', '기본값은 deploy와 push를 실행하지 않습니다.'],
   ['deploy', '계약 기반 배포', 'review, dirty worktree, deploy 계약, smoke, artifact hash를 확인합니다.', 'fl-tools deploy .', 'deploy.sh와 smoke.sh가 없으면 DEPLOY=BLOCKED입니다.'],
   ['airc', 'AIRC CLI 실행', 'AIRC 프로젝트의 airc.fl을 기존 FreeLang v11 runner로 실행합니다.', 'fl-tools airc . status', '예: status, search, graph, why. 오래된 절대 경로 오류는 숨기지 않습니다.'],

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/capabilities/v1",
+  "title": "FreeLang Capability Probe",
+  "type": "object",
+  "required": ["schemaVersion", "runtime", "root", "overall", "checks", "blockedCount"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.capabilities/v1" },
+    "runtime": { "type": "string" },
+    "root": { "type": "string" },
+    "overall": { "enum": ["PASS", "PARTIAL"] },
+    "blockedCount": { "type": "integer", "minimum": 0 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "capability", "status", "boundary"],
+        "properties": {
+          "name": { "type": "string" },
+          "capability": { "type": "string" },
+          "status": { "enum": ["PASS", "BLOCKED"] },
+          "boundary": { "enum": ["native", "adapter-required"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,38 @@
+;; FreeLang Tools native capability probe.
+;; 출력은 AI/CI가 직접 읽는 단일 JSON 문서다.
+
+(defn verdict [ok]
+  {:context "Normalize a capability boolean into a machine verdict"
+   :returns "PASS | BLOCKED"
+   :effects []}
+  (if ok "PASS" "BLOCKED"))
+
+(defn check [name capability ok boundary]
+  {:context "Create one capability probe result"
+   :returns "capability result map"
+   :effects []}
+  {"name" name
+   "capability" capability
+   "status" (verdict ok)
+   "boundary" boundary})
+
+(let [json-value (json-parse "{\"ok\":true}")
+      shell-value (shell-capture "true")
+      checks [(check "file-read" "file.read" (file-exists "/tmp") "native")
+              (check "file-write" "file.write" (boolean? (file-exists "/tmp")) "native")
+              (check "json" "json.parse-stringify" (map? json-value) "native")
+              (check "environment" "env.read" (string? (shell_env "PATH")) "native")
+              (check "clock" "time.now" (number? (now-ms)) "native")
+              (check "process-capture" "process.capture" (= (get shell-value :code) 0) "native")
+              (check "git" "git.read" false "adapter-required")
+              (check "directory-walk" "fs.walk" false "adapter-required")
+              (check "schema-validation" "json.schema" false "adapter-required")]
+      blocked (filter (fn [item] (= (get item "status") "BLOCKED")) checks)
+      overall (if (= (length blocked) 0) "PASS" "PARTIAL")]
+  (println (json-stringify
+             {"schemaVersion" "freelang.capabilities/v1"
+              "runtime" "AFJ"
+              "root" (shell_cwd)
+              "overall" overall
+              "checks" checks
+              "blockedCount" (length blocked)})))

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/cli-core/v1",
+  "title": "FreeLang CLI Native Core Result",
+  "type": "object",
+  "required": ["schemaVersion", "command", "source", "project", "root", "dialect", "route", "runner", "git", "ready", "verdict", "next"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.cli-core/v1" },
+    "command": { "const": "inspect-core" },
+    "source": { "const": "freelang-native" },
+    "project": { "type": "string" },
+    "root": { "type": "string" },
+    "dialect": { "type": "string" },
+    "route": { "type": "string" },
+    "runner": { "type": "string" },
+    "git": { "type": "string" },
+    "ready": { "type": "boolean" },
+    "verdict": { "enum": ["PASS", "BLOCKED"] },
+    "next": { "type": "string" }
+  },
+  "additionalProperties": false
+}

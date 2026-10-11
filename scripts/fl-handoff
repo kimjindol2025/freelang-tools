@@ -3,18 +3,24 @@ set -Eeuo pipefail
 
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-TARGET="${1:-.}"
+TARGET="."
 OUTPUT=""
+JSON_OUTPUT=""
+VERIFY=NO
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  echo "사용법: fl-tools handoff [--output 파일] [경로]"
-  exit 0
-fi
-
-if [[ "${1:-}" == "--output" ]]; then
-  OUTPUT="${2:?--output requires a file path}"
-  TARGET="${3:-.}"
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --verify) VERIFY=YES ;;
+    --output) OUTPUT="${2:?--output requires a file path}"; shift ;;
+    --json-output) JSON_OUTPUT="${2:?--json-output requires a file path}"; shift ;;
+    --help|-h)
+      echo "사용법: fl-tools handoff [--verify] [--output 파일] [--json-output 파일] [경로]"
+      exit 0
+      ;;
+    *) TARGET="$1" ;;
+  esac
+  shift
+done
 
 if [[ ! -d "$TARGET" ]]; then
   echo "HANDOFF=BLOCKED"
@@ -24,7 +30,56 @@ fi
 
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 OUTPUT="${OUTPUT:-$ROOT/.freelang/handoff.md}"
+JSON_OUTPUT="${JSON_OUTPUT:-$(dirname -- "$OUTPUT")/handoff.json}"
+
+if [[ "$VERIFY" == YES ]]; then
+  if [[ ! -f "$JSON_OUTPUT" ]]; then
+    echo "HANDOFF=BLOCKED"
+    echo "CAUSE=handoff JSON not found: $JSON_OUTPUT" >&2
+    exit 2
+  fi
+
+  CURRENT_COMMIT=none
+  if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    CURRENT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+  fi
+
+  if node -e '
+    const fs = require("fs");
+    const file = process.argv[1];
+    const currentCommit = process.argv[2];
+    let value;
+    try { value = JSON.parse(fs.readFileSync(file, "utf8")); } catch (error) {
+      console.error(`CAUSE=invalid handoff JSON: ${error.message}`);
+      process.exit(1);
+    }
+    const valid = value.schemaVersion === "freelang.handoff/v1" &&
+      value.git && typeof value.git.commit === "string" &&
+      value.project && typeof value.project.root === "string" &&
+      (currentCommit === "none" || value.git.commit === currentCommit);
+    if (!valid) {
+      if (currentCommit !== "none" && value.git?.commit !== currentCommit) {
+        console.error(`CAUSE=stale handoff commit: recorded=${value.git?.commit ?? "missing"} current=${currentCommit}`);
+      } else {
+        console.error("CAUSE=handoff JSON schema validation failed");
+      }
+      process.exit(1);
+    }
+  ' "$JSON_OUTPUT" "$CURRENT_COMMIT"; then
+    echo "HANDOFF_JSON=$JSON_OUTPUT"
+    echo "STALE_COMMIT=NO"
+    echo "HANDOFF_VERIFY=PASS"
+  else
+    echo "HANDOFF_JSON=$JSON_OUTPUT"
+    echo "STALE_COMMIT=YES"
+    echo "HANDOFF_VERIFY=FAIL"
+    exit 1
+  fi
+  exit 0
+fi
+
 mkdir -p "$(dirname -- "$OUTPUT")"
+mkdir -p "$(dirname -- "$JSON_OUTPUT")"
 
 DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
 PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')"
@@ -79,7 +134,33 @@ fl-tools evidence --json $ROOT
 $REPORT_OUTPUT
 EOF
 
+REPORT_CODE="$REPORT_CODE" REPORT_OUTPUT="$REPORT_OUTPUT" \
+PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" RUNNER="$RUNNER" \
+BRANCH="$BRANCH" COMMIT="$COMMIT" GIT_STATUS="$GIT_STATUS" \
+JSON_OUTPUT="$JSON_OUTPUT" node -e '
+  const fs = require("fs");
+  const env = process.env;
+  const payload = {
+    schemaVersion: "freelang.handoff/v1",
+    generatedAt: new Date().toISOString(),
+    project: { name: env.PROJECT, root: env.ROOT, dialect: env.DIALECT, runner: env.RUNNER },
+    git: { branch: env.BRANCH, commit: env.COMMIT, state: env.GIT_STATUS },
+    verification: {
+      report: Number(env.REPORT_CODE) === 0 ? "PASS" : "FAIL",
+      reportExitCode: Number(env.REPORT_CODE)
+    },
+    nextCommands: [
+      `fl-tools inspect ${env.ROOT}`,
+      `fl-tools report ${env.ROOT}`,
+      `fl-tools evidence --json ${env.ROOT}`
+    ],
+    report: env.REPORT_OUTPUT
+  };
+  fs.writeFileSync(env.JSON_OUTPUT, JSON.stringify(payload, null, 2) + "\n");
+'
+
 printf 'HANDOFF_FILE=%s\n' "$OUTPUT"
+printf 'HANDOFF_JSON=%s\n' "$JSON_OUTPUT"
 if [[ "$REPORT_CODE" -eq 0 ]]; then
   echo "REPORT=PASS"
   echo "HANDOFF=PASS"

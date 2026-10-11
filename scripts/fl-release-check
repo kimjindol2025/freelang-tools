@@ -39,6 +39,17 @@ else
   echo "RELEASE_FIELDS=UNRESOLVED"
 fi
 
+if [[ -f "$ROOT/schemas/handoff.schema.json" &&
+      -f "$ROOT/schemas/capabilities.schema.json" &&
+      -f "$ROOT/schemas/cli-core.schema.json" &&
+      -f "$ROOT/native/capability-probe.fl" &&
+      -f "$ROOT/native/cli-core.fl" ]]; then
+  echo "NATIVE_CONTRACTS=PASS"
+else
+  echo "NATIVE_CONTRACTS=BLOCKED"
+  READY=NO
+fi
+
 if [[ "$READY" == YES ]]; then
   echo "RELEASE_READY=YES"
 else

@@ -9,6 +9,8 @@
     "pipeline": "./scripts/fl-pipeline",
     "handoff": "./scripts/fl-handoff",
     "evidence": "./scripts/fl-evidence --json",
+    "capabilities": "./scripts/fl-capabilities",
+    "native-core": "./scripts/fl-native-core",
     "adapter": "./scripts/fl-adapter list",
     "airc": "./scripts/fl-airc",
     "review": "./scripts/fl-review",

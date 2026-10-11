@@ -1,0 +1,35 @@
+name: FreeLang native tools gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-gate:
+    # AFJ is a server-local canonical runtime (Forgejo/private boundary),
+    # so this gate must run on the managed FreeLang runner instead of
+    # pretending that a public GitHub clone exists.
+    runs-on: [self-hosted, freelang]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify canonical AFJ runtime
+        run: test -f /home/kim/kim/platform/freelang-afj/bootstrap.js
+      - name: Run FreeLang tests
+        run: ./scripts/fl-test .
+      - name: Run capability probe
+        run: ./scripts/fl-capabilities .
+      - name: Run review gate
+        run: ./scripts/fl-review .
+      - name: Run deploy fixture
+        run: ./tests/deploy-fixture/run.sh
+      - name: Verify handoff JSON and commit freshness
+        run: |
+          ./scripts/fl-handoff --output /tmp/handoff.md .
+          ./scripts/fl-handoff --verify --output /tmp/handoff.md .
