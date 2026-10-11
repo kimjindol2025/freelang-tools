@@ -63,18 +63,6 @@ elif has_file "freelang.json" || has_file "bin/fl-script-unified.js" || has_glob
   DIALECT="SCRIPT"
   FAMILY="SCRIPT"
   has_file "bin/fl-script-unified.js" && RUNNER="$ROOT/bin/fl-script-unified.js"
-elif has_file "package.json" && node -e 'const p=require(process.argv[1]); process.exit(p.mcpName === "io.github.morluto/rea" || p.name === "rea-agents" ? 0 : 1)' "$ROOT/package.json" 2>/dev/null; then
-  DIALECT="NODE"
-  FAMILY="NODE/MCP"
-  RUNNER="$ROOT/package.json"
-elif has_file "package.json"; then
-  DIALECT="NODE"
-  FAMILY="NODE"
-  RUNNER="$ROOT/package.json"
-elif has_file "fl-test.sh" || has_file "fl-run.sh" || has_file "fx-std.fl"; then
-  DIALECT="FX"
-  FAMILY="FX"
-  has_file "fl-test.sh" && RUNNER="$ROOT/fl-test.sh"
 elif has_glob '*.fl'; then
   DIALECT="AFJ"
   FAMILY="AFJ"
@@ -91,6 +79,18 @@ elif has_glob '*.fl'; then
   elif [[ -f "${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}" ]]; then
     RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
   fi
+elif has_file "package.json" && node -e 'const p=require(process.argv[1]); process.exit(p.mcpName === "io.github.morluto/rea" || p.name === "rea-agents" ? 0 : 1)' "$ROOT/package.json" 2>/dev/null; then
+  DIALECT="NODE"
+  FAMILY="NODE/MCP"
+  RUNNER="$ROOT/package.json"
+elif has_file "package.json"; then
+  DIALECT="NODE"
+  FAMILY="NODE"
+  RUNNER="$ROOT/package.json"
+elif has_file "fl-test.sh" || has_file "fl-run.sh" || has_file "fx-std.fl"; then
+  DIALECT="FX"
+  FAMILY="FX"
+  has_file "fl-test.sh" && RUNNER="$ROOT/fl-test.sh"
 fi
 
 TEST_ROOT="$ROOT/tests"

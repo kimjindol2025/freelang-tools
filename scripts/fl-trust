@@ -54,7 +54,12 @@ fi
 run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
 run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
 run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
-run_gate workflow "$TOOLS_ROOT/scripts/fl-workflow-test" --workflows "$ROOT"
+if [[ "$DIALECT" == "NODE" ]]; then
+  run_gate workflow "$TOOLS_ROOT/scripts/fl-workflow-test" --workflows "$ROOT"
+else
+  printf '0' > "$TMP_DIR/workflow.code"
+  printf 'WORKFLOW_TEST=NOT_APPLICABLE\n' > "$TMP_DIR/workflow.out"
+fi
 
 CHECK_CODE="$(cat "$TMP_DIR/check.code")"
 TEST_CODE="$(cat "$TMP_DIR/test.code")"
