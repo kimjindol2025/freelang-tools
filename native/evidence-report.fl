@@ -1,0 +1,43 @@
+;; FreeLang-native evidence report composer.
+;; Host shell collects command outputs; this module owns the report contract.
+
+(defn pass-review? [value]
+  {:context "Recognize review statuses that permit evidence success"
+   :returns "boolean"
+   :effects []}
+  (or (= value "PASS") (= value "PASS_WITH_APPROVAL")))
+
+(let [project (shell_env "FL_TOOLS_EVIDENCE_PROJECT")
+      root (shell_env "FL_TOOLS_EVIDENCE_ROOT")
+      dialect (shell_env "FL_TOOLS_EVIDENCE_DIALECT")
+      runner (shell_env "FL_TOOLS_EVIDENCE_RUNNER")
+      branch (shell_env "FL_TOOLS_EVIDENCE_BRANCH")
+      commit (shell_env "FL_TOOLS_EVIDENCE_COMMIT")
+      git-state (shell_env "FL_TOOLS_EVIDENCE_GIT_STATE")
+      git-status (shell_env "FL_TOOLS_EVIDENCE_GIT_STATUS")
+      test-status (shell_env "FL_TOOLS_EVIDENCE_TEST")
+      review-status (shell_env "FL_TOOLS_EVIDENCE_REVIEW")
+      status-code (str-to-num (shell_env "FL_TOOLS_EVIDENCE_STATUS_CODE"))
+      review-code (str-to-num (shell_env "FL_TOOLS_EVIDENCE_REVIEW_CODE"))
+      diff-check (shell_env "FL_TOOLS_EVIDENCE_DIFF")
+      detect-output (shell_env "FL_TOOLS_EVIDENCE_RAW_DETECT")
+      status-output (shell_env "FL_TOOLS_EVIDENCE_RAW_STATUS")
+      review-output (shell_env "FL_TOOLS_EVIDENCE_RAW_REVIEW")
+      review-ok (pass-review? review-status)
+      status (if (and (= test-status "PASS") review-ok
+                      (= status-code 0) (= review-code 0)
+                      (= diff-check "PASS"))
+             (if (= review-status "PASS_WITH_APPROVAL") "PASS_WITH_APPROVAL" "PASS")
+             "FAIL")
+      report {"generatedAt" (now_iso)
+              "status" status
+              "project" {"name" project "root" root "dialect" dialect "runner" runner}
+              "git" {"branch" branch "commit" commit "state" git-state "status" git-status}
+              "verification" {"test" test-status "review" review-status
+                               "diffCheck" diff-check
+                               "statusExitCode" status-code
+                               "reviewExitCode" review-code}
+              "commands" ["fl-tools detect" "fl-tools status" "fl-tools review"]
+              "raw" {"detect" detect-output "status" status-output "review" review-output}}]
+  (println (json-stringify report))
+  (println (str "EVIDENCE_STATUS=" status)))

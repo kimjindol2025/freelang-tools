@@ -160,45 +160,31 @@ if [[ "$NATIVE_CODE" -eq 0 ]]; then
   NATIVE_SOURCE=freelang-native
 fi
 
-node - "$ROOT" "$PROJECT" "$DIALECT" "$RUNNER" "$GIT_BRANCH" "$GIT_COMMIT" "$GIT_STATE" \
-  "$CHECK_STATUS" "$TEST_STATUS" "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$WORKFLOW_STATUS" \
-  "$CAPABILITY_STATUS" "$APPROVAL_REQUIRED" "$LIMITATIONS_JSON" "$NATIVE_VERDICT" "$NATIVE_SOURCE" <<'NODE'
-const fs = require('fs');
-const args = process.argv.slice(2);
-const [root, name, dialect, runner, branch, commit, gitState, check, test, review, evidence, diffCheck, workflow,
-  capabilityCoverage, approvalText, limitationsText, nativeVerdict, nativeSource] = args;
-const approvalRequired = approvalText === 'true';
-const limitations = JSON.parse(limitationsText);
-const verdict = nativeVerdict;
-const commands = [
-  'fl-tools detect ' + root,
-  'fl-tools check ' + root,
-  'fl-tools test ' + root,
-  'fl-tools review ' + root,
-  'fl-tools evidence --json ' + root,
-  'fl-tools capabilities ' + root
-];
-const report = {
-  schemaVersion: 'freelang.trust/v1',
-  generatedAt: new Date().toISOString(),
-  verdict,
-  project: { name, root, dialect, runner },
-  git: { branch, commit, state: gitState },
-  gates: { check, test, review, evidence, diffCheck, workflow, capabilityCoverage },
-  decision: { source: nativeSource, command: 'trust-core' },
-  approvalRequired,
-  limitations,
-  evidence: {
-    commands,
-    artifacts: ['schemas/trust.schema.json', 'fl-tools trust JSON output']
-  },
-  next: verdict === 'TRUSTED' ? 'safe-to-use' :
-    verdict === 'TRUSTED_WITH_APPROVAL' ? 'obtain-user-approval-before-deploy' :
-    'fix-blocked-gates-and-rerun-trust'
-};
-process.stdout.write(JSON.stringify(report, null, 2) + '\n');
-process.stderr.write(`TRUST=${verdict}\n`);
-NODE
+FL_TOOLS_TRUST_REPORT_ROOT="$ROOT" \
+FL_TOOLS_TRUST_REPORT_PROJECT="$PROJECT" \
+FL_TOOLS_TRUST_REPORT_DIALECT="$DIALECT" \
+FL_TOOLS_TRUST_REPORT_RUNNER="$RUNNER" \
+FL_TOOLS_TRUST_REPORT_BRANCH="$GIT_BRANCH" \
+FL_TOOLS_TRUST_REPORT_COMMIT="$GIT_COMMIT" \
+FL_TOOLS_TRUST_REPORT_GIT_STATE="$GIT_STATE" \
+FL_TOOLS_TRUST_REPORT_CHECK="$CHECK_STATUS" \
+FL_TOOLS_TRUST_REPORT_TEST="$TEST_STATUS" \
+FL_TOOLS_TRUST_REPORT_REVIEW="$REVIEW_STATUS" \
+FL_TOOLS_TRUST_REPORT_EVIDENCE="$EVIDENCE_STATUS" \
+FL_TOOLS_TRUST_REPORT_DIFF="$DIFF_STATUS" \
+FL_TOOLS_TRUST_REPORT_WORKFLOW="$WORKFLOW_STATUS" \
+FL_TOOLS_TRUST_REPORT_CAPABILITY="$CAPABILITY_STATUS" \
+FL_TOOLS_TRUST_REPORT_APPROVAL="$APPROVAL_REQUIRED" \
+FL_TOOLS_TRUST_REPORT_LIMITATIONS="$LIMITATIONS_JSON" \
+FL_TOOLS_TRUST_REPORT_VERDICT="$NATIVE_VERDICT" \
+FL_TOOLS_TRUST_REPORT_SOURCE="$NATIVE_SOURCE" \
+  "$TOOLS_ROOT/scripts/fl-trust-report"
+REPORT_CODE=$?
+printf 'TRUST=%s\n' "$NATIVE_VERDICT" >&2
+if [[ "$REPORT_CODE" -ne 0 ]]; then
+  exit 1
+fi
+exit 0
 
 if [[ "$NATIVE_CODE" -ne 0 || "$NATIVE_VERDICT" == BLOCKED || "$NATIVE_VERDICT" == UNTRUSTED ]]; then
   exit 1

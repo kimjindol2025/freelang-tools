@@ -1,0 +1,54 @@
+;; FreeLang-native trust report composer.
+;; Gate execution remains host-supervised; report semantics live here.
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for trust report fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "")) fallback value))
+
+(let [root (shell_env "FL_TOOLS_TRUST_REPORT_ROOT")
+      project (shell_env "FL_TOOLS_TRUST_REPORT_PROJECT")
+      dialect (shell_env "FL_TOOLS_TRUST_REPORT_DIALECT")
+      runner (shell_env "FL_TOOLS_TRUST_REPORT_RUNNER")
+      branch (shell_env "FL_TOOLS_TRUST_REPORT_BRANCH")
+      commit (shell_env "FL_TOOLS_TRUST_REPORT_COMMIT")
+      git-state (shell_env "FL_TOOLS_TRUST_REPORT_GIT_STATE")
+      check (shell_env "FL_TOOLS_TRUST_REPORT_CHECK")
+      test (shell_env "FL_TOOLS_TRUST_REPORT_TEST")
+      review (shell_env "FL_TOOLS_TRUST_REPORT_REVIEW")
+      evidence (shell_env "FL_TOOLS_TRUST_REPORT_EVIDENCE")
+      diff-check (shell_env "FL_TOOLS_TRUST_REPORT_DIFF")
+      workflow (shell_env "FL_TOOLS_TRUST_REPORT_WORKFLOW")
+      capability (shell_env "FL_TOOLS_TRUST_REPORT_CAPABILITY")
+      approval-required (= (shell_env "FL_TOOLS_TRUST_REPORT_APPROVAL") "true")
+      limitations-input (shell_env "FL_TOOLS_TRUST_REPORT_LIMITATIONS")
+      limitations (if (string? limitations-input) (json-parse limitations-input) [])
+      verdict (value-or (shell_env "FL_TOOLS_TRUST_REPORT_VERDICT") "BLOCKED")
+      source (value-or (shell_env "FL_TOOLS_TRUST_REPORT_SOURCE") "unavailable")
+      next (case verdict
+             "TRUSTED" "safe-to-use"
+             "TRUSTED_WITH_APPROVAL" "obtain-user-approval-before-deploy"
+             "fix-blocked-gates-and-rerun-trust")
+      report {"schemaVersion" "freelang.trust/v1"
+              "generatedAt" (now_iso)
+              "verdict" verdict
+              "project" {"name" project "root" root "dialect" dialect "runner" runner}
+              "git" {"branch" branch "commit" commit "state" git-state}
+              "gates" {"check" check "test" test "review" review
+                       "evidence" evidence "diffCheck" diff-check
+                       "workflow" workflow "capabilityCoverage" capability}
+              "decision" {"source" source "command" "trust-core"}
+              "approvalRequired" approval-required
+              "limitations" limitations
+              "evidence" {"commands" [(str "fl-tools detect " root)
+                                        (str "fl-tools check " root)
+                                        (str "fl-tools test " root)
+                                        (str "fl-tools review " root)
+                                        (str "fl-tools evidence --json " root)
+                                        (str "fl-tools capabilities " root)]
+                           "artifacts" ["schemas/trust.schema.json"
+                                        "fl-tools trust JSON output"]}
+              "next" next}]
+  (println (json-stringify report))
+  (println (str "TRUST_VERDICT=" verdict)))

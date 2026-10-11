@@ -78,39 +78,23 @@ if [[ "$REVIEW_CODE" -eq 0 ]]; then
 fi
 
 EVIDENCE_JSON="$(
-  PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" RUNNER="$RUNNER" \
-  BRANCH="$BRANCH" COMMIT="$COMMIT" GIT_STATE="$GIT_STATE" \
-  GIT_STATUS_OUTPUT="$GIT_STATUS_OUTPUT" TEST_STATUS="$TEST_STATUS" \
-  REVIEW_STATUS="$REVIEW_STATUS" STATUS_CODE="$STATUS_CODE" \
-  REVIEW_CODE="$REVIEW_CODE" DIFF_CHECK="$DIFF_CHECK" \
-  DETECT_OUTPUT="$DETECT_OUTPUT" STATUS_OUTPUT="$STATUS_OUTPUT" \
-  REVIEW_OUTPUT="$REVIEW_OUTPUT" \
-  node -e '
-    const env = process.env;
-    const reviewOk = env.REVIEW_STATUS === "PASS" || env.REVIEW_STATUS === "PASS_WITH_APPROVAL";
-    const status = env.TEST_STATUS === "PASS" &&
-      reviewOk &&
-      env.STATUS_CODE === "0" &&
-      env.REVIEW_CODE === "0" &&
-      env.DIFF_CHECK === "PASS" ?
-        (env.REVIEW_STATUS === "PASS_WITH_APPROVAL" ? "PASS_WITH_APPROVAL" : "PASS") : "FAIL";
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      status,
-      project: { name: env.PROJECT, root: env.ROOT, dialect: env.DIALECT, runner: env.RUNNER },
-      git: { branch: env.BRANCH, commit: env.COMMIT, state: env.GIT_STATE, status: env.GIT_STATUS_OUTPUT },
-      verification: {
-        test: env.TEST_STATUS,
-        review: env.REVIEW_STATUS,
-        diffCheck: env.DIFF_CHECK,
-        statusExitCode: Number(env.STATUS_CODE),
-        reviewExitCode: Number(env.REVIEW_CODE)
-      },
-      commands: ["fl-tools detect", "fl-tools status", "fl-tools review"],
-      raw: { detect: env.DETECT_OUTPUT, status: env.STATUS_OUTPUT, review: env.REVIEW_OUTPUT }
-    };
-    process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
-  '
+  FL_TOOLS_EVIDENCE_PROJECT="$PROJECT" \
+  FL_TOOLS_EVIDENCE_ROOT="$ROOT" \
+  FL_TOOLS_EVIDENCE_DIALECT="$DIALECT" \
+  FL_TOOLS_EVIDENCE_RUNNER="$RUNNER" \
+  FL_TOOLS_EVIDENCE_BRANCH="$BRANCH" \
+  FL_TOOLS_EVIDENCE_COMMIT="$COMMIT" \
+  FL_TOOLS_EVIDENCE_GIT_STATE="$GIT_STATE" \
+  FL_TOOLS_EVIDENCE_GIT_STATUS="$GIT_STATUS_OUTPUT" \
+  FL_TOOLS_EVIDENCE_TEST="$TEST_STATUS" \
+  FL_TOOLS_EVIDENCE_REVIEW="$REVIEW_STATUS" \
+  FL_TOOLS_EVIDENCE_STATUS_CODE="$STATUS_CODE" \
+  FL_TOOLS_EVIDENCE_REVIEW_CODE="$REVIEW_CODE" \
+  FL_TOOLS_EVIDENCE_DIFF="$DIFF_CHECK" \
+  FL_TOOLS_EVIDENCE_RAW_DETECT="$DETECT_OUTPUT" \
+  FL_TOOLS_EVIDENCE_RAW_STATUS="$STATUS_OUTPUT" \
+  FL_TOOLS_EVIDENCE_RAW_REVIEW="$REVIEW_OUTPUT" \
+    "$TOOLS_ROOT/scripts/fl-evidence-report"
 )"
 
 if [[ -n "$OUTPUT" ]]; then
