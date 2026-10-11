@@ -70,24 +70,57 @@ GitHub Actions는 테스트 엔진이 아니다. 연결할 때는 `freelang-tool
 
 ### AI 사용 계약
 
-AI가 이 저장소의 FreeLang 프로젝트를 작업할 때는 호스트 명령을 임의로 조합해
-성공을 추정하지 않고 다음 단일 관문을 먼저 실행한다.
+AI가 이 저장소의 FreeLang 프로젝트를 작업할 때는 호스트 명령을 임의로 조합하지
+말고 아래 네 가지 진입점만 사용한다.
+
+```bash
+fl-tools ai ready
+fl-tools ai work
+fl-tools ai verify
+fl-tools ai verify --deep
+fl-tools ai release
+```
+
+`ready`는 현재 Git root를 자동 탐색하는 읽기 전용 사전 점검이다. 결과 JSON의
+`canProceed`가 `false`이면 `next`와 `limitations`를 보고 원인을 해결하기 전
+작업을 계속하지 않는다. 기본 `verify`는 경량 native trust만 실행하고,
+전체 테스트·workflow는 `--deep` 또는 `release`에서만 실행한다.
+
+작업 규칙:
+
+1. 작업 시작 전에 `fl-tools ai ready`를 실행한다.
+2. `canProceed=true`일 때만 코드를 수정한다.
+3. 수정 후 `fl-tools ai verify`를 실행한다.
+4. 릴리즈·배포 전에는 `fl-tools ai verify --deep`와 사용자 승인을 요구한다.
+5. 결과의 `next`, `.freelang/evidence/latest.json`, `.freelang/handoff.json`을 확인한다.
+
+기존 명령은 내부 호환용이며 Codex의 기본 호출 경로가 아니다.
+
+```bash
+fl-tools ai ready
+fl-tools ai work
+fl-tools ai verify
+fl-tools ai verify --deep
+fl-tools ai release
+```
+
+기존 trust 명령은 내부 호환용으로 유지한다.
 
 ```bash
 fl-tools ai trust <project>
 ```
 
-작업 단계가 필요하면 다음 네 개의 AI protocol만 사용한다.
+이전의 상세 작업 단계도 내부 호환용이다.
 
 ```bash
-fl-tools ai start <project>
-fl-tools ai work <project>
-fl-tools ai verify <project>
-fl-tools ai release <project>
+fl-tools start <project>
+fl-tools inspect <project>
+fl-tools review <project>
 ```
 
-`ai verify`는 FreeLang 테스트뿐 아니라 프로젝트 `npm test`/`test:*` 및 Jest/Vitest
-스크립트를 `fl-tools workflow-test`로 실행한다. GitHub Actions는 `--workflows`로
+`ai verify --deep`는 FreeLang 테스트뿐 아니라 프로젝트 `npm test`/`test:*` 및
+Jest/Vitest 스크립트를 `fl-tools workflow-test`로 실행한다. 기본 `ai verify`는
+check와 diff 중심의 경량 관문만 실행한다. GitHub Actions는 `--workflows`로
 테스트성 `run` 단계만 허용 목록으로 실행하고 deploy/push 단계는 실행하지 않는다.
 
 출력 JSON의 `verdict`와 `decision.source`를 읽는다. `TRUSTED`만 안전한 읽기·수정

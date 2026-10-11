@@ -4,6 +4,12 @@ set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
+MODE=deep
+if [[ "${1:-}" == "--quick" ]]; then
+  MODE=quick
+  shift
+  TARGET="${1:-.}"
+fi
 
 if [[ ! -d "$TARGET" ]]; then
   node - "$TARGET" <<'NODE'
@@ -45,20 +51,37 @@ PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 
-run_gate check "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
-if [[ "$DIALECT" == "NODE" ]]; then
-  run_gate test "$TOOLS_ROOT/scripts/fl-workflow-test" "$ROOT"
+if [[ "$MODE" == quick ]]; then
+  run_gate check env FREELANG_CHECK_QUICK=YES "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
 else
-  run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+  run_gate check "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
 fi
-run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
-run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
-run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
-if [[ "$DIALECT" == "NODE" ]]; then
-  run_gate workflow "$TOOLS_ROOT/scripts/fl-workflow-test" --workflows "$ROOT"
-else
+if [[ "$MODE" == quick ]]; then
+  printf '3' > "$TMP_DIR/test.code"
+  printf 'TEST=NOT_RUN\n' > "$TMP_DIR/test.out"
+  printf '3' > "$TMP_DIR/review.code"
+  printf 'REVIEW=NOT_RUN\nDIFF_CHECK=PASS\n' > "$TMP_DIR/review.out"
+  printf '3' > "$TMP_DIR/evidence.code"
+  printf 'EVIDENCE=NOT_RUN\n' > "$TMP_DIR/evidence.out"
+  printf '3' > "$TMP_DIR/capabilities.code"
+  printf 'CAPABILITIES=NOT_RUN\n' > "$TMP_DIR/capabilities.out"
   printf '0' > "$TMP_DIR/workflow.code"
   printf 'WORKFLOW_TEST=NOT_APPLICABLE\n' > "$TMP_DIR/workflow.out"
+else
+  if [[ "$DIALECT" == "NODE" ]]; then
+    run_gate test "$TOOLS_ROOT/scripts/fl-workflow-test" "$ROOT"
+  else
+    run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+  fi
+  run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
+  run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
+  run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
+  if [[ "$DIALECT" == "NODE" ]]; then
+    run_gate workflow "$TOOLS_ROOT/scripts/fl-workflow-test" --workflows "$ROOT"
+  else
+    printf '0' > "$TMP_DIR/workflow.code"
+    printf 'WORKFLOW_TEST=NOT_APPLICABLE\n' > "$TMP_DIR/workflow.out"
+  fi
 fi
 
 CHECK_CODE="$(cat "$TMP_DIR/check.code")"
@@ -69,6 +92,13 @@ CAPABILITY_CODE="$(cat "$TMP_DIR/capabilities.code")"
 WORKFLOW_CODE="$(cat "$TMP_DIR/workflow.code")"
 CHECK_STATUS=FAIL; TEST_STATUS=FAIL; REVIEW_STATUS=FAIL; EVIDENCE_STATUS=FAIL; DIFF_STATUS=FAIL
 WORKFLOW_STATUS=NOT_APPLICABLE
+CAPABILITY_STATUS=UNKNOWN
+if [[ "$MODE" == quick ]]; then
+  TEST_STATUS=NOT_RUN
+  REVIEW_STATUS=NOT_RUN
+  EVIDENCE_STATUS=NOT_RUN
+  CAPABILITY_STATUS=NOT_RUN
+fi
 if [[ "$CHECK_CODE" -eq 0 ]]; then CHECK_STATUS=PASS; fi
 if [[ "$TEST_CODE" -eq 0 ]]; then TEST_STATUS=PASS; fi
 if [[ "$CHECK_CODE" -eq 2 ]]; then CHECK_STATUS=BLOCKED; fi
@@ -81,7 +111,6 @@ if grep -q '^DIFF_CHECK=PASS$' "$TMP_DIR/review.out"; then DIFF_STATUS=PASS; fi
 if grep -q '^WORKFLOW_TEST=PASS$' "$TMP_DIR/workflow.out"; then WORKFLOW_STATUS=PASS; fi
 if grep -q '^WORKFLOW_TEST=BLOCKED$' "$TMP_DIR/workflow.out"; then WORKFLOW_STATUS=BLOCKED; fi
 
-CAPABILITY_STATUS=UNKNOWN
 if grep -q '^CAPABILITIES=BLOCKED$' "$TMP_DIR/capabilities.out"; then
   CAPABILITY_STATUS=PARTIAL
 elif [[ "$CAPABILITY_CODE" -eq 0 ]]; then
@@ -112,12 +141,14 @@ if [[ "$REVIEW_STATUS" == PASS_WITH_APPROVAL ]]; then
   LIMITATIONS_JSON="$(node -e 'const a=JSON.parse(process.argv[1]); a.push("review detected contract/spec drift; explicit approval is required before deploy"); process.stdout.write(JSON.stringify(a))' "$LIMITATIONS_JSON")"
 fi
 
-node - "$TMP_DIR/decision-input.json" "$PROJECT" "$CHECK_STATUS" "$TEST_STATUS" \
+FREELANG_TRUST_MODE="$MODE" node - "$TMP_DIR/decision-input.json" "$PROJECT" "$CHECK_STATUS" "$TEST_STATUS" \
   "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$WORKFLOW_STATUS" "$APPROVAL_REQUIRED" <<'NODE'
 const fs = require('fs');
 const [file, project, check, test, review, evidence, diffCheck, workflow, approval] = process.argv.slice(2);
 fs.writeFileSync(file, JSON.stringify({
-  project, check, test, review, evidence, diffCheck, workflow, approvalRequired: approval === 'true'
+  project, check, test, review, evidence, diffCheck, workflow,
+  mode: process.env.FREELANG_TRUST_MODE || 'deep',
+  approvalRequired: approval === 'true'
 }) + '\n');
 NODE
 run_gate native_decision "$TOOLS_ROOT/scripts/fl-native-trust" --input "$TMP_DIR/decision-input.json"

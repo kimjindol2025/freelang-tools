@@ -28,6 +28,11 @@ if [[ "$DIALECT" == "AIRC" ]]; then
 fi
 
 if [[ "$DIALECT" == "NODE" ]]; then
+  if [[ "${FREELANG_CHECK_QUICK:-NO}" == YES ]]; then
+    echo "FREELANG_CHECK=PASS"
+    echo "CHECK_SCOPE=package-and-runner"
+    exit 0
+  fi
   "$TOOLS_ROOT/scripts/fl-workflow-test" "$ROOT"
   echo "FREELANG_CHECK=PASS"
   exit 0

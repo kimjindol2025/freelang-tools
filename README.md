@@ -48,6 +48,9 @@ https://kimjindol2025.github.io/freelang-tools/
 fl-tools init .
 fl-tools start .
 fl-tools ready .
+fl-tools ai ready
+fl-tools ai verify
+fl-tools ai verify --deep
 fl-tools inspect .
 fl-tools review .
 fl-tools report .
@@ -88,6 +91,10 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools init [경로]` | `.freelang/worklog.md` 작업 기록 공간 초기화 (`fl-init`) |
 | `fl-tools start [경로]` | 프로젝트, 방언, runner, entrypoint, Git, 준비 상태 출력 (`fl-start`) |
 | `fl-tools ready [경로]` | AI 실행 전 의존성·runner·Git 준비 상태를 JSON으로 출력 (`fl-ready`) |
+| `fl-tools ai ready` | Codex용 자동 프로젝트 탐색·준비 JSON (`freelang.ai/v1`) |
+| `fl-tools ai verify` | 경량 native trust 검증과 다음 행동 JSON |
+| `fl-tools ai verify --deep` | 전체 테스트·review·workflow까지 포함한 검증 |
+| `fl-tools ai release` | 릴리즈 전 전체 검증과 승인 대기 판정 |
 | `fl-tools detect [경로]` | AFJ, FX, AIA, AIRC, Script, Front 자동 감지 (`fl-detect`) |
 | `fl-tools route [경로]` | 프로젝트별 실행·검사·테스트 경로 요약 (`fl-route`) |
 | `fl-tools inspect [경로]` | detect, route, doctor, status 통합 실행 (`fl-inspect`) |

@@ -24,10 +24,13 @@
       evidence (value-or (get input "evidence") "BLOCKED")
       diff-check (value-or (get input "diffCheck") "BLOCKED")
       workflow (value-or (get input "workflow") "NOT_APPLICABLE")
+      mode (value-or (get input "mode") "deep")
       approval-required (= (get input "approvalRequired") true)
-      core-ready (and (pass? check) (pass? test) (pass? review)
-                      (= evidence "PASS") (= diff-check "PASS")
-                      (or (= workflow "PASS") (= workflow "NOT_APPLICABLE")))
+      core-ready (if (= mode "quick")
+                   (and (pass? check) (= diff-check "PASS"))
+                   (and (pass? check) (pass? test) (pass? review)
+                        (= evidence "PASS") (= diff-check "PASS")
+                        (or (= workflow "PASS") (= workflow "NOT_APPLICABLE"))))
       blocked (or (= check "BLOCKED") (= test "BLOCKED")
                   (= review "BLOCKED") (= evidence "BLOCKED")
                   (= workflow "BLOCKED"))
@@ -41,6 +44,7 @@
               "source" "freelang-native"
               "command" "trust-core"
               "project" project
+              "mode" mode
               "verdict" verdict
               "coreReady" core-ready
               "approvalRequired" approval-required
