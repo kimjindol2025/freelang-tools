@@ -24,10 +24,14 @@ cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT INT TERM
 
 if [[ -f "$ROOT/package.json" && ! -d "$ROOT/node_modules" ]]; then
-  node - "$ROOT" "$RUN_WORKFLOWS" <<'NODE'
-const [root, runWorkflows] = process.argv.slice(2);
-console.log(JSON.stringify({schemaVersion:'freelang.workflow/v1',status:'BLOCKED',root,runWorkflows:runWorkflows||'NO',discovered:{packageScripts:[],workflowCommands:[],skippedWorkflowCommands:[]},results:[],reason:'node_modules-not-installed'},null,2));
-NODE
+  WORKFLOW_JSON="$TMP_DIR/workflow.json" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" node -e '
+const fs=require("fs"), value={schemaVersion:"freelang.workflow/v1",status:"BLOCKED",root:process.env.ROOT,runWorkflows:process.env.RUN_WORKFLOWS,discovered:{packageScripts:[],workflowCommands:[],skippedWorkflowCommands:[]},results:[]};
+fs.writeFileSync(process.env.WORKFLOW_JSON, JSON.stringify(value,null,2));
+console.log(JSON.stringify(value,null,2));
+'
+  if ! "$TOOLS_ROOT/scripts/fl-native-workflow" --input "$TMP_DIR/workflow.json" >/dev/null; then
+    echo "WORKFLOW_CONTRACT=BLOCKED" >&2
+  fi
   echo "WORKFLOW_TEST=BLOCKED" >&2
   exit 2
 fi
@@ -129,7 +133,12 @@ RESULTS_JSON="$(printf '%s\n' "${RESULT_LINES[@]:-}" | node -e '
 STATUS=PASS
 if [[ ${#RESULT_LINES[@]} -eq 0 ]]; then STATUS=NOT_APPLICABLE; fi
 [[ "$FAIL" -eq 0 ]] || STATUS=FAIL
-PLAN_JSON="$PLAN_JSON" RESULTS_JSON="$RESULTS_JSON" STATUS="$STATUS" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" \
-  node -e 'const p=JSON.parse(process.env.PLAN_JSON), r=JSON.parse(process.env.RESULTS_JSON); console.log(JSON.stringify({schemaVersion:"freelang.workflow/v1",status:process.env.STATUS,root:process.env.ROOT,runWorkflows:process.env.RUN_WORKFLOWS,discovered:{packageScripts:p.packageScripts,workflowCommands:p.workflowCommands,skippedWorkflowCommands:p.skippedWorkflowCommands},results:r},null,2));'
+WORKFLOW_JSON="$TMP_DIR/workflow.json"
+PLAN_JSON="$PLAN_JSON" RESULTS_JSON="$RESULTS_JSON" STATUS="$STATUS" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" WORKFLOW_JSON="$WORKFLOW_JSON" \
+  node -e 'const fs=require("fs"), p=JSON.parse(process.env.PLAN_JSON), r=JSON.parse(process.env.RESULTS_JSON); const value={schemaVersion:"freelang.workflow/v1",status:process.env.STATUS,root:process.env.ROOT,runWorkflows:process.env.RUN_WORKFLOWS,discovered:{packageScripts:p.packageScripts,workflowCommands:p.workflowCommands,skippedWorkflowCommands:p.skippedWorkflowCommands},results:r}; fs.writeFileSync(process.env.WORKFLOW_JSON, JSON.stringify(value,null,2)); console.log(JSON.stringify(value,null,2));'
+if ! "$TOOLS_ROOT/scripts/fl-native-workflow" --input "$WORKFLOW_JSON" >/dev/null; then
+  STATUS=BLOCKED
+  FAIL=1
+fi
 echo "WORKFLOW_TEST=$STATUS" >&2
 [[ "$STATUS" == FAIL ]] && exit 1 || exit 0

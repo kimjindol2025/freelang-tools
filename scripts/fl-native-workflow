@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+INPUT=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --input) INPUT="${2:?--input requires a JSON file}"; shift ;;
+    --help|-h) echo "사용법: fl-native-workflow --input 파일"; exit 0 ;;
+    *) echo "알 수 없는 옵션: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+PROBE="$TOOLS_ROOT/native/workflow-core.fl"
+if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
+  echo "WORKFLOW_CONTRACT=BLOCKED" >&2
+  exit 2
+fi
+OUTPUT="$(FL_TOOLS_WORKFLOW_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
+printf '%s\n' "$OUTPUT"
+node -e 'const x=JSON.parse(process.argv[1]); process.exit(x.schemaVersion === "freelang.workflow-contract/v1" && x.valid === true ? 0 : 1);' "$OUTPUT"
+echo "WORKFLOW_CONTRACT=PASS" >&2

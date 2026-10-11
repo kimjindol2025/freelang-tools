@@ -122,6 +122,8 @@ fl-tools review <project>
 Jest/Vitest 스크립트를 `fl-tools workflow-test`로 실행한다. 기본 `ai verify`는
 check와 diff 중심의 경량 관문만 실행한다. GitHub Actions는 `--workflows`로
 테스트성 `run` 단계만 허용 목록으로 실행하고 deploy/push 단계는 실행하지 않는다.
+외부 npm/Jest/Vitest 실행 결과의 최종 형식과 유효성은 `freelang.workflow/v1` 계약과
+`fl-tools native-workflow` FreeLang 검증기가 판정한다. 외부 런너는 어댑터일 뿐이다.
 
 출력 JSON의 `verdict`와 `decision.source`를 읽는다. `TRUSTED`만 안전한 읽기·수정
 작업의 기본 진입 상태로 보고, `TRUSTED_WITH_APPROVAL`은 배포·계약 변경 전 사용자

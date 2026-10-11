@@ -1,0 +1,14 @@
+;; Native workflow evidence contract tests.
+(load "../src/test/workflow.fl")
+(define pass-workflow
+  {"schemaVersion" "freelang.workflow/v1" "status" "PASS"
+   "root" "/tmp/example" "discovered" {}
+   "results" [{"kind" "package-script" "label" "test"
+                "command" "npm test" "exitCode" 0 "output" "PASS"}]})
+(deftest "valid workflow result passes" (is= true
+  (get (workflow-contract pass-workflow) "valid")))
+(deftest "workflow status is preserved" (is= "PASS"
+  (get (workflow-contract pass-workflow) "verdict")))
+(deftest "malformed workflow is blocked" (is= "BLOCKED"
+  (get (workflow-contract (assoc pass-workflow "results" [{"kind" "broken"}])) "verdict")))
+(run-tests)

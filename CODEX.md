@@ -47,6 +47,8 @@ init → inspect → check/test → review → report → deploy
 - `fl-tools workflow-test <path>`: 프로젝트가 선언한 `npm test`/`test:*`와 선택된 CI 테스트 단계를 실행한다.
   Node/TypeScript/MCP 프로젝트도 `NODE` 프로필로 감지하며, 의존성이 없으면 설치하지 않고 `BLOCKED`로 남긴다.
   CPU/시간/명령 수 제한을 기본 적용해 장시간 테스트가 서버를 점유하지 않도록 한다.
+- `fl-tools native-workflow --input <file>`: npm/Jest/Vitest 어댑터 결과를
+  `freelang.workflow/v1`로 검증하고 FreeLang 계약 판정을 반환한다.
 - `fl-tools native-trust --input <file>`: FreeLang native trust decision core를 직접 실행한다.
 - `fl-tools adapter list <path>`: AFJ, FX, AIA, Script, Front 런너 상태를 출력한다.
 - `fl-tools airc [path] <command>`: AIRC 프로젝트의 `airc.fl` CLI를 기존 v11 runner로 실행한다.

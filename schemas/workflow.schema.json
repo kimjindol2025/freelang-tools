@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/workflow/v1",
+  "title": "FreeLang external workflow evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "root", "runWorkflows", "discovered", "results"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.workflow/v1" },
+    "status": { "enum": ["PASS", "FAIL", "BLOCKED", "NOT_APPLICABLE"] },
+    "root": { "type": "string" },
+    "runWorkflows": { "enum": ["YES", "NO"] },
+    "discovered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageScripts", "workflowCommands", "skippedWorkflowCommands"],
+      "properties": {
+        "packageScripts": { "type": "array" },
+        "workflowCommands": { "type": "array" },
+        "skippedWorkflowCommands": { "type": "array" }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "label", "command", "exitCode", "output"],
+        "properties": {
+          "kind": { "type": "string" },
+          "label": { "type": "string" },
+          "command": { "type": "string" },
+          "exitCode": { "type": "integer" },
+          "output": { "type": "string" }
+        }
+      }
+    }
+  }
+}

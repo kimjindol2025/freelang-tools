@@ -1,0 +1,29 @@
+;; Native contract model for external project workflow results.
+(define workflow-statuses ["PASS" "FAIL" "BLOCKED" "NOT_APPLICABLE"])
+
+(defn valid-workflow-result [value]
+  (and (map? value)
+       (json_has value "kind") (json_has value "label")
+       (json_has value "command") (json_has value "exitCode")
+       (json_has value "output")
+       (string? (get value "kind")) (string? (get value "label"))
+       (string? (get value "command"))
+       (integer? (get value "exitCode"))
+       (string? (get value "output"))))
+
+(defn workflow-contract [value]
+  (let [base-valid (and (map? value)
+                        (= (get value "schemaVersion") "freelang.workflow/v1")
+                        (contains? workflow-statuses (get value "status"))
+                        (string? (get value "root"))
+                        (map? (get value "discovered"))
+                        (array? (get value "results")))
+        results (if base-valid (get value "results") [])
+        valid-results (filter valid-workflow-result results)
+        valid (and base-valid (= (length valid-results) (length results)))]
+    {"schemaVersion" "freelang.workflow-contract/v1"
+     "valid" valid
+     "status" (if valid (get value "status") "BLOCKED")
+     "verdict" (if valid (get value "status") "BLOCKED")
+     "result_count" (if (array? results) (length results) 0)
+     "diagnostic" (if valid "" "INVALID_WORKFLOW_RESULT")}))
