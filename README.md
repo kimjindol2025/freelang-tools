@@ -131,7 +131,8 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 
 ### npm 스크립트 대응
 
-저장소 안에서는 같은 기능을 npm 명령으로도 호출할 수 있다.
+저장소 안에서는 기존 npm 명령 구조를 그대로 사용할 수 있다. 다만 npm script의
+실제 진입점은 `fl-tools`이며, npm은 FreeLang 명령을 호출하는 호환 계층이다.
 
 ```bash
 npm run start
@@ -154,6 +155,10 @@ npm run doctor
 npm run release-check
 npm run test:deploy-fixture
 ```
+
+예를 들어 `npm run review`는 `./scripts/fl-tools review .`로 해석되고,
+`npm test`는 `./scripts/fl-tools test .`로 해석된다. 따라서 Codex가 기억하는
+npm 명령을 그대로 사용해도 실행 경로는 FreeLang 도구 체계를 따른다.
 
 `init`은 프로젝트의 `.freelang/worklog.md` 작업 기록 공간을 만든다.
 `inspect`는 감지·라우팅·건강검진·상태를 한 번에 출력하고, `report`는 테스트와

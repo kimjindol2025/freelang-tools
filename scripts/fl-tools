@@ -21,6 +21,9 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools native-core --input 파일  FreeLang native CLI decision core
   fl-tools adapter list      런너·어댑터 상태 확인
   fl-tools airc [경로] <명령> AIRC CLI 실행
+  fl-tools cli <파일>         FreeLang CLI 실행·증거 수집
+  fl-tools ci <파일>          FreeLang CI 경계 실행
+  fl-tools determinism <파일> FreeLang 결정성 검사
   fl-tools review [경로]     수정 내용 전체 검토
   fl-tools deploy [경로]     검토된 프로젝트 배포 계약 실행
   fl-tools deploy --internal [경로]  서버 내부 코딩용 배포 계약 실행
@@ -35,6 +38,7 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools release-check    릴리즈 준비 상태 검사
   fl-tools safe-push        원격 push 전 안전 검사
   fl-tools safety [명령]    안전정책 상태 조회·변경
+  fl-tools test-*           호스트 경계 회귀 테스트를 FreeLang 도구에서 실행
   fl-tools help             도움말
 EOF
 }
@@ -75,6 +79,27 @@ case "$command_name" in
     ;;
   airc)
     exec "$ROOT/scripts/fl-airc" "$@"
+    ;;
+  cli)
+    exec "$ROOT/scripts/fl-cli" "$@"
+    ;;
+  ci)
+    exec "$ROOT/scripts/fl-ci" "$@"
+    ;;
+  determinism)
+    exec "$ROOT/scripts/fl-determinism" "$@"
+    ;;
+  test-cli-contract)
+    exec "$ROOT/tests/cli/contract-test.sh" "$@"
+    ;;
+  test-cli-isolation)
+    exec "$ROOT/tests/cli/timeout-signal-test.sh" "$@"
+    ;;
+  test-effect-capability)
+    exec "$ROOT/tests/capability/effect-tape-probe.sh" "$@"
+    ;;
+  test-deploy-fixture)
+    exec "$ROOT/tests/deploy-fixture/run.sh" "$@"
     ;;
   review)
     exec "$ROOT/scripts/fl-review" "$@"
