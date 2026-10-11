@@ -1,0 +1,96 @@
+;; FreeLang-native final-result protocol validator.
+;; Host shell only passes paths/markers; contract semantics live here.
+
+(define allowed-statuses ["PASS" "FAIL" "ERROR" "BLOCKED" "NOT_RUN"])
+(define required-fields ["schema" "complete" "status" "exit_code"
+                         "expected_count" "actual_count" "missing_count"
+                         "excess_count" "invalid_count" "executed_count"
+                         "pass_count" "fail_count" "error_count"
+                         "blocked_count" "skipped_count" "diagnostic"])
+(define count-fields ["expected_count" "actual_count" "missing_count"
+                      "excess_count" "invalid_count" "executed_count"
+                      "pass_count" "fail_count" "error_count"
+                      "blocked_count" "skipped_count"])
+
+(defn has-all-fields? [value fields]
+  {:context "Check that a decoded report contains the required protocol fields"
+   :returns "boolean"}
+  (and (map? value)
+       (every? (fn [field] (json_has value field)) fields)))
+
+(defn valid-count? [value]
+  {:context "Accept only non-negative integer report counters"
+   :returns "boolean"}
+  (and (integer? value) (>= value 0)))
+
+(defn valid-count-fields? [value]
+  {:context "Validate every numeric field in the final report"
+   :returns "boolean"}
+  (every? (fn [field] (valid-count? (get value field))) count-fields))
+
+(defn expected-exit [status]
+  {:context "Map protocol status to its required process exit code"
+   :returns "integer"}
+  (case status
+    "PASS" 0
+    "FAIL" 1
+    "NOT_RUN" 3
+    2))
+
+(defn protocol-error [reason]
+  {:context "Emit a protocol error marker for the host boundary"
+   :returns "boolean"}
+  (println (str "PROTOCOL_ERROR=" reason))
+  false)
+
+(let [result-path (shell_env "FL_TOOLS_PROTOCOL_RESULT")
+      exit-marker (str-to-num (shell_env "FL_TOOLS_PROTOCOL_EXIT_MARKER"))
+      process-exit (str-to-num (shell_env "FL_TOOLS_PROTOCOL_PROCESS_EXIT"))
+      value (if (and (string? result-path) (file-exists result-path))
+              (json-parse (file-read result-path))
+              nil)
+      status (get value "status")
+      expected (expected-exit status)
+      valid (and (has-all-fields? value required-fields)
+                 (= (get value "schema") "freelang-tools/report/v1")
+                 (= (get value "complete") true)
+                 (contains? allowed-statuses status)
+                 (string? (get value "diagnostic"))
+                 (valid-count-fields? value)
+                 (= (get value "exit_code") expected)
+                 (= exit-marker expected)
+                 (= (get value "actual_count")
+                    (+ (get value "pass_count")
+                       (get value "fail_count")
+                       (get value "error_count")
+                       (get value "blocked_count")
+                       (get value "skipped_count")
+                       (get value "invalid_count")))
+                 (not (and (> (get value "missing_count") 0)
+                           (> (get value "excess_count") 0)))
+                 (if (= status "PASS")
+                   (and (>= (get value "executed_count") 1)
+                        (= (get value "fail_count") 0)
+                        (= (get value "error_count") 0)
+                        (= (get value "blocked_count") 0)
+                        (= (get value "invalid_count") 0)
+                        (= (get value "missing_count") 0)
+                        (= (get value "excess_count") 0))
+                   true)
+                 (if (= status "FAIL")
+                   (and (> (get value "fail_count") 0)
+                        (= (get value "error_count") 0)
+                        (= (get value "blocked_count") 0)
+                        (= (get value "invalid_count") 0)
+                        (= (get value "missing_count") 0)
+                        (= (get value "excess_count") 0))
+                   true)
+                 (if (= status "NOT_RUN")
+                   (= (get value "executed_count") 0)
+                   true))]
+  (if valid
+    (do
+      (println (str "PROTO_STATUS=" status))
+      (println (str "PROTO_EXIT_CODE=" expected))
+      (println (str "PROCESS_EXIT=" process-exit)))
+    (protocol-error "invalid-final-result")))

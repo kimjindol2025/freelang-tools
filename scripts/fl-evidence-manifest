@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+EVIDENCE_DIR="${1:-}"
+PROCESS_EXIT="${2:-2}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+
+if [[ -z "$EVIDENCE_DIR" || ! -d "$EVIDENCE_DIR" || ! -f "$RUNNER" ]]; then
+  exit 2
+fi
+
+FL_TOOLS_EVIDENCE_DIR="$EVIDENCE_DIR" \
+FL_TOOLS_EVIDENCE_PROCESS_EXIT="$PROCESS_EXIT" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/evidence-manifest.fl"

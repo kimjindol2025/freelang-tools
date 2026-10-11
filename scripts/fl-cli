@@ -15,7 +15,7 @@ RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}
 EVIDENCE_DIR="${FREELANG_CLI_EVIDENCE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/freelang-cli.XXXXXX")}" 
 mkdir -p "$EVIDENCE_DIR"
 
-trap 'exit_code=$?; trap - EXIT; node "$TOOLS_ROOT/scripts/fl-evidence-manifest.js" "$EVIDENCE_DIR" "$exit_code" >/dev/null 2>&1 || true; exit "$exit_code"' EXIT
+trap 'exit_code=$?; trap - EXIT; "$TOOLS_ROOT/scripts/fl-evidence-manifest" "$EVIDENCE_DIR" "$exit_code" >/dev/null 2>&1 || true; exit "$exit_code"' EXIT
 
 STDOUT_FILE="$EVIDENCE_DIR/stdout.log"
 STDERR_FILE="$EVIDENCE_DIR/stderr.log"
@@ -128,7 +128,7 @@ fi
 exit_marker="$(sed 's/^FREELANG_EXIT_CODE=//' "$exit_marker_lines")"
 
 set +e
-protocol_output="$(node "$TOOLS_ROOT/scripts/fl-protocol-check.js" "$FINAL_FILE" "$exit_marker" "$run_exit" 2>"$EVIDENCE_DIR/protocol.stderr.log")"
+protocol_output="$($TOOLS_ROOT/scripts/fl-protocol-check "$FINAL_FILE" "$exit_marker" "$run_exit" 2>"$EVIDENCE_DIR/protocol.stderr.log")"
 protocol_exit=$?
 set -e
 printf '%s\n' "$protocol_output" >"$EVIDENCE_DIR/protocol.stdout.log"

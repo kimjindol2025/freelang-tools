@@ -1,0 +1,59 @@
+;; FreeLang-native evidence manifest builder.
+;; Host shell only supplies the evidence directory and process exit code.
+
+(defn meta-value [metadata key]
+  {:context "Read one KEY=value field from process metadata"
+   :returns "metadata value or nil"
+   :effects []}
+  (let [prefix (str key "=")
+        line (first (filter (fn [entry] (str-starts-with entry prefix))
+                            (str-split metadata "\n")))]
+    (if (string? line)
+      (str-slice line (length prefix))
+      nil)))
+
+(defn number-or-nil [value]
+  {:context "Convert an optional numeric metadata field without inventing a value"
+   :returns "integer or nil"
+   :effects []}
+  (if (and (string? value) (not= value ""))
+    (str-to-num value)
+    nil))
+
+(let [evidence-dir (shell_env "FL_TOOLS_EVIDENCE_DIR")
+      process-exit (str-to-num (shell_env "FL_TOOLS_EVIDENCE_PROCESS_EXIT"))
+      metadata-path (str evidence-dir "/process.meta")
+      result-path (str evidence-dir "/final-result.json")
+      metadata (if (file-exists metadata-path) (file-read metadata-path) "")
+      result (if (file-exists result-path) (json-parse (file-read result-path)) nil)
+      files (if (file-exists evidence-dir)
+              (sort (filter
+                      (fn [name] (file_is_file (str evidence-dir "/" name)))
+                      (dir-list evidence-dir)))
+              [])
+      manifest {"schema" "freelang-tools/evidence-manifest/v1"
+                "complete" true
+                "evidence_dir" evidence-dir
+                "process_exit" process-exit
+                "final_status" (get result "status")
+                "final_exit_code" (get result "exit_code")
+                "result_file" (if (contains? files "final-result.json") "final-result.json" nil)
+                "raw_stdout" (if (contains? files "stdout.log") "stdout.log" nil)
+                "raw_stderr" (if (contains? files "stderr.log") "stderr.log" nil)
+                "metadata_file" (if (contains? files "process.meta") "process.meta" nil)
+                "files" files
+                "tool_head" (meta-value metadata "TOOL_HEAD")
+                "runtime" (meta-value metadata "RUNTIME")
+                "runtime_commit" (meta-value metadata "RUNTIME_COMMIT")
+                "target" (meta-value metadata "TARGET")
+                "check_exit" (number-or-nil (meta-value metadata "CHECK_EXIT"))
+                "run_exit" (number-or-nil (meta-value metadata "RUN_EXIT"))
+                "cause" (meta-value metadata "CAUSE")
+                "check_cleanup" (meta-value metadata "CHECK_CLEANUP")
+                "check_residual" (number-or-nil (meta-value metadata "CHECK_RESIDUAL"))
+                "run_cleanup" (meta-value metadata "RUN_CLEANUP")
+                "run_residual" (number-or-nil (meta-value metadata "RUN_RESIDUAL"))}
+      output-path (str evidence-dir "/evidence-manifest.json")]
+  (if (and (string? evidence-dir) (file-exists evidence-dir))
+    (file-write output-path (str (json-stringify manifest) "\n"))
+    nil))
