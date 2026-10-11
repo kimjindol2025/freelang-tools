@@ -6,7 +6,7 @@ TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 
 if [[ ! -d "$TARGET" ]]; then
-  TARGET="$TARGET" node -e 'console.log(JSON.stringify({schemaVersion:"freelang.ready/v1",status:"BLOCKED",reason:"directory-not-found",root:process.env.TARGET}))'
+  TARGET="$TARGET" node -e 'console.log(JSON.stringify({schemaVersion:"freelang.ready/v1",status:"BLOCKED",project:{name:"unknown",root:process.env.TARGET,dialect:"UNKNOWN",family:"UNKNOWN",runner:"none"},git:{state:"not-a-repository",branch:"none",commit:"none"},dependencies:{runnerReady:false},next:"resolve-readiness-reason-and-rerun",reason:"directory-not-found"},null,2))'
   exit 2
 fi
 

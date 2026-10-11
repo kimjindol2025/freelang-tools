@@ -102,7 +102,7 @@ if (e.PERSIST === 'YES' && root && !root.startsWith('unknown')) {
     fs.mkdirSync(evidenceDir, {recursive:true});
     fs.writeFileSync(path.join(evidenceDir, 'latest.json'), JSON.stringify(result, null, 2) + '\n');
     fs.writeFileSync(path.join(dir, 'last-result.json'), JSON.stringify(result, null, 2) + '\n');
-    const handoff = {schemaVersion:'freelang.handoff/v1', generatedAt:new Date().toISOString(), project:result.project, git:input.git || {branch:'none',commit:'none',state:'unknown'}, verification:{report:canProceed ? 'PASS' : 'FAIL', reportExitCode:Number(e.CODE)}, nextCommands:[`fl-tools ai ready ${root}`, `fl-tools ai verify ${root}`], report:JSON.stringify({status, verdict, next:result.next})};
+    const handoff = {schemaVersion:'freelang.handoff/v1', generatedAt:new Date().toISOString(), project:result.project, git:input.git || {branch:'none',commit:'none',state:'not-a-repository'}, verification:{report:canProceed ? 'PASS' : 'FAIL', reportExitCode:Number(e.CODE)}, nextCommands:[`fl-tools ai ready ${root}`, `fl-tools ai verify ${root}`], report:JSON.stringify({status, verdict, next:result.next})};
     fs.writeFileSync(path.join(dir, 'handoff.json'), JSON.stringify(handoff, null, 2) + '\n');
     fs.writeFileSync(path.join(dir, 'handoff.md'), `# FreeLang Handoff\n\n- Project: ${result.project.name}\n- Verdict: ${verdict}\n- Next: ${result.next}\n`);
   } catch (error) {

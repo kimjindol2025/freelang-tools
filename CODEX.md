@@ -49,6 +49,7 @@ init → inspect → check/test → review → report → deploy
   CPU/시간/명령 수 제한을 기본 적용해 장시간 테스트가 서버를 점유하지 않도록 한다.
 - `fl-tools native-workflow --input <file>`: npm/Jest/Vitest 어댑터 결과를
   `freelang.workflow/v1`로 검증하고 FreeLang 계약 판정을 반환한다.
+- 모든 계약의 정본 목록과 상태·종료코드는 `docs/PROTOCOLS.md`를 따른다.
 - `fl-tools native-trust --input <file>`: FreeLang native trust decision core를 직접 실행한다.
 - `fl-tools adapter list <path>`: AFJ, FX, AIA, Script, Front 런너 상태를 출력한다.
 - `fl-tools airc [path] <command>`: AIRC 프로젝트의 `airc.fl` CLI를 기존 v11 runner로 실행한다.

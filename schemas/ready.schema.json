@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.dev/schemas/ready/v1",
+  "title": "FreeLang AI preflight result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "project", "git", "dependencies", "next", "reason"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.ready/v1" },
+    "status": { "enum": ["READY", "READY_WITH_CHANGES", "BLOCKED"] },
+    "project": {
+      "type": "object",
+      "required": ["name", "root", "dialect", "family", "runner"],
+      "properties": {
+        "name": { "type": "string" },
+        "root": { "type": "string" },
+        "dialect": { "type": "string" },
+        "family": { "type": "string" },
+        "runner": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "git": {
+      "type": "object",
+      "required": ["state", "branch", "commit"],
+      "properties": {
+        "state": { "enum": ["clean", "dirty", "not-a-repository"] },
+        "branch": { "type": "string" },
+        "commit": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "dependencies": {
+      "type": "object",
+      "required": ["runnerReady"],
+      "properties": { "runnerReady": { "type": "boolean" } },
+      "additionalProperties": false
+    },
+    "next": { "type": "string" },
+    "reason": { "type": "string" }
+  }
+}
