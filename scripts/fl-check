@@ -27,6 +27,12 @@ if [[ "$DIALECT" == "AIRC" ]]; then
   exit 0
 fi
 
+if [[ "$DIALECT" == "NODE" ]]; then
+  "$TOOLS_ROOT/scripts/fl-workflow-test" "$ROOT"
+  echo "FREELANG_CHECK=PASS"
+  exit 0
+fi
+
 if [[ "$DIALECT" != "AFJ" ]]; then
   echo "FREELANG_CHECK=DEFERRED"
   echo "DIALECT=$DIALECT"

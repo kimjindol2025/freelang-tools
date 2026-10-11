@@ -23,16 +23,26 @@ TMP_DIR="$(mktemp -d)"
 cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT INT TERM
 
+if [[ -f "$ROOT/package.json" && ! -d "$ROOT/node_modules" ]]; then
+  node - "$ROOT" "$RUN_WORKFLOWS" <<'NODE'
+const [root, runWorkflows] = process.argv.slice(2);
+console.log(JSON.stringify({schemaVersion:'freelang.workflow/v1',status:'BLOCKED',root,runWorkflows:runWorkflows||'NO',discovered:{packageScripts:[],workflowCommands:[],skippedWorkflowCommands:[]},results:[],reason:'node_modules-not-installed'},null,2));
+NODE
+  echo "WORKFLOW_TEST=BLOCKED" >&2
+  exit 2
+fi
+
 node - "$ROOT" "$RUN_WORKFLOWS" "$TMP_DIR/plan.json" <<'NODE'
 const fs = require('fs'), path = require('path');
 const [root, runWorkflows, out] = process.argv.slice(2);
 const plan = { packageScripts: [], workflowCommands: [], skippedWorkflowCommands: [] };
 const testName = /^(test|test:|jest|vitest)/i;
+const skippedScript = /(^test$)|(^|:)(with-build|watch|ci(?::|$)|coverage|prepare|integration|verbose|focused|local|changed)/i;
 const unsafe = /(deploy|publish|release|push|checkout|docker|ssh|pm2)/i;
 try {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   for (const [name, command] of Object.entries(pkg.scripts || {})) {
-    if (testName.test(name) && !/fl-tools|freelang-tools/.test(command)) plan.packageScripts.push({name, command});
+    if (testName.test(name) && !skippedScript.test(name) && !/fl-tools|freelang-tools/.test(command)) plan.packageScripts.push({name, command});
   }
 } catch (_) {}
 const workflowDir = path.join(root, '.github', 'workflows');
@@ -43,10 +53,13 @@ if (fs.existsSync(workflowDir)) {
     for (const line of lines) {
       const match = line.match(/^\s*run:\s*(.+?)\s*$/);
       if (!match) continue;
-      const command = match[1].replace(/^['"]|['"]$/g, '');
+      const raw = match[1].trim();
+      const command = ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"')))
+        ? raw.slice(1, -1)
+        : raw;
       if (!/(test|jest|vitest|check|lint)/i.test(command)) continue;
       const item = {file: path.relative(root, full), command};
-      if (unsafe.test(command) || /\$\{\{/.test(command)) plan.skippedWorkflowCommands.push(item);
+      if (unsafe.test(command) || /\$\{\{|\$\{[A-Z_][A-Z0-9_]*\}/.test(command)) plan.skippedWorkflowCommands.push(item);
       else if (runWorkflows === 'YES') plan.workflowCommands.push(item);
       else plan.skippedWorkflowCommands.push(item);
     }

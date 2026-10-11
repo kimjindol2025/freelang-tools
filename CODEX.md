@@ -24,6 +24,7 @@ init → inspect → check/test → review → report → deploy
   `native/trust-core.fl`이 계산하며 `decision.source=freelang-native`를 요구한다.
 - `fl-tools ai start|work|verify|release <path>`: AI protocol `freelang.ai/v1`의 표준 작업 단계다.
 - `fl-tools workflow-test <path>`: 프로젝트가 선언한 `npm test`/`test:*`와 선택된 CI 테스트 단계를 실행한다.
+  Node/TypeScript/MCP 프로젝트도 `NODE` 프로필로 감지하며, 의존성이 없으면 설치하지 않고 `BLOCKED`로 남긴다.
 - `fl-tools native-trust --input <file>`: FreeLang native trust decision core를 직접 실행한다.
 - `fl-tools adapter list <path>`: AFJ, FX, AIA, Script, Front 런너 상태를 출력한다.
 - `fl-tools airc [path] <command>`: AIRC 프로젝트의 `airc.fl` CLI를 기존 v11 runner로 실행한다.

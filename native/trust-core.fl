@@ -29,7 +29,8 @@
                       (= evidence "PASS") (= diff-check "PASS")
                       (or (= workflow "PASS") (= workflow "NOT_APPLICABLE")))
       blocked (or (= check "BLOCKED") (= test "BLOCKED")
-                  (= review "BLOCKED") (= evidence "BLOCKED"))
+                  (= review "BLOCKED") (= evidence "BLOCKED")
+                  (= workflow "BLOCKED"))
       verdict (if core-ready
                 (if (or approval-required (= review "PASS_WITH_APPROVAL"))
                   "TRUSTED_WITH_APPROVAL"

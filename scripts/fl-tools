@@ -135,6 +135,11 @@ case "$command_name" in
     exec "$ROOT/scripts/fl-deploy" "$@"
     ;;
   test)
+    TARGET="${1:-.}"
+    DIALECT="$($ROOT/scripts/fl-detect "$TARGET" | sed -n 's/^DIALECT=//p')"
+    if [[ "$DIALECT" == "NODE" ]]; then
+      exec "$ROOT/scripts/fl-workflow-test" "$@"
+    fi
     exec "$ROOT/scripts/fl-test" "$@"
     ;;
   check)

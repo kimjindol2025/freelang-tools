@@ -55,4 +55,6 @@ const result = {
   trust
 };
 process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+process.exit(result.verdict === 'TRUSTED' || result.verdict === 'TRUSTED_WITH_APPROVAL' ? 0 :
+  result.verdict === 'BLOCKED' ? 2 : 1);
 NODE

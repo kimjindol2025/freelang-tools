@@ -34,7 +34,7 @@ run_gate() {
   local output="$TMP_DIR/$name.out"
   local code=0
   set +e
-  timeout --foreground "${FREELANG_TRUST_TIMEOUT:-120}" "$@" >"$output" 2>&1
+  timeout "${FREELANG_TRUST_TIMEOUT:-120}" "$@" >"$output" 2>&1
   code=$?
   set -e
   printf '%s' "$code" > "$TMP_DIR/$name.code"
@@ -46,7 +46,11 @@ DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 
 run_gate check "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
-run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+if [[ "$DIALECT" == "NODE" ]]; then
+  run_gate test "$TOOLS_ROOT/scripts/fl-workflow-test" "$ROOT"
+else
+  run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+fi
 run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
 run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
 run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
@@ -60,13 +64,17 @@ CAPABILITY_CODE="$(cat "$TMP_DIR/capabilities.code")"
 WORKFLOW_CODE="$(cat "$TMP_DIR/workflow.code")"
 CHECK_STATUS=FAIL; TEST_STATUS=FAIL; REVIEW_STATUS=FAIL; EVIDENCE_STATUS=FAIL; DIFF_STATUS=FAIL
 WORKFLOW_STATUS=NOT_APPLICABLE
-[[ "$CHECK_CODE" -eq 0 ]] && CHECK_STATUS=PASS
-[[ "$TEST_CODE" -eq 0 ]] && TEST_STATUS=PASS
-grep -q '^REVIEW=PASS$' "$TMP_DIR/review.out" && REVIEW_STATUS=PASS
-grep -q '^REVIEW=PASS_WITH_APPROVAL$' "$TMP_DIR/review.out" && REVIEW_STATUS=PASS_WITH_APPROVAL
-[[ "$EVIDENCE_CODE" -eq 0 ]] && EVIDENCE_STATUS=PASS
-grep -q '^DIFF_CHECK=PASS$' "$TMP_DIR/review.out" && DIFF_STATUS=PASS
-grep -q '^WORKFLOW_TEST=PASS$' "$TMP_DIR/workflow.out" && WORKFLOW_STATUS=PASS
+if [[ "$CHECK_CODE" -eq 0 ]]; then CHECK_STATUS=PASS; fi
+if [[ "$TEST_CODE" -eq 0 ]]; then TEST_STATUS=PASS; fi
+if [[ "$CHECK_CODE" -eq 2 ]]; then CHECK_STATUS=BLOCKED; fi
+if [[ "$TEST_CODE" -eq 2 ]]; then TEST_STATUS=BLOCKED; fi
+if grep -q '^REVIEW=PASS$' "$TMP_DIR/review.out"; then REVIEW_STATUS=PASS; fi
+if grep -q '^REVIEW=PASS_WITH_APPROVAL$' "$TMP_DIR/review.out"; then REVIEW_STATUS=PASS_WITH_APPROVAL; fi
+if [[ "$EVIDENCE_CODE" -eq 0 ]]; then EVIDENCE_STATUS=PASS; fi
+if [[ "$EVIDENCE_CODE" -eq 2 ]]; then EVIDENCE_STATUS=BLOCKED; fi
+if grep -q '^DIFF_CHECK=PASS$' "$TMP_DIR/review.out"; then DIFF_STATUS=PASS; fi
+if grep -q '^WORKFLOW_TEST=PASS$' "$TMP_DIR/workflow.out"; then WORKFLOW_STATUS=PASS; fi
+if grep -q '^WORKFLOW_TEST=BLOCKED$' "$TMP_DIR/workflow.out"; then WORKFLOW_STATUS=BLOCKED; fi
 
 CAPABILITY_STATUS=UNKNOWN
 if grep -q '^CAPABILITIES=BLOCKED$' "$TMP_DIR/capabilities.out"; then
@@ -86,7 +94,7 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   GIT_BRANCH="$(git -C "$ROOT" branch --show-current)"
   GIT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
   GIT_STATE=clean
-  [[ -n "$(git -C "$ROOT" status --short)" ]] && GIT_STATE=dirty
+  if [[ -n "$(git -C "$ROOT" status --short)" ]]; then GIT_STATE=dirty; fi
 fi
 
 LIMITATIONS_JSON='[]'

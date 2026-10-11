@@ -12,6 +12,7 @@
     "FRONT" "FreeLang/Front"
     "FX" "FreeLang/FX"
     "AIA" "AIA/native"
+    "NODE" "Node/project-workflow"
     "UNKNOWN"))
 
 (defn value-or [value fallback]
