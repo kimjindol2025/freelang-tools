@@ -11,7 +11,7 @@ fi
 shift || true
 TIMEOUT_SECONDS="${1:-${FREELANG_CLI_TIMEOUT_SECONDS:-8}}"
 TARGET="$(readlink -f -- "$TARGET_INPUT")"
-RUNNER="${FREELANG_AFJ_RUNNER:-/root/freelang-surface-v0-clean-ek3qo2/v11/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
 EVIDENCE_DIR="${FREELANG_CLI_EVIDENCE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/freelang-cli.XXXXXX")}" 
 mkdir -p "$EVIDENCE_DIR"
 
