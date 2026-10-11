@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET="${1:-.}"
+
+if [[ ! -d "$TARGET" ]]; then
+  TARGET="$TARGET" node -e 'console.log(JSON.stringify({schemaVersion:"freelang.ready/v1",status:"BLOCKED",reason:"directory-not-found",root:process.env.TARGET}))'
+  exit 2
+fi
+
+ROOT="$(cd -- "$TARGET" && pwd -P)"
+DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT" 2>/dev/null || true)"
+PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')"
+DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
+FAMILY="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^FAMILY=//p')"
+RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
+
+GIT_STATE=not-a-repository
+BRANCH=none
+COMMIT=none
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  BRANCH="$(git -C "$ROOT" branch --show-current)"
+  COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+  GIT_STATE=clean
+  if [[ -n "$(git -C "$ROOT" status --short)" ]]; then GIT_STATE=dirty; fi
+fi
+
+RUNNER_READY=false
+if [[ "$DIALECT" == "NODE" ]]; then
+  if [[ -f "$ROOT/package.json" && -d "$ROOT/node_modules" ]]; then RUNNER_READY=true; fi
+elif [[ "$RUNNER" != "none" && -f "$RUNNER" ]]; then
+  RUNNER_READY=true
+fi
+
+STATUS=READY
+REASON=ready-for-ai
+if [[ "$DIALECT" == UNKNOWN || "$DIALECT" == "" ]]; then
+  STATUS=BLOCKED
+  REASON=unknown-project-dialect
+elif [[ "$GIT_STATE" == not-a-repository ]]; then
+  STATUS=BLOCKED
+  REASON=not-a-git-project
+elif [[ "$RUNNER_READY" != true ]]; then
+  STATUS=BLOCKED
+  REASON=runner-or-dependencies-not-ready
+elif [[ "$GIT_STATE" == dirty ]]; then
+  STATUS=READY_WITH_CHANGES
+  REASON=dirty-worktree-review-before-deploy
+fi
+
+PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" FAMILY="$FAMILY" RUNNER="$RUNNER" \
+GIT_STATE="$GIT_STATE" BRANCH="$BRANCH" COMMIT="$COMMIT" STATUS="$STATUS" REASON="$REASON" \
+RUNNER_READY="$RUNNER_READY" node <<'NODE'
+const e = process.env;
+const status = e.STATUS;
+console.log(JSON.stringify({
+  schemaVersion: 'freelang.ready/v1',
+  status,
+  project: {name:e.PROJECT, root:e.ROOT, dialect:e.DIALECT, family:e.FAMILY, runner:e.RUNNER},
+  git: {state:e.GIT_STATE, branch:e.BRANCH, commit:e.COMMIT},
+  dependencies: {runnerReady:e.RUNNER_READY === 'true'},
+  next: status === 'BLOCKED' ? 'resolve-readiness-reason-and-rerun' : 'fl-tools ai verify ' + e.ROOT,
+  reason: e.REASON
+}, null, 2));
+NODE
+
+if [[ "$STATUS" == BLOCKED ]]; then exit 2; fi
+exit 0

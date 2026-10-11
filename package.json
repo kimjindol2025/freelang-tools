@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "start": "./scripts/fl-tools start .",
+    "ready": "./scripts/fl-tools ready .",
     "init": "./scripts/fl-tools init .",
     "inspect": "./scripts/fl-tools inspect .",
     "report": "./scripts/fl-tools report .",

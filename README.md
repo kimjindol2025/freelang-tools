@@ -47,6 +47,7 @@ https://kimjindol2025.github.io/freelang-tools/
 ```bash
 fl-tools init .
 fl-tools start .
+fl-tools ready .
 fl-tools inspect .
 fl-tools review .
 fl-tools report .
@@ -86,6 +87,7 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | --- | --- |
 | `fl-tools init [경로]` | `.freelang/worklog.md` 작업 기록 공간 초기화 (`fl-init`) |
 | `fl-tools start [경로]` | 프로젝트, 방언, runner, entrypoint, Git, 준비 상태 출력 (`fl-start`) |
+| `fl-tools ready [경로]` | AI 실행 전 의존성·runner·Git 준비 상태를 JSON으로 출력 (`fl-ready`) |
 | `fl-tools detect [경로]` | AFJ, FX, AIA, AIRC, Script, Front 자동 감지 (`fl-detect`) |
 | `fl-tools route [경로]` | 프로젝트별 실행·검사·테스트 경로 요약 (`fl-route`) |
 | `fl-tools inspect [경로]` | detect, route, doctor, status 통합 실행 (`fl-inspect`) |
@@ -167,6 +169,9 @@ npm run test:deploy-fixture
 npm 명령을 그대로 사용해도 실행 경로는 FreeLang 도구 체계를 따른다.
 
 `init`은 프로젝트의 `.freelang/worklog.md` 작업 기록 공간을 만든다.
+`ready`는 설치·빌드·테스트를 실행하지 않는 읽기 전용 사전 점검이다. 통과하면
+출력된 `next` 명령으로 AI 검증을 이어갈 수 있으며, `READY_WITH_CHANGES`는
+dirty worktree가 있다는 뜻이지 trust 통과를 의미하지 않는다.
 `inspect`는 감지·라우팅·건강검진·상태를 한 번에 출력하고, `report`는 테스트와
 리뷰 결과를 완료 보고서 형식으로 출력한다. `handoff`는 다음 작업자를 위한
 `.freelang/handoff.md`와 기계 검증용 `.freelang/handoff.json`을 만들고,
@@ -231,6 +236,10 @@ ln -s "$PWD/scripts/fl-test" "$HOME/.local/bin/fl-test"
 
 `fl-tools`는 계열을 강제로 통합하지 않는다. AFJ, FX, AIA, AIRC, Script, Front를
 판별하고 현재 연결된 어댑터가 없으면 `BLOCKED` 또는 `UNRESOLVED`로 보고한다.
+
+Node/MCP 프로젝트는 `NODE/MCP` 프로파일로 감지한다. workflow 테스트는 기본적으로
+명령당 45초 wall-clock, 30초 CPU, 전체 180초, 최대 6개 명령으로 제한된다.
+배포·릴리스·push 명령은 자동 실행하지 않는다.
 
 ## 운영 명령
 
