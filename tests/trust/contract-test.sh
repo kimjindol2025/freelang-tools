@@ -20,10 +20,11 @@ if (!Array.isArray(value.evidence.commands) || !Array.isArray(value.limitations)
 console.log('TRUST_CONTRACT=PASS');
 NODE
 
-AI_JSON="$("$ROOT/scripts/fl-tools" ai start "$ROOT")"
+AI_JSON="$("$ROOT/scripts/fl-tools" ai ready "$ROOT")"
 node - "$AI_JSON" <<'NODE'
 const value = JSON.parse(process.argv[2]);
-if (value.protocol !== 'freelang.ai/v1' || value.action !== 'start' ||
-    value.decision?.source !== 'freelang-native' || value.execution !== 'not-run') process.exit(1);
+if (value.protocol !== 'freelang.ai/v1' || value.action !== 'ready' ||
+    value.status !== 'READY' || value.canProceed !== true ||
+    value.next !== 'work' || value.execution !== 'not-run') process.exit(1);
 console.log('AI_PROTOCOL=PASS');
 NODE
