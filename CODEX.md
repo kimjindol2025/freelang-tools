@@ -13,6 +13,9 @@
 fl-tools ai ready → 작업 → fl-tools ai verify → next
 ```
 
+서버에 설치된 Codex 세션은 `fl-tools ai run`으로 준비 확인과 경량 검증을
+한 번에 실행할 수 있다. 릴리즈 전에는 `fl-tools ai run --deep`를 사용한다.
+
 1. 시작 전 `fl-tools ai ready`를 실행한다.
 2. JSON의 `canProceed`가 `true`일 때만 작업을 계속한다.
 3. 수정 후 `fl-tools ai verify`를 실행한다.

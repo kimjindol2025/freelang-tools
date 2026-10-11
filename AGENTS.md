@@ -94,6 +94,9 @@ fl-tools ai release
 4. 릴리즈·배포 전에는 `fl-tools ai verify --deep`와 사용자 승인을 요구한다.
 5. 결과의 `next`, `.freelang/evidence/latest.json`, `.freelang/handoff.json`을 확인한다.
 
+서버에서 준비 확인과 기본 검증을 한 번에 실행할 때는 `fl-tools ai run`을
+사용한다. 릴리즈 전에는 `fl-tools ai run --deep`를 사용한다.
+
 기존 명령은 내부 호환용이며 Codex의 기본 호출 경로가 아니다.
 
 ```bash

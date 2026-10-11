@@ -9,7 +9,7 @@ DEEP=NO
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    ready|start|work|verify|release|trust|review) ACTION="$1" ;;
+    ready|start|work|run|verify|release|trust|review) ACTION="$1" ;;
     --deep) DEEP=YES ;;
     --help|-h) echo "사용법: fl-tools ai [ready|work|verify|release] [--deep] [경로]"; exit 0 ;;
     *) TARGET="$1" ;;
@@ -34,6 +34,28 @@ if [[ "$ACTION" == ready || "$ACTION" == start || "$ACTION" == work ]]; then
   CODE=$?
   set -e
   [[ "$ACTION" == work ]] && PERSIST=YES
+elif [[ "$ACTION" == run ]]; then
+  READY_INPUT="$TMP_DIR/ready.json"
+  set +e
+  "$TOOLS_ROOT/scripts/fl-ready" "$TARGET" >"$READY_INPUT" 2>"$TMP_DIR/ready.err"
+  READY_CODE=$?
+  set -e
+  if [[ "$READY_CODE" -ne 0 ]]; then
+    INPUT="$READY_INPUT"
+    CODE="$READY_CODE"
+  else
+    MODE_ARG=--quick
+    [[ "$DEEP" == YES ]] && MODE_ARG=""
+    set +e
+    if [[ -n "$MODE_ARG" ]]; then
+      "$TOOLS_ROOT/scripts/fl-trust" --quick "$TARGET" >"$INPUT" 2>"$TMP_DIR/input.err"
+    else
+      "$TOOLS_ROOT/scripts/fl-trust" "$TARGET" >"$INPUT" 2>"$TMP_DIR/input.err"
+    fi
+    CODE=$?
+    set -e
+  fi
+  PERSIST=YES
 else
   MODE_ARG=--quick
   if [[ "$DEEP" == YES || "$ACTION" == release ]]; then MODE_ARG=""; fi
@@ -87,9 +109,9 @@ const result = {
   project: {root, name: input.project?.name || path.basename(root), dialect: input.project?.dialect || input.dialect || 'UNKNOWN', runner: input.project?.runner || input.runner || 'none'},
   summary,
   approvalRequired: input.approvalRequired === true,
-  execution: 'not-run',
+  execution: e.ACTION === 'run' ? (e.DEEP === 'YES' ? 'deep' : 'quick') : 'not-run',
   evidence: {latest: '.freelang/evidence/latest.json', handoff: '.freelang/handoff.json'},
-  limitations: [...(input.limitations || []), ...(isReadyInput ? ['full trust verification not run'] : []), ...(e.ACTION === 'verify' && e.DEEP !== 'YES' ? ['quick verification only; run fl-tools ai verify --deep before release'] : [])],
+  limitations: [...(input.limitations || []), ...(isReadyInput ? ['full trust verification not run'] : []), ...((e.ACTION === 'verify' || e.ACTION === 'run') && e.DEEP !== 'YES' ? ['quick verification only; run fl-tools ai run --deep before release'] : [])],
   decision: input.decision || {source:'freelang-ready', command:'preflight'},
   trust: isReadyInput ? {mode:'preflight', fullVerification:'not-run'} : input,
   trustExitCode: Number(e.CODE)

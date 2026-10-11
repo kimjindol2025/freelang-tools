@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+INSTALL_ROOT="${FREELANG_TOOLS_HOME:-${HOME:-}/.local/share/freelang-tools}"
+BIN_DIR="${FREELANG_TOOLS_BIN:-${HOME:-}/.local/bin}"
+
+usage() { echo "사용법: fl-tools server [install|status]"; }
+
+status() {
+  local ready=1 path_configured=false
+  [[ -x "$BIN_DIR/fl-tools" ]] || ready=0
+  [[ -x "$BIN_DIR/fl-test" ]] || ready=0
+  case ":${PATH:-}:" in *":$BIN_DIR:"*) path_configured=true ;; esac
+  node - "$ready" "$path_configured" "$INSTALL_ROOT" "$BIN_DIR" "$TOOLS_ROOT" <<'NODE'
+const [ready, pathConfigured, installRoot, binDir, toolsRoot] = process.argv.slice(2);
+const result = {
+  protocol: 'freelang.server/v1',
+  status: ready === '1' && pathConfigured === 'true' ? 'READY' : 'NOT_READY',
+  installRoot, binDir, toolsRoot,
+  commands: { flTools: `${binDir}/fl-tools`, flTest: `${binDir}/fl-test` },
+  pathConfigured: pathConfigured === 'true',
+  next: ready === '1' && pathConfigured === 'true' ? 'fl-tools ai run' : 'fl-tools server install'
+};
+process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+process.exit(result.status === 'READY' ? 0 : 1);
+NODE
+}
+
+install() {
+  if [[ "$TOOLS_ROOT" == "$INSTALL_ROOT/current" ]]; then
+    mkdir -p "$BIN_DIR"
+    ln -sfn "$TOOLS_ROOT/scripts/fl-tools" "$BIN_DIR/fl-tools"
+    ln -sfn "$TOOLS_ROOT/scripts/fl-test" "$BIN_DIR/fl-test"
+  else
+    "$TOOLS_ROOT/install.sh"
+  fi
+  status
+}
+
+case "${1:-status}" in
+  install) install ;;
+  status) status ;;
+  help|-h|--help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

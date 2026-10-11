@@ -51,6 +51,10 @@ fl-tools ready .
 fl-tools ai ready
 fl-tools ai verify
 fl-tools ai verify --deep
+fl-tools ai run
+fl-tools ai run --deep
+fl-tools server install
+fl-tools server status
 fl-tools inspect .
 fl-tools review .
 fl-tools report .
@@ -94,7 +98,11 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools ai ready` | Codex용 자동 프로젝트 탐색·준비 JSON (`freelang.ai/v1`) |
 | `fl-tools ai verify` | 경량 native trust 검증과 다음 행동 JSON |
 | `fl-tools ai verify --deep` | 전체 테스트·review·workflow까지 포함한 검증 |
+| `fl-tools ai run` | 준비 확인 후 경량 검증까지 한 번에 실행 |
+| `fl-tools ai run --deep` | 준비 확인 후 전체 신뢰 관문 실행 |
 | `fl-tools ai release` | 릴리즈 전 전체 검증과 승인 대기 판정 |
+| `fl-tools server install` | 서버 공용 경로에 도구 설치·연결 |
+| `fl-tools server status` | 서버 설치·PATH 상태 확인 |
 | `fl-tools detect [경로]` | AFJ, FX, AIA, AIRC, Script, Front 자동 감지 (`fl-detect`) |
 | `fl-tools route [경로]` | 프로젝트별 실행·검사·테스트 경로 요약 (`fl-route`) |
 | `fl-tools inspect [경로]` | detect, route, doctor, status 통합 실행 (`fl-inspect`) |

@@ -19,7 +19,8 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools handoff --verify [경로]  JSON schema·stale commit 검증
   fl-tools evidence --json  검증 증거를 JSON으로 출력
   fl-tools trust [경로]      실제 관문을 실행한 AI 사용 신뢰 판정(JSON)
-  fl-tools ai [ready|work|verify|release] [--deep] [경로]  Codex 전용 protocol(JSON)
+  fl-tools ai [ready|work|verify|run|release] [--deep] [경로]  Codex 전용 protocol(JSON)
+  fl-tools server [install|status]  서버 전용 설치·상태 확인
   fl-tools workflow-test [--workflows] [--all-tests] [경로]  npm/Jest/Vitest/CI 테스트 실행·증거화(JSON)
   fl-tools native-workflow --input 파일  외부 테스트 결과를 FreeLang 계약으로 판정
   fl-tools native-trust --input 파일  FreeLang native 신뢰 판정 core
@@ -82,6 +83,9 @@ case "$command_name" in
     ;;
   ai)
     exec "$ROOT/scripts/fl-ai" "$@"
+    ;;
+  server)
+    exec "$ROOT/scripts/fl-server" "$@"
     ;;
   workflow-test)
     exec "$ROOT/scripts/fl-workflow-test" "$@"
