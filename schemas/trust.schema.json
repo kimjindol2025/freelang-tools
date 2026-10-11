@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.tools/schemas/trust.schema.json",
+  "title": "FreeLang Tools Trust Report",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "verdict", "project", "gates", "limitations", "evidence", "next"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.trust/v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "verdict": { "enum": ["TRUSTED", "TRUSTED_WITH_APPROVAL", "UNTRUSTED", "BLOCKED"] },
+    "project": {
+      "type": "object",
+      "required": ["name", "root", "dialect", "runner"],
+      "properties": {
+        "name": { "type": "string" },
+        "root": { "type": "string" },
+        "dialect": { "type": "string" },
+        "runner": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "git": { "type": "object" },
+    "gates": {
+      "type": "object",
+      "required": ["check", "test", "review", "evidence", "diffCheck", "capabilityCoverage"],
+      "properties": {
+        "check": { "type": "string" },
+        "test": { "type": "string" },
+        "review": { "type": "string" },
+        "evidence": { "type": "string" },
+        "diffCheck": { "type": "string" },
+        "capabilityCoverage": { "enum": ["FULL", "PARTIAL", "UNKNOWN"] }
+      },
+      "additionalProperties": false
+    },
+    "approvalRequired": { "type": "boolean" },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "evidence": {
+      "type": "object",
+      "required": ["commands", "artifacts"],
+      "properties": {
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "artifacts": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "next": { "type": "string" }
+  },
+  "additionalProperties": false
+}

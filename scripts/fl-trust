@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET="${1:-.}"
+
+if [[ ! -d "$TARGET" ]]; then
+  node - "$TARGET" <<'NODE'
+const target = process.argv[2];
+process.stdout.write(JSON.stringify({
+  schemaVersion: 'freelang.trust/v1', generatedAt: new Date().toISOString(), verdict: 'BLOCKED',
+  project: { name: '', root: target, dialect: 'UNKNOWN', runner: 'none' },
+  git: { branch: 'none', commit: 'none', state: 'unknown' },
+  gates: { check: 'BLOCKED', test: 'BLOCKED', review: 'BLOCKED', evidence: 'BLOCKED', diffCheck: 'BLOCKED', capabilityCoverage: 'UNKNOWN' },
+  approvalRequired: false,
+  limitations: ['project directory not found'],
+  evidence: { commands: ['fl-tools trust ' + target], artifacts: ['schemas/trust.schema.json'] },
+  next: 'fix-blocked-gates-and-rerun-trust'
+}, null, 2) + '\n');
+NODE
+  exit 2
+fi
+
+ROOT="$(cd -- "$TARGET" && pwd -P)"
+TMP_DIR="$(mktemp -d)"
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT INT TERM
+
+run_gate() {
+  local name="$1"
+  shift
+  local output="$TMP_DIR/$name.out"
+  local code=0
+  set +e
+  timeout --foreground "${FREELANG_TRUST_TIMEOUT:-120}" "$@" >"$output" 2>&1
+  code=$?
+  set -e
+  printf '%s' "$code" > "$TMP_DIR/$name.code"
+}
+
+DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT" 2>"$TMP_DIR/detect.err" || true)"
+PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')"
+DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
+RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
+
+run_gate check "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
+run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
+run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
+run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
+
+CHECK_CODE="$(cat "$TMP_DIR/check.code")"
+TEST_CODE="$(cat "$TMP_DIR/test.code")"
+REVIEW_CODE="$(cat "$TMP_DIR/review.code")"
+EVIDENCE_CODE="$(cat "$TMP_DIR/evidence.code")"
+CAPABILITY_CODE="$(cat "$TMP_DIR/capabilities.code")"
+CHECK_STATUS=FAIL; TEST_STATUS=FAIL; REVIEW_STATUS=FAIL; EVIDENCE_STATUS=FAIL; DIFF_STATUS=FAIL
+[[ "$CHECK_CODE" -eq 0 ]] && CHECK_STATUS=PASS
+[[ "$TEST_CODE" -eq 0 ]] && TEST_STATUS=PASS
+grep -q '^REVIEW=PASS$' "$TMP_DIR/review.out" && REVIEW_STATUS=PASS
+grep -q '^REVIEW=PASS_WITH_APPROVAL$' "$TMP_DIR/review.out" && REVIEW_STATUS=PASS_WITH_APPROVAL
+[[ "$EVIDENCE_CODE" -eq 0 ]] && EVIDENCE_STATUS=PASS
+grep -q '^DIFF_CHECK=PASS$' "$TMP_DIR/review.out" && DIFF_STATUS=PASS
+
+CAPABILITY_STATUS=UNKNOWN
+if grep -q '^CAPABILITIES=BLOCKED$' "$TMP_DIR/capabilities.out"; then
+  CAPABILITY_STATUS=PARTIAL
+elif [[ "$CAPABILITY_CODE" -eq 0 ]]; then
+  CAPABILITY_STATUS=FULL
+fi
+
+APPROVAL_REQUIRED=false
+grep -q '^APPROVAL_REQUIRED=YES$' "$TMP_DIR/review.out" && APPROVAL_REQUIRED=true
+grep -q '^CONTRACT=LEGACY_VALID$' "$TMP_DIR/evidence.out" && APPROVAL_REQUIRED=true || true
+
+GIT_BRANCH=none
+GIT_COMMIT=none
+GIT_STATE=not-a-repository
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  GIT_BRANCH="$(git -C "$ROOT" branch --show-current)"
+  GIT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+  GIT_STATE=clean
+  [[ -n "$(git -C "$ROOT" status --short)" ]] && GIT_STATE=dirty
+fi
+
+LIMITATIONS_JSON='[]'
+if [[ "$CAPABILITY_STATUS" == PARTIAL ]]; then
+  LIMITATIONS_JSON='["capability probe is currently AFJ-only; this project capability surface was not fully exercised"]'
+elif [[ "$CAPABILITY_STATUS" == UNKNOWN ]]; then
+  LIMITATIONS_JSON='["capability coverage could not be established"]'
+fi
+if [[ "$REVIEW_STATUS" == PASS_WITH_APPROVAL ]]; then
+  LIMITATIONS_JSON="$(node -e 'const a=JSON.parse(process.argv[1]); a.push("review detected contract/spec drift; explicit approval is required before deploy"); process.stdout.write(JSON.stringify(a))' "$LIMITATIONS_JSON")"
+fi
+
+node - "$ROOT" "$PROJECT" "$DIALECT" "$RUNNER" "$GIT_BRANCH" "$GIT_COMMIT" "$GIT_STATE" \
+  "$CHECK_STATUS" "$TEST_STATUS" "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" \
+  "$CAPABILITY_STATUS" "$APPROVAL_REQUIRED" "$LIMITATIONS_JSON" \
+  "$CHECK_CODE" "$TEST_CODE" "$REVIEW_CODE" "$EVIDENCE_CODE" <<'NODE'
+const fs = require('fs');
+const args = process.argv.slice(2);
+const [root, name, dialect, runner, branch, commit, gitState, check, test, review, evidence, diffCheck,
+  capabilityCoverage, approvalText, limitationsText, checkCode, testCode, reviewCode, evidenceCode] = args;
+const approvalRequired = approvalText === 'true';
+const limitations = JSON.parse(limitationsText);
+const coreReady = check === 'PASS' && test === 'PASS' &&
+  (review === 'PASS' || review === 'PASS_WITH_APPROVAL') && evidence === 'PASS' && diffCheck === 'PASS';
+const verdict = !coreReady ?
+  (['2', '124', '126'].includes(checkCode) || ['2', '124', '126'].includes(testCode) ||
+   ['2', '124', '126'].includes(reviewCode) || ['2', '124', '126'].includes(evidenceCode) ? 'BLOCKED' : 'UNTRUSTED') :
+  (approvalRequired || review === 'PASS_WITH_APPROVAL' ? 'TRUSTED_WITH_APPROVAL' : 'TRUSTED');
+const commands = [
+  'fl-tools detect ' + root,
+  'fl-tools check ' + root,
+  'fl-tools test ' + root,
+  'fl-tools review ' + root,
+  'fl-tools evidence --json ' + root,
+  'fl-tools capabilities ' + root
+];
+const report = {
+  schemaVersion: 'freelang.trust/v1',
+  generatedAt: new Date().toISOString(),
+  verdict,
+  project: { name, root, dialect, runner },
+  git: { branch, commit, state: gitState },
+  gates: { check, test, review, evidence, diffCheck, capabilityCoverage },
+  approvalRequired,
+  limitations,
+  evidence: {
+    commands,
+    artifacts: ['schemas/trust.schema.json', 'fl-tools trust JSON output']
+  },
+  next: verdict === 'TRUSTED' ? 'safe-to-use' :
+    verdict === 'TRUSTED_WITH_APPROVAL' ? 'obtain-user-approval-before-deploy' :
+    'fix-blocked-gates-and-rerun-trust'
+};
+process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+process.stderr.write(`TRUST=${verdict}\n`);
+NODE
+
+if [[ "$CHECK_STATUS" != PASS || "$TEST_STATUS" != PASS || "$REVIEW_STATUS" != PASS && "$REVIEW_STATUS" != PASS_WITH_APPROVAL || "$EVIDENCE_STATUS" != PASS || "$DIFF_STATUS" != PASS ]]; then
+  exit 1
+fi

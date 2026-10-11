@@ -103,6 +103,7 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools review [경로]` | check, test, lint, build, diff, 생성물, 계약 drift 검사 (`fl-review`) |
 | `fl-tools report [경로]` | status와 review를 완료 보고서로 출력 (`fl-report`) |
 | `fl-tools evidence --json [경로]` | 검증 결과와 원시 출력을 JSON으로 보존 (`fl-evidence`) |
+| `fl-tools trust [경로]` | check/test/review/evidence/diff/capability를 실제 실행하고 AI용 신뢰 판정 JSON 출력 (`fl-trust`) |
 | `fl-tools capabilities [경로]` | FreeLang native capability와 adapter 부족분을 JSON으로 출력 (`fl-capabilities`) |
 | `fl-tools native-core --input 파일` | adapter 입력을 FreeLang native route/ready/verdict로 판정 (`fl-native-core`) |
 | `fl-tools handoff [경로]` | 다음 작업자를 위한 `.freelang/handoff.md`와 `handoff.json` 생성 (`fl-handoff`) |
@@ -143,6 +144,7 @@ npm run report
 npm run pipeline
 npm run handoff
 npm run evidence
+npm run trust
 npm run adapter
 npm run airc
 npm run deploy

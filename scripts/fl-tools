@@ -17,6 +17,7 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools handoff [경로]   다음 작업자를 위한 인수인계 문서·JSON 생성
   fl-tools handoff --verify [경로]  JSON schema·stale commit 검증
   fl-tools evidence --json  검증 증거를 JSON으로 출력
+  fl-tools trust [경로]      실제 관문을 실행한 AI 사용 신뢰 판정(JSON)
   fl-tools capabilities [경로]  FreeLang native capability probe
   fl-tools native-core --input 파일  FreeLang native CLI decision core
   fl-tools adapter list      런너·어댑터 상태 확인
@@ -68,6 +69,9 @@ case "$command_name" in
   evidence)
     exec "$ROOT/scripts/fl-evidence" "$@"
     ;;
+  trust)
+    exec "$ROOT/scripts/fl-trust" "$@"
+    ;;
   capabilities)
     exec "$ROOT/scripts/fl-capabilities" "$@"
     ;;
@@ -97,6 +101,9 @@ case "$command_name" in
     ;;
   test-effect-capability)
     exec "$ROOT/tests/capability/effect-tape-probe.sh" "$@"
+    ;;
+  test-trust)
+    exec "$ROOT/tests/trust/contract-test.sh" "$@"
     ;;
   test-deploy-fixture)
     exec "$ROOT/tests/deploy-fixture/run.sh" "$@"
