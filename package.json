@@ -11,6 +11,7 @@
     "evidence": "./scripts/fl-tools evidence --json .",
     "trust": "./scripts/fl-tools trust .",
     "ai": "./scripts/fl-tools ai start .",
+    "workflow-test": "./scripts/fl-tools workflow-test .",
     "capabilities": "./scripts/fl-tools capabilities .",
     "native-core": "./scripts/fl-tools native-core",
     "native-trust": "./scripts/fl-tools native-trust",

@@ -86,6 +86,10 @@ fl-tools ai verify <project>
 fl-tools ai release <project>
 ```
 
+`ai verify`는 FreeLang 테스트뿐 아니라 프로젝트 `npm test`/`test:*` 및 Jest/Vitest
+스크립트를 `fl-tools workflow-test`로 실행한다. GitHub Actions는 `--workflows`로
+테스트성 `run` 단계만 허용 목록으로 실행하고 deploy/push 단계는 실행하지 않는다.
+
 출력 JSON의 `verdict`와 `decision.source`를 읽는다. `TRUSTED`만 안전한 읽기·수정
 작업의 기본 진입 상태로 보고, `TRUSTED_WITH_APPROVAL`은 배포·계약 변경 전 사용자
 승인을 요구한다. `UNTRUSTED`와 `BLOCKED`는 원인을 해결하기 전 진행하지 않는다.

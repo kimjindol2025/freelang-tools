@@ -12,7 +12,7 @@ process.stdout.write(JSON.stringify({
   schemaVersion: 'freelang.trust/v1', generatedAt: new Date().toISOString(), verdict: 'BLOCKED',
   project: { name: '', root: target, dialect: 'UNKNOWN', runner: 'none' },
   git: { branch: 'none', commit: 'none', state: 'unknown' },
-  gates: { check: 'BLOCKED', test: 'BLOCKED', review: 'BLOCKED', evidence: 'BLOCKED', diffCheck: 'BLOCKED', capabilityCoverage: 'UNKNOWN' },
+  gates: { check: 'BLOCKED', test: 'BLOCKED', review: 'BLOCKED', evidence: 'BLOCKED', diffCheck: 'BLOCKED', workflow: 'BLOCKED', capabilityCoverage: 'UNKNOWN' },
   decision: { source: 'unavailable', command: 'trust-core' },
   approvalRequired: false,
   limitations: ['project directory not found'],
@@ -50,19 +50,23 @@ run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
 run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
 run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
 run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
+run_gate workflow "$TOOLS_ROOT/scripts/fl-workflow-test" --workflows "$ROOT"
 
 CHECK_CODE="$(cat "$TMP_DIR/check.code")"
 TEST_CODE="$(cat "$TMP_DIR/test.code")"
 REVIEW_CODE="$(cat "$TMP_DIR/review.code")"
 EVIDENCE_CODE="$(cat "$TMP_DIR/evidence.code")"
 CAPABILITY_CODE="$(cat "$TMP_DIR/capabilities.code")"
+WORKFLOW_CODE="$(cat "$TMP_DIR/workflow.code")"
 CHECK_STATUS=FAIL; TEST_STATUS=FAIL; REVIEW_STATUS=FAIL; EVIDENCE_STATUS=FAIL; DIFF_STATUS=FAIL
+WORKFLOW_STATUS=NOT_APPLICABLE
 [[ "$CHECK_CODE" -eq 0 ]] && CHECK_STATUS=PASS
 [[ "$TEST_CODE" -eq 0 ]] && TEST_STATUS=PASS
 grep -q '^REVIEW=PASS$' "$TMP_DIR/review.out" && REVIEW_STATUS=PASS
 grep -q '^REVIEW=PASS_WITH_APPROVAL$' "$TMP_DIR/review.out" && REVIEW_STATUS=PASS_WITH_APPROVAL
 [[ "$EVIDENCE_CODE" -eq 0 ]] && EVIDENCE_STATUS=PASS
 grep -q '^DIFF_CHECK=PASS$' "$TMP_DIR/review.out" && DIFF_STATUS=PASS
+grep -q '^WORKFLOW_TEST=PASS$' "$TMP_DIR/workflow.out" && WORKFLOW_STATUS=PASS
 
 CAPABILITY_STATUS=UNKNOWN
 if grep -q '^CAPABILITIES=BLOCKED$' "$TMP_DIR/capabilities.out"; then
@@ -96,11 +100,11 @@ if [[ "$REVIEW_STATUS" == PASS_WITH_APPROVAL ]]; then
 fi
 
 node - "$TMP_DIR/decision-input.json" "$PROJECT" "$CHECK_STATUS" "$TEST_STATUS" \
-  "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$APPROVAL_REQUIRED" <<'NODE'
+  "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$WORKFLOW_STATUS" "$APPROVAL_REQUIRED" <<'NODE'
 const fs = require('fs');
-const [file, project, check, test, review, evidence, diffCheck, approval] = process.argv.slice(2);
+const [file, project, check, test, review, evidence, diffCheck, workflow, approval] = process.argv.slice(2);
 fs.writeFileSync(file, JSON.stringify({
-  project, check, test, review, evidence, diffCheck, approvalRequired: approval === 'true'
+  project, check, test, review, evidence, diffCheck, workflow, approvalRequired: approval === 'true'
 }) + '\n');
 NODE
 run_gate native_decision "$TOOLS_ROOT/scripts/fl-native-trust" --input "$TMP_DIR/decision-input.json"
@@ -113,11 +117,11 @@ if [[ "$NATIVE_CODE" -eq 0 ]]; then
 fi
 
 node - "$ROOT" "$PROJECT" "$DIALECT" "$RUNNER" "$GIT_BRANCH" "$GIT_COMMIT" "$GIT_STATE" \
-  "$CHECK_STATUS" "$TEST_STATUS" "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" \
+  "$CHECK_STATUS" "$TEST_STATUS" "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$WORKFLOW_STATUS" \
   "$CAPABILITY_STATUS" "$APPROVAL_REQUIRED" "$LIMITATIONS_JSON" "$NATIVE_VERDICT" "$NATIVE_SOURCE" <<'NODE'
 const fs = require('fs');
 const args = process.argv.slice(2);
-const [root, name, dialect, runner, branch, commit, gitState, check, test, review, evidence, diffCheck,
+const [root, name, dialect, runner, branch, commit, gitState, check, test, review, evidence, diffCheck, workflow,
   capabilityCoverage, approvalText, limitationsText, nativeVerdict, nativeSource] = args;
 const approvalRequired = approvalText === 'true';
 const limitations = JSON.parse(limitationsText);
@@ -136,7 +140,7 @@ const report = {
   verdict,
   project: { name, root, dialect, runner },
   git: { branch, commit, state: gitState },
-  gates: { check, test, review, evidence, diffCheck, capabilityCoverage },
+  gates: { check, test, review, evidence, diffCheck, workflow, capabilityCoverage },
   decision: { source: nativeSource, command: 'trust-core' },
   approvalRequired,
   limitations,

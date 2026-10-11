@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET="."
+RUN_WORKFLOWS=NO
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --workflows) RUN_WORKFLOWS=YES ;;
+    --help|-h) echo "사용법: fl-tools workflow-test [--workflows] [경로]"; exit 0 ;;
+    *) TARGET="$1" ;;
+  esac
+  shift
+done
+
+if [[ ! -d "$TARGET" ]]; then
+  echo '{"schemaVersion":"freelang.workflow/v1","status":"BLOCKED","reason":"directory-not-found"}'
+  exit 2
+fi
+ROOT="$(cd -- "$TARGET" && pwd -P)"
+TMP_DIR="$(mktemp -d)"
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT INT TERM
+
+node - "$ROOT" "$RUN_WORKFLOWS" "$TMP_DIR/plan.json" <<'NODE'
+const fs = require('fs'), path = require('path');
+const [root, runWorkflows, out] = process.argv.slice(2);
+const plan = { packageScripts: [], workflowCommands: [], skippedWorkflowCommands: [] };
+const testName = /^(test|test:|jest|vitest)/i;
+const unsafe = /(deploy|publish|release|push|checkout|docker|ssh|pm2)/i;
+try {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  for (const [name, command] of Object.entries(pkg.scripts || {})) {
+    if (testName.test(name) && !/fl-tools|freelang-tools/.test(command)) plan.packageScripts.push({name, command});
+  }
+} catch (_) {}
+const workflowDir = path.join(root, '.github', 'workflows');
+if (fs.existsSync(workflowDir)) {
+  for (const file of fs.readdirSync(workflowDir).filter(x => /\.(yml|yaml)$/.test(x)).sort()) {
+    const full = path.join(workflowDir, file);
+    const lines = fs.readFileSync(full, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const match = line.match(/^\s*run:\s*(.+?)\s*$/);
+      if (!match) continue;
+      const command = match[1].replace(/^['"]|['"]$/g, '');
+      if (!/(test|jest|vitest|check|lint)/i.test(command)) continue;
+      const item = {file: path.relative(root, full), command};
+      if (unsafe.test(command) || /\$\{\{/.test(command)) plan.skippedWorkflowCommands.push(item);
+      else if (runWorkflows === 'YES') plan.workflowCommands.push(item);
+      else plan.skippedWorkflowCommands.push(item);
+    }
+  }
+}
+fs.writeFileSync(out, JSON.stringify(plan));
+NODE
+
+RESULTS_FILE="$TMP_DIR/results.json"
+node - "$TMP_DIR/plan.json" "$RESULTS_FILE" <<'NODE'
+const fs = require('fs');
+const plan = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+fs.writeFileSync(process.argv[3], JSON.stringify({plan, results: []}));
+NODE
+
+FAIL=0
+run_command() {
+  local kind="$1" label="$2" command="$3" output="$TMP_DIR/out-${#RESULT_LINES[@]}"
+  local code=0
+  set +e
+  timeout --foreground "${FREELANG_WORKFLOW_TIMEOUT:-120}" bash -lc "cd \"$ROOT\" && $command" >"$output" 2>&1
+  code=$?
+  set -e
+  [[ "$code" -eq 0 ]] || FAIL=1
+  RESULT_LINES+=("$(KIND="$kind" LABEL="$label" COMMAND="$command" CODE="$code" OUTPUT_FILE="$output" node -e '
+    const fs=require("fs"), e=process.env;
+    process.stdout.write(JSON.stringify({kind:e.KIND,label:e.LABEL,command:e.COMMAND,exitCode:Number(e.CODE),output:fs.readFileSync(e.OUTPUT_FILE,"utf8").slice(-12000)}));
+  ')")
+}
+
+RESULT_LINES=()
+mapfile -t PACKAGE_TESTS < <(node - "$TMP_DIR/plan.json" <<'NODE'
+const p=JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
+for (const x of p.packageScripts) console.log(`${x.name}\t${x.name}`);
+NODE
+)
+for item in "${PACKAGE_TESTS[@]}"; do
+  IFS=$'\t' read -r name label <<<"$item"
+  run_command package-script "$label" "npm run $name --if-present"
+done
+mapfile -t WORKFLOW_TESTS < <(node - "$TMP_DIR/plan.json" <<'NODE'
+const p=JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
+for (const x of p.workflowCommands) console.log(`${x.file}\t${x.command}`);
+NODE
+)
+for item in "${WORKFLOW_TESTS[@]}"; do
+  IFS=$'\t' read -r file command <<<"$item"
+  run_command github-workflow "$file" "$command"
+done
+
+PLAN_JSON="$(cat "$TMP_DIR/plan.json")"
+RESULTS_JSON="$(printf '%s\n' "${RESULT_LINES[@]:-}" | node -e '
+  const fs=require("fs"), lines=fs.readFileSync(0,"utf8").trim();
+  process.stdout.write(JSON.stringify(lines ? lines.split(/\n/).map(JSON.parse) : []));
+')"
+STATUS=PASS
+if [[ ${#RESULT_LINES[@]} -eq 0 ]]; then STATUS=NOT_APPLICABLE; fi
+[[ "$FAIL" -eq 0 ]] || STATUS=FAIL
+PLAN_JSON="$PLAN_JSON" RESULTS_JSON="$RESULTS_JSON" STATUS="$STATUS" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" \
+  node -e 'const p=JSON.parse(process.env.PLAN_JSON), r=JSON.parse(process.env.RESULTS_JSON); console.log(JSON.stringify({schemaVersion:"freelang.workflow/v1",status:process.env.STATUS,root:process.env.ROOT,runWorkflows:process.env.RUN_WORKFLOWS,discovered:{packageScripts:p.packageScripts,workflowCommands:p.workflowCommands,skippedWorkflowCommands:p.skippedWorkflowCommands},results:r},null,2));'
+echo "WORKFLOW_TEST=$STATUS" >&2
+[[ "$STATUS" == FAIL ]] && exit 1 || exit 0

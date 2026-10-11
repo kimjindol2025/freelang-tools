@@ -106,6 +106,7 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools trust [경로]` | check/test/review/evidence/diff/capability를 실제 실행하고 AI용 신뢰 판정 JSON 출력 (`fl-trust`) |
 | `fl-tools ai trust [경로]` | AI 전용 단일 진입점. 최종 판정은 FreeLang native `trust-core.fl`이 계산 |
 | `fl-tools ai start/work/verify/release [경로]` | AI 표준 작업 protocol `freelang.ai/v1` |
+| `fl-tools workflow-test [--workflows] [경로]` | 프로젝트 `npm test`/`test:*`, Jest/Vitest, 안전한 CI 테스트 단계 실행·증거화 |
 | `fl-tools native-trust --input 파일` | FreeLang native 신뢰 판정 core 직접 실행 (`fl-native-trust`) |
 | `fl-tools capabilities [경로]` | FreeLang native capability와 adapter 부족분을 JSON으로 출력 (`fl-capabilities`) |
 | `fl-tools native-core --input 파일` | adapter 입력을 FreeLang native route/ready/verdict로 판정 (`fl-native-core`) |

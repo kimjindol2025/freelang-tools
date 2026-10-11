@@ -22,13 +22,14 @@
     "git": { "type": "object" },
     "gates": {
       "type": "object",
-      "required": ["check", "test", "review", "evidence", "diffCheck", "capabilityCoverage"],
+      "required": ["check", "test", "review", "evidence", "diffCheck", "workflow", "capabilityCoverage"],
       "properties": {
         "check": { "type": "string" },
         "test": { "type": "string" },
         "review": { "type": "string" },
         "evidence": { "type": "string" },
         "diffCheck": { "type": "string" },
+        "workflow": { "type": "string" },
         "capabilityCoverage": { "enum": ["FULL", "PARTIAL", "UNKNOWN"] }
       },
       "additionalProperties": false
