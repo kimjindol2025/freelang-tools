@@ -184,8 +184,7 @@ printf 'TRUST=%s\n' "$NATIVE_VERDICT" >&2
 if [[ "$REPORT_CODE" -ne 0 ]]; then
   exit 1
 fi
-exit 0
-
 if [[ "$NATIVE_CODE" -ne 0 || "$NATIVE_VERDICT" == BLOCKED || "$NATIVE_VERDICT" == UNTRUSTED ]]; then
   exit 1
 fi
+exit 0

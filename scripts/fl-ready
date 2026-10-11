@@ -6,7 +6,7 @@ TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 
 if [[ ! -d "$TARGET" ]]; then
-  TARGET="$TARGET" node -e 'console.log(JSON.stringify({schemaVersion:"freelang.ready/v1",status:"BLOCKED",project:{name:"unknown",root:process.env.TARGET,dialect:"UNKNOWN",family:"UNKNOWN",runner:"none"},git:{state:"not-a-repository",branch:"none",commit:"none"},dependencies:{runnerReady:false},next:"resolve-readiness-reason-and-rerun",reason:"directory-not-found"},null,2))'
+  printf '{"schemaVersion":"freelang.ready/v1","status":"BLOCKED","project":{"name":"unknown","root":"%s","dialect":"UNKNOWN","family":"UNKNOWN","runner":"none"},"git":{"state":"not-a-repository","branch":"none","commit":"none"},"dependencies":{"runnerReady":false},"next":"resolve-readiness-reason-and-rerun","reason":"directory-not-found"}\n' "$TARGET"
   exit 2
 fi
 
@@ -50,21 +50,18 @@ elif [[ "$GIT_STATE" == dirty ]]; then
   REASON=dirty-worktree-review-before-deploy
 fi
 
-PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" FAMILY="$FAMILY" RUNNER="$RUNNER" \
-GIT_STATE="$GIT_STATE" BRANCH="$BRANCH" COMMIT="$COMMIT" STATUS="$STATUS" REASON="$REASON" \
-RUNNER_READY="$RUNNER_READY" node <<'NODE'
-const e = process.env;
-const status = e.STATUS;
-console.log(JSON.stringify({
-  schemaVersion: 'freelang.ready/v1',
-  status,
-  project: {name:e.PROJECT, root:e.ROOT, dialect:e.DIALECT, family:e.FAMILY, runner:e.RUNNER},
-  git: {state:e.GIT_STATE, branch:e.BRANCH, commit:e.COMMIT},
-  dependencies: {runnerReady:e.RUNNER_READY === 'true'},
-  next: status === 'BLOCKED' ? 'resolve-readiness-reason-and-rerun' : 'fl-tools ai verify ' + e.ROOT,
-  reason: e.REASON
-}, null, 2));
-NODE
+FL_TOOLS_READY_PROJECT="$PROJECT" \
+FL_TOOLS_READY_ROOT="$ROOT" \
+FL_TOOLS_READY_DIALECT="$DIALECT" \
+FL_TOOLS_READY_FAMILY="$FAMILY" \
+FL_TOOLS_READY_RUNNER="$RUNNER" \
+FL_TOOLS_READY_GIT_STATE="$GIT_STATE" \
+FL_TOOLS_READY_BRANCH="$BRANCH" \
+FL_TOOLS_READY_COMMIT="$COMMIT" \
+FL_TOOLS_READY_STATUS="$STATUS" \
+FL_TOOLS_READY_REASON="$REASON" \
+FL_TOOLS_READY_RUNNER_READY="$RUNNER_READY" \
+  "$TOOLS_ROOT/scripts/fl-native-ready-report"
 
 if [[ "$STATUS" == BLOCKED ]]; then exit 2; fi
 exit 0

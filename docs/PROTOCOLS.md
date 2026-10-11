@@ -18,6 +18,7 @@ ready(preflight) → ai(v1) → 작업 → trust(v1) → workflow(v1) → handof
 | `freelang.workflow/v1` | `schemas/workflow.schema.json` | `fl-workflow-test` | `native/workflow-core.fl` | 외부 테스트 결과 유효성 |
 | `freelang.handoff/v1` | `schemas/handoff.schema.json` | `fl-ai`/`fl-handoff` | 다음 에이전트 | stale commit 여부 |
 | `freelang.operation-contract/v1` | `schemas/operation-contract.schema.json` | 프로젝트 | deploy/push/rollback | 사용자 승인 필요 여부 |
+| `freelang.backend-contract/v1` | `schemas/backend-contract.schema.json` | `backend-contract.fl` | FreeLang backend/AI | 시스템·JSON·HTTP·프로세스·권한·Git·실행기 결과 통합 |
 
 ## 상태와 종료코드
 
@@ -64,6 +65,15 @@ wall-clock·CPU·명령 수 제한 초과는 테스트 실패가 아니라 `BLOC
 `deploy`, `rollback`, `push`, `pull`, `commit`, `delete`는
 `freelang.operation-contract/v1`에서 `approvalRequired: true`를 요구한다.
 계약이 있어도 사용자 승인 없이는 실행하지 않는다.
+
+## Backend 표준 경계
+
+모든 backend 효과는 `{ok, status, error}` 공통 결과를 사용한다. HTTP는
+`status`, `headers`, `body`, `data`, `error`, 프로세스는 `code`, `argv`,
+`stdout`, `stderr`를 추가한다. 권한은 명시된 allowed root 아래 경로만
+허용한다. Git 표준 API는 읽기 전용 `status`, `head`, `branch`, `diff`를
+argv 분리 방식으로 실행한다. OS 효과와 프로세스 감독은 host adapter가
+담당하고, 결과 계약과 PASS/BLOCKED 판정은 FreeLang native가 소유한다.
 
 ## 표준 사용 순서
 

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET="${1:-.}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+
+if [[ ! -d "$TARGET" || ! -f "$RUNNER" ]]; then
+  echo "GIT_NATIVE=BLOCKED" >&2
+  echo "CAUSE=directory-or-AFJ-runner-not-found" >&2
+  exit 2
+fi
+
+ROOT="$(cd -- "$TARGET" && pwd -P)"
+OUTPUT="$(FL_TOOLS_GIT_ROOT="$ROOT" node "$RUNNER" run "$TOOLS_ROOT/native/git-core.fl")"
+printf '%s\n' "$OUTPUT"
+grep -q '^GIT_NATIVE=PASS$' <<<"$OUTPUT"

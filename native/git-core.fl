@@ -1,0 +1,38 @@
+;; FreeLang-native Git read contract.
+;; The only host boundary is the argv-safe shell adapter.
+
+(defn git-result [status value error]
+  {:context "Create a stable Git standard-library result"
+   :returns "git result map"
+   :effects ["process"]}
+  {"ok" (= status 0)
+   "status" (if (= status 0) "PASS" "FAIL")
+   "value" value
+   "error" error})
+
+(defn git-read [root args]
+  {:context "Run a read-only Git command with argv separation"
+   :returns "git result map"
+   :effects ["process" "git-read"]}
+  (let [captured (try
+                   (shell-safe "git" (concat ["-C" root] args))
+                   (catch error {"stdout" "" "stderr" (str error) "code" 1}))]
+    (if (string? captured)
+      (git-result 0 (str-trim captured) nil)
+      (git-result (get captured "code")
+                  (str-trim (get captured "stdout"))
+                  (str-trim (get captured "stderr"))))))
+
+(let [root (shell_env "FL_TOOLS_GIT_ROOT")
+      status (git-read root ["status" "--porcelain"])
+      head (git-read root ["rev-parse" "HEAD"])
+      branch (git-read root ["branch" "--show-current"])
+      result {"schemaVersion" "freelang.git/v1"
+              "source" "freelang-native"
+              "root" root
+              "status" status
+              "head" head
+              "branch" branch
+              "readOnly" true}]
+  (println (json-stringify result))
+  (println (str "GIT_NATIVE=" (if (and (get status "ok") (get head "ok")) "PASS" "FAIL"))))

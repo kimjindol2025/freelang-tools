@@ -26,6 +26,8 @@ FreeLang Tools — 공용 개발 CLI
   fl-tools native-trust --input 파일  FreeLang native 신뢰 판정 core
   fl-tools capabilities [경로]  FreeLang native capability probe
   fl-tools native-core --input 파일  FreeLang native CLI decision core
+  fl-tools backend-contract --input 파일  backend 공통 계약 판정
+  fl-tools git-native [경로]  native 읽기 전용 Git 표준 API
   fl-tools adapter list      런너·어댑터 상태 확인
   fl-tools airc [경로] <명령> AIRC CLI 실행
   fl-tools cli <파일>         FreeLang CLI 실행·증거 수집
@@ -101,6 +103,21 @@ case "$command_name" in
     ;;
   native-core)
     exec "$ROOT/scripts/fl-native-core" "$@"
+    ;;
+  backend-contract)
+    exec "$ROOT/scripts/fl-backend-contract" "$@"
+    ;;
+  git-native)
+    exec "$ROOT/scripts/fl-git-native" "$@"
+    ;;
+  native-ready-report)
+    exec "$ROOT/scripts/fl-native-ready-report" "$@"
+    ;;
+  backend-contract)
+    exec "$ROOT/scripts/fl-backend-contract" "$@"
+    ;;
+  git-native)
+    exec "$ROOT/scripts/fl-git-native" "$@"
     ;;
   adapter)
     exec "$ROOT/scripts/fl-adapter" "$@"

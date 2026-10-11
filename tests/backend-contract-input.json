@@ -1,0 +1,9 @@
+{
+  "system": {"ok": true, "status": "PASS", "error": null, "api": "fs/v1", "boundary": "native"},
+  "json": {"ok": true, "status": "PASS", "error": null, "api": "json/v1", "boundary": "native"},
+  "http": {"ok": true, "status": 200, "headers": {"content-type": "application/json"}, "body": "{}", "data": {}, "error": null, "api": "http-response/v1", "boundary": "native"},
+  "process": {"code": 0, "argv": ["echo", "ok"], "stdout": "ok", "stderr": "", "error": null, "api": "process-argv/v1", "boundary": "native"},
+  "permission": {"root": "/tmp/freelang", "path": "/tmp/freelang/output.json", "operation": "write", "api": "permission/v1", "boundary": "native"},
+  "git": {"code": 0, "head": "deadbeef", "branch": "main", "diff": "", "error": null, "api": "git/v1", "boundary": "native"},
+  "executor": {"ok": true, "status": "PASS", "error": null, "api": "executor/v1", "boundary": "host-adapter"}
+}

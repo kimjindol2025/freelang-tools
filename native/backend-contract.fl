@@ -1,0 +1,149 @@
+;; FreeLang-native backend contract.
+;; OS/HTTP/Git effects are supplied by host adapters; contract semantics live here.
+
+(define categories ["system" "json" "http" "process" "permission" "git" "executor"])
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for backend contract fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "")) fallback value))
+
+(defn text-or [value fallback]
+  {:context "Normalize a contract field to a string"
+   :returns "string"
+   :effects []}
+  (if (string? value) value fallback))
+
+(defn result-contract [value]
+  {:context "Normalize one effect result to the shared backend result contract"
+   :returns "backend result map"
+   :effects []}
+  {"ok" (= (get value "ok") true)
+   "status" (text-or (get value "status") "UNKNOWN")
+   "error" (value-or (get value "error") nil)})
+
+(defn http-contract [value]
+  {:context "Normalize every HTTP response to one status/body/data/error contract"
+   :returns "HTTP response contract"
+   :effects []}
+  (let [status (value-or (get value "status") 0)]
+    {"ok" (and (number? status) (>= status 200) (< status 300))
+     "status" status
+     "headers" (if (map? (get value "headers")) (get value "headers") {})
+     "body" (value-or (get value "body") "")
+     "data" (value-or (get value "data") nil)
+     "error" (value-or (get value "error") nil)}))
+
+(defn process-contract [value]
+  {:context "Normalize argv process execution results"
+   :returns "process result contract"
+   :effects []}
+  (let [code (value-or (get value "code") 1)]
+    {"ok" (= code 0)
+     "status" (if (= code 0) "PASS" "FAIL")
+     "code" code
+     "argv" (if (array? (get value "argv")) (get value "argv") [])
+     "stdout" (value-or (get value "stdout") "")
+     "stderr" (value-or (get value "stderr") "")
+     "error" (value-or (get value "error") nil)}))
+
+(defn permission-contract [value]
+  {:context "Enforce a single allowed-root permission rule"
+   :returns "permission result contract"
+   :effects []}
+  (let [root (text-or (get value "root") "")
+        path (text-or (get value "path") "")
+        allowed (and (not= root "")
+                     (or (= path root) (str-starts-with path (str root "/"))))]
+    {"ok" allowed
+     "status" (if allowed "PASS" "DENIED")
+     "root" root
+     "path" path
+     "operation" (text-or (get value "operation") "read")
+     "error" (if allowed nil "path-outside-allowed-root")}))
+
+(defn git-contract [value]
+  {:context "Normalize read-only Git status/head/diff results"
+   :returns "Git result contract"
+   :effects []}
+  (let [code (value-or (get value "code") 1)]
+    {"ok" (= code 0)
+     "status" (if (= code 0) "PASS" "FAIL")
+     "code" code
+     "head" (value-or (get value "head") nil)
+     "branch" (value-or (get value "branch") "")
+     "diff" (value-or (get value "diff") "")
+     "error" (value-or (get value "error") nil)}))
+
+(defn category-result [name value]
+  {:context "Select the canonical result contract for each backend category"
+   :returns "category-specific result map"
+   :effects []}
+  (case name
+    "http" (http-contract value)
+    "process" (process-contract value)
+    "permission" (permission-contract value)
+    "git" (git-contract value)
+    (result-contract value)))
+
+(defn category-contract [name value]
+  {:context "Normalize one backend capability category"
+   :returns "category contract map"
+   :effects []}
+  {"name" name
+   "result" (category-result name (if (map? value) value {}))
+   "api" (text-or (get value "api") "native")
+   "boundary" (text-or (get value "boundary") "host-adapter")})
+
+(defn valid-result? [value]
+  {:context "Validate the shared result shape without coercing failures"
+   :returns "boolean"
+   :effects []}
+  (and (map? value)
+       (boolean? (get value "ok"))
+       (or (string? (get value "status")) (number? (get value "status")))
+       (or (nil? (get value "error")) (string? (get value "error")))))
+
+(defn valid-category? [value]
+  {:context "Validate one normalized backend category"
+   :returns "boolean"
+   :effects []}
+  (and (map? value)
+       (string? (get value "name"))
+       (valid-result? (get value "result"))
+       (string? (get value "api"))
+       (string? (get value "boundary"))))
+
+(defn category-status [value]
+  {:context "Map a category result to PASS or BLOCKED"
+   :returns "PASS or BLOCKED"
+   :effects []}
+  (if (and (valid-category? value) (= (get (get value "result") "ok") true))
+    "PASS"
+    "BLOCKED"))
+
+(defn contract-status [values]
+  {:context "Compute the aggregate backend contract status"
+   :returns "PASS or BLOCKED"
+   :effects []}
+  (if (every? (fn [value] (= (category-status value) "PASS")) values)
+    "PASS"
+    "BLOCKED"))
+
+(let [input-path (shell_env "FL_TOOLS_BACKEND_INPUT")
+      input (if (and (string? input-path) (file-exists input-path))
+              (json-parse (file-read input-path))
+              {})
+      values (map (fn [name] (category-contract name (get input name))) categories)
+      status (contract-status values)
+      blocked (filter (fn [value] (= (category-status value) "BLOCKED")) values)
+      result {"schemaVersion" "freelang.backend-contract/v1"
+              "source" "freelang-native"
+              "status" status
+              "categories" values
+              "passCount" (- (length values) (length blocked))
+              "blockedCount" (length blocked)
+              "next" (if (= status "PASS") "safe-to-use" "resolve-blocked-backend-category")}]
+  (println (json-stringify result))
+  (println (str "BACKEND_CONTRACT=" status)))

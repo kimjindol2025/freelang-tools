@@ -63,6 +63,8 @@ fl-tools handoff .
 fl-tools evidence --json .
 fl-tools capabilities .
 fl-tools native-core --input evidence.json
+fl-tools backend-contract --input backend.json
+fl-tools git-native .
 fl-tools adapter list .
 fl-tools airc . status
 fl-tools deploy .
@@ -129,6 +131,8 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools native-trust --input 파일` | FreeLang native 신뢰 판정 core 직접 실행 (`fl-native-trust`) |
 | `fl-tools capabilities [경로]` | FreeLang native capability와 adapter 부족분을 JSON으로 출력 (`fl-capabilities`) |
 | `fl-tools native-core --input 파일` | adapter 입력을 FreeLang native route/ready/verdict로 판정 (`fl-native-core`) |
+| `fl-tools backend-contract --input 파일` | 시스템/JSON/HTTP/프로세스/권한/Git/실행기 결과를 `freelang.backend-contract/v1`로 통합 (`backend-contract.fl`) |
+| `fl-tools git-native [경로]` | argv-safe native Git 읽기 표준 API (`git-core.fl`) |
 | `fl-tools handoff [경로]` | 다음 작업자를 위한 `.freelang/handoff.md`와 `handoff.json` 생성 (`fl-handoff`) |
 | `fl-tools handoff --verify [경로]` | handoff schema와 현재 Git commit의 stale 여부 검증 |
 

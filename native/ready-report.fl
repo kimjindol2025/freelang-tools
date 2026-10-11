@@ -1,0 +1,29 @@
+;; FreeLang-native readiness report composer.
+
+(defn bool? [value]
+  {:context "Parse a host-provided boolean without coercing unknown values"
+   :returns "boolean"
+   :effects []}
+  (= value "true"))
+
+(let [project (shell_env "FL_TOOLS_READY_PROJECT")
+      root (shell_env "FL_TOOLS_READY_ROOT")
+      dialect (shell_env "FL_TOOLS_READY_DIALECT")
+      family (shell_env "FL_TOOLS_READY_FAMILY")
+      runner (shell_env "FL_TOOLS_READY_RUNNER")
+      git-state (shell_env "FL_TOOLS_READY_GIT_STATE")
+      branch (shell_env "FL_TOOLS_READY_BRANCH")
+      commit (shell_env "FL_TOOLS_READY_COMMIT")
+      status (shell_env "FL_TOOLS_READY_STATUS")
+      reason (shell_env "FL_TOOLS_READY_REASON")
+      runner-ready (bool? (shell_env "FL_TOOLS_READY_RUNNER_READY"))
+      result {"schemaVersion" "freelang.ready/v1"
+              "status" status
+              "project" {"name" project "root" root "dialect" dialect "family" family "runner" runner}
+              "git" {"state" git-state "branch" branch "commit" commit}
+              "dependencies" {"runnerReady" runner-ready}
+              "next" (if (= status "BLOCKED")
+                       "resolve-readiness-reason-and-rerun"
+                       (str "fl-tools ai verify " root))
+              "reason" reason}]
+  (println (json-stringify result)))
