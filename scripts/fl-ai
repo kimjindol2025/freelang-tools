@@ -70,67 +70,8 @@ else
   PERSIST=YES
 fi
 
-ACTION="$ACTION" TARGET="$TARGET" CODE="$CODE" INPUT="$INPUT" DEEP="$DEEP" PERSIST="$PERSIST" \
-  node <<'NODE'
-const fs = require('fs');
-const path = require('path');
-const e = process.env;
-let input;
-try { input = JSON.parse(fs.readFileSync(e.INPUT, 'utf8')); }
-catch (error) {
-  input = {verdict:'BLOCKED', decision:{source:'unavailable',command:'trust-core'}, limitations:[`input invalid: ${error.message}`]};
-}
-const isReadyInput = input.schemaVersion === 'freelang.ready/v1';
-const verdict = isReadyInput ? (input.status === 'BLOCKED' ? 'BLOCKED' : 'TRUSTED') : (input.verdict || 'BLOCKED');
-const canProceed = isReadyInput ? input.status !== 'BLOCKED' :
-  (e.ACTION === 'release' ? verdict === 'TRUSTED' : verdict === 'TRUSTED' || verdict === 'TRUSTED_WITH_APPROVAL');
-const gates = input.gates || {};
-const values = Object.values(gates);
-const summary = {
-  PASS: values.filter(v => v === 'PASS' || v === 'PASS_WITH_APPROVAL').length,
-  FAIL: values.filter(v => v === 'FAIL').length,
-  BLOCKED: values.filter(v => v === 'BLOCKED').length,
-  NOT_RUN: values.filter(v => v === 'NOT_RUN' || v === 'NOT_APPLICABLE').length
-};
-if (isReadyInput) {
-  summary.PASS = input.status === 'BLOCKED' ? 0 : 4;
-  summary.BLOCKED = input.status === 'BLOCKED' ? 1 : 0;
-  summary.NOT_RUN = 0;
-}
-const status = verdict === 'BLOCKED' ? 'BLOCKED' : (canProceed ? 'READY' : 'NOT_READY');
-const root = input.project?.root || input.root || e.TARGET;
-const result = {
-  protocol: 'freelang.ai/v1',
-  action: e.ACTION === 'trust' || e.ACTION === 'review' || e.ACTION === 'start' ? (e.ACTION === 'start' ? 'ready' : 'verify') : e.ACTION,
-  status,
-  verdict,
-  canProceed,
-  next: isReadyInput ? (canProceed ? 'work' : 'resolve-readiness-reason-and-rerun') : (input.next || (canProceed ? 'work' : 'fix-blocked-gates-and-rerun')),
-  project: {root, name: input.project?.name || path.basename(root), dialect: input.project?.dialect || input.dialect || 'UNKNOWN', runner: input.project?.runner || input.runner || 'none'},
-  summary,
-  approvalRequired: input.approvalRequired === true,
-  execution: e.ACTION === 'run' ? (e.DEEP === 'YES' ? 'deep' : 'quick') : 'not-run',
-  evidence: {latest: '.freelang/evidence/latest.json', handoff: '.freelang/handoff.json'},
-  limitations: [...(input.limitations || []), ...(isReadyInput ? ['full trust verification not run'] : []), ...((e.ACTION === 'verify' || e.ACTION === 'run') && e.DEEP !== 'YES' ? ['quick verification only; run fl-tools ai run --deep before release'] : [])],
-  decision: input.decision || {source:'freelang-ready', command:'preflight'},
-  trust: isReadyInput ? {mode:'preflight', fullVerification:'not-run'} : input,
-  trustExitCode: Number(e.CODE)
-};
-
-if (e.PERSIST === 'YES' && root && !root.startsWith('unknown')) {
-  try {
-    const dir = path.join(root, '.freelang');
-    const evidenceDir = path.join(dir, 'evidence');
-    fs.mkdirSync(evidenceDir, {recursive:true});
-    fs.writeFileSync(path.join(evidenceDir, 'latest.json'), JSON.stringify(result, null, 2) + '\n');
-    fs.writeFileSync(path.join(dir, 'last-result.json'), JSON.stringify(result, null, 2) + '\n');
-    const handoff = {schemaVersion:'freelang.handoff/v1', generatedAt:new Date().toISOString(), project:result.project, git:input.git || {branch:'none',commit:'none',state:'not-a-repository'}, verification:{report:canProceed ? 'PASS' : 'FAIL', reportExitCode:Number(e.CODE)}, nextCommands:[`fl-tools ai ready ${root}`, `fl-tools ai verify ${root}`], report:JSON.stringify({status, verdict, next:result.next})};
-    fs.writeFileSync(path.join(dir, 'handoff.json'), JSON.stringify(handoff, null, 2) + '\n');
-    fs.writeFileSync(path.join(dir, 'handoff.md'), `# FreeLang Handoff\n\n- Project: ${result.project.name}\n- Verdict: ${verdict}\n- Next: ${result.next}\n`);
-  } catch (error) {
-    result.limitations.push(`state persistence failed: ${error.message}`);
-  }
-}
-process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-process.exit(verdict === 'TRUSTED' || verdict === 'TRUSTED_WITH_APPROVAL' ? 0 : verdict === 'BLOCKED' ? 2 : 1);
-NODE
+set +e
+"$TOOLS_ROOT/scripts/fl-ai-protocol" "$INPUT" "$ACTION" "$TARGET" "$CODE" "$DEEP" "$PERSIST"
+PROTOCOL_CODE=$?
+set -e
+exit "$PROTOCOL_CODE"

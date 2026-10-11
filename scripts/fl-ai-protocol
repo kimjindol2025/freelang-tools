@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+INPUT="${1:-}"
+ACTION="${2:-run}"
+TARGET="${3:-.}"
+CODE="${4:-0}"
+DEEP="${5:-NO}"
+PERSIST="${6:-NO}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+
+if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
+  exit 2
+fi
+
+OUTPUT="$(FL_TOOLS_AI_INPUT="$INPUT" \
+  FL_TOOLS_AI_ACTION="$ACTION" \
+  FL_TOOLS_AI_TARGET="$TARGET" \
+  FL_TOOLS_AI_CODE="$CODE" \
+  FL_TOOLS_AI_DEEP="$DEEP" \
+  FL_TOOLS_AI_PERSIST="$PERSIST" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/ai-protocol.fl")"
+exit_code="$(sed -n 's/^AI_EXIT_CODE=//p' <<<"$OUTPUT")"
+if [[ -z "$exit_code" ]]; then
+  exit 2
+fi
+sed '/^AI_EXIT_CODE=/d' <<<"$OUTPUT"
+exit "$exit_code"

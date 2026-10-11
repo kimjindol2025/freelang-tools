@@ -1,0 +1,131 @@
+;; FreeLang-native AI protocol composer.
+;; Host shell prepares gate input; protocol semantics and persistence live here.
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for missing AI protocol fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "")) fallback value))
+
+(defn pass? [value]
+  {:context "Recognize a passing gate status"
+   :returns "boolean"
+   :effects []}
+  (or (= value "PASS") (= value "PASS_WITH_APPROVAL")))
+
+(defn count-status [gates status]
+  {:context "Count gate values for the AI protocol summary"
+   :returns "integer"
+   :effects []}
+  (length (filter (fn [value] (= value status))
+                  (map (fn [key] (get gates key)) (keys gates)))))
+
+(defn json-write [path value]
+  {:context "Persist one native AI protocol artifact"
+   :returns "boolean"
+   :effects ["file-write"]}
+  (file-write path (str (json-stringify value) "\n"))
+  true)
+
+(let [input-path (shell_env "FL_TOOLS_AI_INPUT")
+      action (shell_env "FL_TOOLS_AI_ACTION")
+      target (shell_env "FL_TOOLS_AI_TARGET")
+      code (str-to-num (shell_env "FL_TOOLS_AI_CODE"))
+      deep (= (shell_env "FL_TOOLS_AI_DEEP") "YES")
+      persist (= (shell_env "FL_TOOLS_AI_PERSIST") "YES")
+      input (if (and (string? input-path) (file-exists input-path))
+              (json-parse (file-read input-path))
+              {})
+      ready-input (= (get input "schemaVersion") "freelang.ready/v1")
+      project-input (if (map? (get input "project")) (get input "project") {})
+      verdict (if ready-input
+                (if (= (get input "status") "BLOCKED") "BLOCKED" "TRUSTED")
+                (value-or (get input "verdict") "BLOCKED"))
+      can-proceed (if ready-input
+                   (not= (get input "status") "BLOCKED")
+                   (if (= action "release")
+                     (= verdict "TRUSTED")
+                     (or (= verdict "TRUSTED") (= verdict "TRUSTED_WITH_APPROVAL"))))
+      gates (if (map? (get input "gates")) (get input "gates") {})
+      summary (if ready-input
+                {"PASS" (if (= (get input "status") "BLOCKED") 0 4)
+                 "FAIL" 0
+                 "BLOCKED" (if (= (get input "status") "BLOCKED") 1 0)
+                 "NOT_RUN" 0}
+                {"PASS" (+ (count-status gates "PASS")
+                            (count-status gates "PASS_WITH_APPROVAL"))
+                 "FAIL" (count-status gates "FAIL")
+                 "BLOCKED" (count-status gates "BLOCKED")
+                 "NOT_RUN" (+ (count-status gates "NOT_RUN")
+                               (count-status gates "NOT_APPLICABLE"))})
+      root (value-or (get project-input "root")
+                     (value-or (get input "root") target))
+      name (value-or (get project-input "name") root)
+      dialect (value-or (get project-input "dialect")
+                        (value-or (get input "dialect") "UNKNOWN"))
+      runner (value-or (get project-input "runner")
+                       (value-or (get input "runner") "none"))
+      status (if (= verdict "BLOCKED") "BLOCKED"
+               (if can-proceed "READY" "NOT_READY"))
+      next (if ready-input
+             (if can-proceed "work" "resolve-readiness-reason-and-rerun")
+             (value-or (get input "next")
+                       (if can-proceed "work" "fix-blocked-gates-and-rerun")))
+      input-limitations (if (array? (get input "limitations"))
+                          (get input "limitations") [])
+      limitations (concat
+                    (concat input-limitations
+                            (if ready-input ["full trust verification not run"] []))
+                    (if (and (or (= action "verify") (= action "run"))
+                             (not deep))
+                      ["quick verification only; run fl-tools ai run --deep before release"]
+                      []))
+      result {"protocol" "freelang.ai/v1"
+              "action" (if (or (= action "trust") (= action "review") (= action "start"))
+                         (if (= action "start") "ready" "verify")
+                         action)
+              "status" status
+              "verdict" verdict
+              "canProceed" can-proceed
+              "next" next
+              "project" {"root" root "name" name "dialect" dialect "runner" runner}
+              "summary" summary
+              "approvalRequired" (= (get input "approvalRequired") true)
+              "execution" (if (= action "run") (if deep "deep" "quick") "not-run")
+              "evidence" {"latest" ".freelang/evidence/latest.json"
+                           "handoff" ".freelang/handoff.json"}
+              "limitations" limitations
+              "decision" (value-or (get input "decision")
+                                    {"source" "freelang-ready" "command" "preflight"})
+              "trust" (if ready-input
+                        {"mode" "preflight" "fullVerification" "not-run"}
+                        input)
+              "trustExitCode" code}
+      exit-code (if (= verdict "TRUSTED") 0
+                  (if (= verdict "TRUSTED_WITH_APPROVAL") 0
+                    (if (= verdict "BLOCKED") 2 1)))
+      report {"status" status "verdict" verdict "next" next}
+      handoff {"schemaVersion" "freelang.handoff/v1"
+               "generatedAt" (now_iso)
+               "project" (get result "project")
+               "git" (value-or (get input "git")
+                               {"branch" "none" "commit" "none" "state" "not-a-repository"})
+               "verification" {"report" (if can-proceed "PASS" "FAIL")
+                               "reportExitCode" code}
+               "nextCommands" [(str "fl-tools ai ready " root)
+                               (str "fl-tools ai verify " root)]
+               "report" (json-stringify report)}
+      state-dir (str root "/.freelang")]
+  (if (and persist (string? root) (not (str-starts-with root "unknown")))
+    (do
+      (file-mkdir (str state-dir "/evidence"))
+      (json-write (str state-dir "/evidence/latest.json") result)
+      (json-write (str state-dir "/last-result.json") result)
+      (json-write (str state-dir "/handoff.json") handoff)
+      (file-write (str state-dir "/handoff.md")
+                  (str "# FreeLang Handoff\n\n- Project: " name
+                       "\n- Verdict: " verdict
+                       "\n- Next: " next "\n")))
+    nil)
+  (println (json-stringify result))
+  (println (str "AI_EXIT_CODE=" exit-code)))
