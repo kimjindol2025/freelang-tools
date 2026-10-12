@@ -1,0 +1,26 @@
+;; Native FreeLang tests for the system/file/JSON contract.
+(load "../src/test/deftest-runner.fl")
+(load "../native/system-json-core.fl")
+
+(deftest "allowed root accepts exact path" (is= true
+  (allowed-path? "/tmp/project" "/tmp/project")))
+(deftest "allowed root accepts child path" (is= true
+  (allowed-path? "/tmp/project" "/tmp/project/data.json")))
+(deftest "permission boundary rejects sibling path" (is= false
+  (allowed-path? "/tmp/project" "/tmp/project-other/data.json")))
+(deftest "permission boundary rejects outside path" (is= false
+  (get (run-action "read" "/tmp/project" "/etc/passwd" "") "ok")))
+(deftest "unknown operation is a failure" (is= false
+  (get (run-action "unknown" "/tmp/project" "/tmp/project/data" "") "ok")))
+(deftest "json parse returns native map" (is= true
+  (get (run-action "parse" "/tmp/project" "/tmp/project/data" "{\"ok\":true}") "ok")))
+(deftest "invalid json is rejected" (is= false
+  (get (run-action "parse" "/tmp/project" "/tmp/project/data" "{") "ok")))
+(deftest "native file write and read round trip" (is= "native-json"
+  (let [path "/tmp/freelang-tools-system-json-test.json"
+        _ (run-action "write" "/tmp" path "native-json")
+        read-result (run-action "read" "/tmp" path "")]
+    (file-delete path)
+    (get read-result "value"))))
+
+(run-deftest-suite)

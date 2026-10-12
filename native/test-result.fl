@@ -1,11 +1,11 @@
 ;; FreeLang-native test output classifier.
 ;; The host executes the runner; this module owns pass/fail interpretation.
 
+(load "test-result-contract.fl")
+
 (let [path (shell_env "FL_TOOLS_TEST_OUTPUT")
       output (if (file-exists path) (file-read path) "")
-      summary (str-contains-in output "Test Results:")
-      failed (str-contains-in output "FAILED")
-      passed (and summary (not failed))]
+      passed (test-output-pass? output)]
   (if passed
     (println "TEST_RESULT=PASS")
     (do

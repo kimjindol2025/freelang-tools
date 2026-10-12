@@ -12,6 +12,7 @@
    "  fl-tools check [경로]      FreeLang 소스·테스트 검사"
    "  fl-tools test [경로]       FreeLang 테스트 실행"
    "  fl-tools review [경로]     전체 검토·회귀·diff 검사"
+   "  fl-tools tester-audit --input 파일  전체 tester별 증거 감사"
    "  fl-tools help              이 도움말"])
 
 (defn print-help []
@@ -56,6 +57,7 @@
     "test-effect-capability" {"command" "test-effect-capability" "owner" "freelang-native" "status" "HOST_ADAPTER"}
     "test-trust" {"command" "test-trust" "owner" "freelang-native" "status" "HOST_ADAPTER"}
     "test-deploy-fixture" {"command" "test-deploy-fixture" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "tester-audit" {"command" "tester-audit" "owner" "freelang-native" "status" "HOST_ADAPTER"}
     "deploy" {"command" "deploy" "owner" "freelang-native" "status" "HOST_ADAPTER"}
     "safe-push" {"command" "safe-push" "owner" "freelang-native" "status" "HOST_ADAPTER"}
     "safety" {"command" "safety" "owner" "freelang-native" "status" "HOST_ADAPTER"}
@@ -102,6 +104,7 @@
     "test-effect-capability" (str root "/tests/capability/effect-tape-probe.sh")
     "test-trust" (str root "/tests/trust/contract-test.sh")
     "test-deploy-fixture" (str root "/tests/deploy-fixture/run.sh")
+    "tester-audit" (str root "/scripts/fl-native-tester-audit")
     "deploy" (str root "/scripts/fl-deploy")
     "safe-push" (str root "/scripts/fl-safe-push")
     "safety" (str root "/scripts/fl-safety")
@@ -123,12 +126,14 @@
 
 (defn run-adapter [adapter args]
   {:context "Run one declared compatibility adapter through native argv execution"
-   :returns "adapter output"
+   :returns "adapter process result"
    :effects ["process"]}
   (let [$result (process_spawn $adapter $args)]
     (if (= (get $result "_tag") "Ok")
-      (get (get $result "value") "stdout")
-      (str "FL_TOOLS_ADAPTER_ERROR=" (get $result "code")))))
+      (get $result "value")
+      {"code" 1
+       "stdout" ""
+       "stderr" (str "FL_TOOLS_ADAPTER_ERROR=" (get $result "code"))})))
 
 (let [argv (process-argv)
       root (or (shell_env "FL_TOOLS_DISPATCH_ROOT") "/home/kim/kim/projects/freelang-tools")
@@ -146,5 +151,11 @@
                   "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))
       (println (str "CLI_ADAPTER=" adapter))
       (if (not (= adapter "none"))
-        (println (run-adapter adapter (if (> (length args) 1) (slice args 1 (length args)) [])))
+        (let [result (run-adapter adapter (if (> (length args) 1) (slice args 1 (length args)) []))
+              code (get result "code")
+              stdout (get result "stdout")
+              stderr (get result "stderr")]
+          (if (not (= stdout "")) (println stdout) nil)
+          (if (not (= stderr "")) (println stderr) nil)
+          (if (= code 0) nil (throw (str "FL_TOOLS_ADAPTER_EXIT=" code))))
         nil))))

@@ -1,0 +1,7 @@
+;; FreeLang-native review policy primitives.
+
+(defn has-fragment? [lines fragment]
+  {:context "Classify Git status lines by one policy fragment"
+   :returns "boolean"
+   :effects []}
+  (> (length (filter (fn [line] (str-contains-in line fragment)) lines)) 0))

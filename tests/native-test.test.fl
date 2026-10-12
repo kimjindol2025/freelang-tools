@@ -1,0 +1,14 @@
+;; Native FreeLang tests for the test result contract.
+(load "../src/test/deftest-runner.fl")
+(load "../src/test/result.fl")
+
+(deftest "test result preserves pass status" (is= "PASS"
+  (get (test-result "native" "case" "PASS" 1) "status")))
+(deftest "test result preserves failure status" (is= "FAIL"
+  (get (test-result "native" "case" "FAIL" 1) "status")))
+(deftest "aggregate counts failures" (is= 1
+  (get (result-aggregate [(test-result "native" "case" "FAIL" 1)] 1) "fail_count")))
+(deftest "aggregate does not hide missing results" (is= 1
+  (get (result-aggregate [] 1) "missing_count")))
+
+(run-deftest-suite)

@@ -1,6 +1,8 @@
 ;; FreeLang-native trust decision core.
 ;; 호스트는 실제 관문 결과만 수집하고, 최종 AI 사용 판정은 FreeLang이 소유한다.
 
+(load "trust-decision-contract.fl")
+
 (defn value-or [value fallback]
   {:context "Use a stable fallback for missing trust gate fields"
    :returns "value or fallback"
@@ -27,20 +29,9 @@
       self-host (value-or (get input "selfHost") "BLOCKED")
       mode (value-or (get input "mode") "deep")
       approval-required (= (get input "approvalRequired") true)
-      core-ready (if (= mode "quick")
-                   (and (pass? check) (= diff-check "PASS"))
-                   (and (pass? check) (pass? test) (pass? review)
-                        (= evidence "PASS") (= diff-check "PASS")
-                        (or (= workflow "PASS") (= workflow "NOT_APPLICABLE"))
-                        (or (= self-host "PASS") (= self-host "NOT_APPLICABLE"))))
-      blocked (or (= check "BLOCKED") (= test "BLOCKED")
-                  (= review "BLOCKED") (= evidence "BLOCKED")
-                  (= workflow "BLOCKED") (= self-host "BLOCKED"))
-      verdict (if core-ready
-                (if (or approval-required (= review "PASS_WITH_APPROVAL"))
-                  "TRUSTED_WITH_APPROVAL"
-                  "TRUSTED")
-                (if blocked "BLOCKED" "UNTRUSTED"))]
+      decision (trust-decision mode check test review evidence diff-check workflow self-host approval-required)
+      core-ready (get decision "coreReady")
+      verdict (get decision "verdict")]
   (println (json-stringify
              {"schemaVersion" "freelang.trust/v1"
               "source" "freelang-native"

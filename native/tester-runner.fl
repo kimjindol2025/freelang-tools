@@ -1,0 +1,107 @@
+;; FreeLang-native tester collector.
+;; It executes only declared FreeLang test files and emits evidence for the
+;; registry. The final aggregate decision remains tester-registry.fl.
+
+(defn output-of [result]
+  {:context "Combine a native child process result into inspectable output"
+   :returns "stdout and stderr"
+   :effects []}
+  (if (= (get result "_tag") "Ok")
+    (str (get (get result "value") "stdout")
+         (get (get result "value") "stderr"))
+    (str "process-error:" (get result "code"))))
+
+(defn process-code [result]
+  {:context "Read the native child process exit code"
+   :returns "integer exit code"
+   :effects []}
+  (if (= (get result "_tag") "Ok")
+    (get (get result "value") "code")
+    2))
+
+(defn marker-value [text prefix]
+  {:context "Extract one structured FreeLang final result marker"
+   :returns "parsed result map or nil"
+   :effects []}
+  (let [line (first (filter (fn [item] (str-starts-with item prefix))
+                            (str-split text "\n")))]
+    (if (nil? line)
+      nil
+      (try (json-parse (str-slice line (length prefix)))
+           (catch error nil)))))
+
+(defn run-tester [id test-file runner]
+  {:context "Run one declared FreeLang native test and capture evidence"
+   :returns "tester evidence result"
+   :effects ["process"]}
+  (let [result (process_spawn "node" [runner "run" test-file])
+        output (output-of result)
+        code (process-code result)
+        report (marker-value output "FREELANG_FINAL_RESULT=")
+        complete (and (map? report) (= (get report "complete") true)
+                      (= (get report "status") "PASS")
+                      (= (get report "schema") "freelang-tools/report/v1")
+                      (> (get report "expected_count") 0)
+                      (= (get report "expected_count") (get report "actual_count"))
+                      (= (get report "fail_count") 0)
+                      (= (get report "error_count") 0)
+                      (= (get report "blocked_count") 0)
+                      (= code 0))
+        status (if complete "PASS" (if (= code 2) "BLOCKED" "FAIL"))]
+    {"id" id
+     "status" status
+     "evidence" test-file
+     "command" (str "node " runner " run " test-file)
+     "authority" "freelang-native"
+     "adapter" "afj-bootstrap-host"
+     "reproducible" complete
+     "native" true
+     "exitCode" code
+     "report" report}))
+
+(capability-list)
+(capability-enable "native-process")
+
+(let [runner (shell_env "FREELANG_AFJ_RUNNER")
+      root (shell_env "FL_TOOLS_ROOT")
+      http-url (shell_env "FL_TOOLS_HTTP_TEST_URL")
+      output-path (shell_env "FL_TOOLS_TESTER_AUDIT_RUN_OUTPUT")
+      http-test-file (if (and (string? http-url) (not= http-url ""))
+                       (str root "/tests/native-http-live.test.fl")
+                       (str root "/tests/native-http.test.fl"))
+      results [(run-tester "system-json" (str root "/tests/native-system-json.test.fl") runner)
+               (run-tester "process-native" (str root "/tests/native-process.test.fl") runner)
+               (run-tester "http-native" http-test-file runner)
+               (run-tester "git-native" (str root "/tests/native-git.test.fl") runner)
+               (run-tester "determinism" (str root "/tests/native-determinism.test.fl") runner)
+               (run-tester "native-workflow" (str root "/tests/native-workflow-contract.test.fl") runner)
+               (run-tester "native-core" (str root "/tests/native-cli-core.test.fl") runner)
+               (run-tester "native-trust" (str root "/tests/native-trust-core.test.fl") runner)
+               (run-tester "capabilities" (str root "/tests/native-capability-live.test.fl") runner)
+               (run-tester "backend-contract" (str root "/tests/native-backend-contract-live.test.fl") runner)
+               (run-tester "test-cli-contract" (str root "/tests/native-report.test.fl") runner)
+               (run-tester "test-cli-isolation" (str root "/tests/native-isolation.test.fl") runner)
+               (run-tester "test-effect-capability" (str root "/tests/native-effect.test.fl") runner)
+               (run-tester "test-trust" (str root "/tests/native-trust-decision.test.fl") runner)
+               (run-tester "test-deploy-fixture" (str root "/tests/deploy-fixture/tests/deploy-fixture.test.fl") runner)
+               (run-tester "detect" (str root "/tests/native-detect.test.fl") runner)
+               (run-tester "evidence" (str root "/tests/native-evidence.test.fl") runner)
+               (run-tester "release-check" (str root "/tests/native-release.test.fl") runner)
+               (run-tester "safety" (str root "/tests/native-safety.test.fl") runner)
+               (run-tester "review" (str root "/tests/native-review-policy.test.fl") runner)
+               (run-tester "start" (str root "/tests/native-start.test.fl") runner)
+               (run-tester "ready" (str root "/tests/native-ready.test.fl") runner)
+               (run-tester "doctor" (str root "/tests/native-doctor.test.fl") runner)
+               (run-tester "pipeline" (str root "/tests/native-pipeline.test.fl") runner)
+               (run-tester "safe-push" (str root "/tests/native-safe-push.test.fl") runner)
+               (run-tester "status" (str root "/tests/native-status.test.fl") runner)
+               (run-tester "route" (str root "/tests/native-route.test.fl") runner)
+               (run-tester "check" (str root "/tests/native-check.test.fl") runner)
+               (run-tester "test" (str root "/tests/native-test.test.fl") runner)
+               (run-tester "trust" (str root "/tests/native-trust-decision.test.fl") runner)
+               (run-tester "workflow-test" (str root "/tests/native-workflow-adapter.test.fl") runner)]]
+  (file-write output-path (str (json-stringify {"results" results}) "\n"))
+  (println (json-stringify {"schemaVersion" "freelang.tester-runner/v1"
+                            "source" "freelang-native"
+                            "resultCount" (length results)
+                            "results" results})))

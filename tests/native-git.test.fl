@@ -1,0 +1,16 @@
+;; Native FreeLang tests for the read-only Git contract.
+(load "../src/test/deftest-runner.fl")
+(load "../native/git-contract.fl")
+
+(deftest "successful git result preserves value" (is= "abc123"
+  (get (git-result {"_tag" "Ok" "value" "abc123"}) "value")))
+(deftest "successful git result is pass" (is= true
+  (get (git-result {"_tag" "Ok" "value" {"head" "abc123"}}) "ok")))
+(deftest "failed git result is fail" (is= "FAIL"
+  (get (git-result {"_tag" "Error" "code" "E_GIT"}) "status")))
+(deftest "failed git result preserves error" (is= "E_GIT"
+  (get (git-result {"_tag" "Error" "code" "E_GIT"}) "error")))
+(deftest "successful git result has no error" (is= true
+  (nil? (get (git-result {"_tag" "Ok" "value" {}}) "error"))))
+
+(run-deftest-suite)

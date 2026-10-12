@@ -1,0 +1,7 @@
+;; FreeLang-native start readiness primitive.
+(defn start-ready? [doctor dialect git-state]
+  {:context "Decide whether start context is actionable"
+   :returns "boolean"
+   :effects []}
+  (and (= doctor "PASS") (not= dialect "UNKNOWN")
+       (not= git-state "not-a-repository")))

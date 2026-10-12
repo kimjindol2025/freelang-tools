@@ -1,0 +1,14 @@
+;; Native FreeLang tests for runtime routing decisions.
+(load "../src/test/deftest-runner.fl")
+(load "../native/cli-core.fl")
+
+(deftest "AFJ routes to FreeLang AFJ" (is= "FreeLang/AFJ"
+  (route-for "AFJ")))
+(deftest "Script routes to FreeLangScript" (is= "FreeLangScript"
+  (route-for "SCRIPT")))
+(deftest "unknown dialect is explicit" (is= "UNKNOWN"
+  (route-for "NOPE")))
+(deftest "missing values use stable fallback" (is= "fallback"
+  (value-or nil "fallback")))
+
+(run-deftest-suite)

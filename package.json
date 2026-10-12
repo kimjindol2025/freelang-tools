@@ -47,6 +47,7 @@
     "test:effect-capability": "./scripts/fl-tools test-effect-capability",
     "test:backend-contract": "./tests/backend-contract.sh",
     "test:trust": "./scripts/fl-tools test-trust",
+    "tester-audit": "./scripts/fl-native-tester-audit",
     "determinism": "./scripts/fl-tools determinism",
     "check": "./scripts/fl-tools check .",
     "detect": "./scripts/fl-tools detect .",

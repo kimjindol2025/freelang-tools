@@ -1,0 +1,16 @@
+;; FreeLang-native capability result contract.
+
+(defn verdict [ok]
+  {:context "Normalize a capability boolean into a machine verdict"
+   :returns "PASS | BLOCKED"
+   :effects []}
+  (if ok "PASS" "BLOCKED"))
+
+(defn capability-check [name capability ok boundary]
+  {:context "Create one capability probe result"
+   :returns "capability result map"
+   :effects []}
+  {"name" name
+   "capability" capability
+   "status" (verdict ok)
+   "boundary" boundary})

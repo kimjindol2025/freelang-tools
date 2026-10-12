@@ -1,0 +1,20 @@
+;; FreeLang-native trust decision primitive.
+(defn trust-decision [mode check test review evidence diff-check workflow self-host approval-required]
+  {:context "Classify trust only from explicit gate results"
+   :returns "trust decision map"
+   :effects []}
+  (let [core-ready (if (= mode "quick")
+                     (and (pass? check) (= diff-check "PASS"))
+                     (and (pass? check) (pass? test) (pass? review)
+                          (= evidence "PASS") (= diff-check "PASS")
+                          (or (= workflow "PASS") (= workflow "NOT_APPLICABLE"))
+                          (or (= self-host "PASS") (= self-host "NOT_APPLICABLE"))))
+        blocked (or (= check "BLOCKED") (= test "BLOCKED")
+                    (= review "BLOCKED") (= evidence "BLOCKED")
+                    (= workflow "BLOCKED") (= self-host "BLOCKED"))
+        verdict (if core-ready
+                  (if (or approval-required (= review "PASS_WITH_APPROVAL"))
+                    "TRUSTED_WITH_APPROVAL"
+                    "TRUSTED")
+                  (if blocked "BLOCKED" "UNTRUSTED"))]
+    {"verdict" verdict "coreReady" core-ready}))

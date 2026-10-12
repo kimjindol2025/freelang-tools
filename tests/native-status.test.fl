@@ -1,0 +1,12 @@
+;; Native FreeLang tests for status fallback semantics.
+(load "../src/test/deftest-runner.fl")
+(load "../native/status-report.fl")
+
+(deftest "status keeps supplied value" (is= "PASS"
+  (value-or "PASS" "UNKNOWN")))
+(deftest "status falls back for empty value" (is= "UNKNOWN"
+  (value-or "" "UNKNOWN")))
+(deftest "status falls back for missing value" (is= "UNKNOWN"
+  (value-or nil "UNKNOWN")))
+
+(run-deftest-suite)

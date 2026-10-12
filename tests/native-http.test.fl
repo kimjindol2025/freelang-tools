@@ -1,0 +1,26 @@
+;; Native FreeLang tests for HTTP response normalization.
+(load "../src/test/deftest-runner.fl")
+(load "../native/http-contract.fl")
+
+(deftest "successful HTTP response is pass" (is= true
+  (get (http-response "http://example.test"
+    {"status" 200 "headers" {"content-type" "application/json"}
+     "body" "{\"ok\":true}" "error" nil}) "ok")))
+(deftest "successful HTTP response parses data" (is= true
+  (get (get (http-response "http://example.test"
+    {"status" 200 "headers" {} "body" "{\"ok\":true}" "error" nil}) "data") "ok")))
+(deftest "HTTP error status is not pass" (is= false
+  (get (http-response "http://example.test"
+    {"status" 404 "headers" {} "body" "not found" "error" nil}) "ok")))
+(deftest "transport error is not pass" (is= false
+  (get (http-response "http://example.test"
+    {"status" 0 "headers" {} "body" "" "error" "ECONNREFUSED"}) "ok")))
+(deftest "invalid JSON leaves data nil" (is= true
+  (nil? (get (http-response "http://example.test"
+    {"status" 200 "headers" {} "body" "{" "error" nil}) "data"))))
+(deftest "HTTP response preserves headers" (is= "native"
+  (get (get (http-response "http://example.test"
+    {"status" 200 "headers" {"x-freelang" "native"}
+     "body" "" "error" nil}) "headers") "x-freelang")))
+
+(run-deftest-suite)

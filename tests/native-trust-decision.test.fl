@@ -1,0 +1,14 @@
+;; Native FreeLang tests for the complete trust gate decision.
+(load "../src/test/deftest-runner.fl")
+(load "../native/trust-core.fl")
+
+(deftest "deep trust requires every gate" (is= "TRUSTED"
+  (get (trust-decision "deep" "PASS" "PASS" "PASS" "PASS" "PASS" "NOT_APPLICABLE" "NOT_APPLICABLE" false) "verdict")))
+(deftest "blocked gate blocks trust" (is= "BLOCKED"
+  (get (trust-decision "deep" "BLOCKED" "PASS" "PASS" "PASS" "PASS" "NOT_APPLICABLE" "NOT_APPLICABLE" false) "verdict")))
+(deftest "quick trust still requires diff" (is= "UNTRUSTED"
+  (get (trust-decision "quick" "PASS" "PASS" "PASS" "PASS" "FAIL" "NOT_APPLICABLE" "NOT_APPLICABLE" false) "verdict")))
+(deftest "approval is explicit" (is= "TRUSTED_WITH_APPROVAL"
+  (get (trust-decision "deep" "PASS" "PASS" "PASS" "PASS" "PASS" "PASS" "PASS" true) "verdict")))
+
+(run-deftest-suite)

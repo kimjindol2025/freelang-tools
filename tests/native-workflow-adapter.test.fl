@@ -1,0 +1,32 @@
+;; Native validation of an external workflow adapter's output.
+(load "../src/test/deftest-runner.fl")
+(load "../src/test/workflow.fl")
+(capability-list)
+(capability-enable "native-process")
+
+(defn adapter-result []
+  {:context "Run the external workflow adapter and inspect its native output"
+   :returns "adapter result map"
+   :effects ["process"]}
+  (let [result (process_spawn "bash" ["scripts/fl-workflow-test" "."])]
+    (if (= (get result "_tag") "Ok")
+      {"code" (get (get result "value") "code")
+       "output" (str (get (get result "value") "stdout")
+                     (get (get result "value") "stderr"))}
+      {"code" 1 "output" "process-error"})))
+
+(deftest "workflow adapter output must carry native schema" (is= true
+  (get (workflow-contract {"schemaVersion" "freelang.workflow/v1"
+                           "status" "PASS" "root" "." "discovered" {}
+                           "results" [{"kind" "package-script" "label" "test"
+                                       "command" "external" "exitCode" 0 "output" "PASS"}]}) "valid")))
+(deftest "workflow adapter output rejects malformed result" (is= false
+  (get (workflow-contract {"schemaVersion" "freelang.workflow/v1"
+                           "status" "PASS" "root" "." "discovered" {}
+                           "results" [{"kind" "package-script" "label" "test"}]}) "valid")))
+(deftest "workflow adapter blocks honestly without installed external dependencies" (is= 2
+  (get (adapter-result) "code")))
+(deftest "workflow adapter output is still native-schema checked" (is= true
+  (str-contains-in (get (adapter-result) "output") "freelang.workflow/v1")))
+
+(run-deftest-suite)

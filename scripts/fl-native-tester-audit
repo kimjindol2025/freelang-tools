@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+INPUT=""
+RUN_MODE=NO
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --input) INPUT="${2:?--input requires a JSON file}"; shift ;;
+    --run) RUN_MODE=YES ;;
+    --help|-h) echo "사용법: fl-tools tester-audit --input 파일"; exit 0 ;;
+    *) echo "알 수 없는 옵션: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+
+if [[ "$RUN_MODE" == YES ]]; then
+  if [[ ! -f "$RUNNER" ]]; then
+    echo "TESTER_AUDIT=BLOCKED" >&2
+    echo "CAUSE=AFJ runner not found" >&2
+    exit 2
+  fi
+  INPUT_DIR="$(mktemp -d)"
+  INPUT="$INPUT_DIR/results.json"
+  cleanup() { rm -rf "$INPUT_DIR"; }
+  trap cleanup EXIT INT TERM
+  FL_TOOLS_ROOT="$TOOLS_ROOT" \
+  FL_TOOLS_TESTER_AUDIT_RUN_OUTPUT="$INPUT" \
+    FREELANG_AFJ_RUNNER="$RUNNER" \
+    node "$RUNNER" run "$TOOLS_ROOT/native/tester-runner.fl" >/dev/null
+fi
+
+if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
+  echo "TESTER_AUDIT=BLOCKED" >&2
+  echo "CAUSE=input or AFJ runner not found" >&2
+  exit 2
+fi
+
+PROBE="$TOOLS_ROOT/native/tester-registry.fl"
+node "$RUNNER" check "$PROBE" >/dev/null
+OUTPUT="$(FL_TOOLS_TESTER_AUDIT_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
+printf '%s\n' "$OUTPUT"
+VERDICT="$(sed -n 's/.*"verdict":"\([^"]*\)".*/\1/p' <<<"$OUTPUT")"
+case "$VERDICT" in
+  PASS) exit 0 ;;
+  UNRESOLVED|FAIL|BLOCKED) exit 1 ;;
+  *) echo "TESTER_AUDIT=BLOCKED" >&2; exit 2 ;;
+esac

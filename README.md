@@ -124,6 +124,8 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools report [경로]` | status와 review를 완료 보고서로 출력 (`fl-report`) |
 | `fl-tools evidence --json [경로]` | 검증 결과와 원시 출력을 JSON으로 보존 (`fl-evidence`) |
 | `fl-tools trust [경로]` | check/test/review/evidence/diff/capability를 실제 실행하고 AI용 신뢰 판정 JSON 출력 (`fl-trust`) |
+| `fl-tools tester-audit --run` | 선언된 FreeLang native tester를 직접 실행하고 결과를 registry에 제출 |
+| `fl-tools tester-audit --input 파일` | 이미 생성된 tester 증거의 누락·재현성·상태를 FreeLang native registry로 판정 (`tester-registry.fl`) |
 | `fl-tools ai trust [경로]` | AI 전용 단일 진입점. 최종 판정은 FreeLang native `trust-core.fl`이 계산 |
 | `fl-tools ai start/work/verify/release [경로]` | AI 표준 작업 protocol `freelang.ai/v1` |
 | `fl-tools workflow-test [--workflows] [--all-tests] [경로]` | 기본 빠른 테스트 프로필 또는 명시한 전체 npm/Jest/Vitest/CI 테스트 실행·증거화 |
@@ -222,6 +224,12 @@ dirty worktree가 있다는 뜻이지 trust 통과를 의미하지 않는다.
 런타임의 `check → run`과 `deftest`/`is`/`is=`/`run-tests` 결과를 검사한다.
 테스트가 없으면 `FREELANG_TEST=NOT_RUN`, 종료코드 3을 반환하며
 review/report/deploy를 통과시키지 않는다.
+
+`*-live.test.fl`은 기본 테스트 목록에서 제외한다. 네트워크·외부 서버가 실제로
+준비된 경우에만 `FL_TOOLS_HTTP_TEST_URL` 또는
+`FL_TOOLS_INCLUDE_LIVE_TESTS=YES`를 명시해 실행한다. `SKIPPED`, `FAIL`,
+`BLOCKED` 결과는 PASS로 승격하지 않으며, 최종 FreeLang 보고서의 `complete`,
+`status`, 집계 필드가 함께 PASS여야 통과한다.
 
 AIRC 프로젝트는 다음처럼 기존 `airc.fl` CLI를 공통 도구에서 호출할 수 있다.
 

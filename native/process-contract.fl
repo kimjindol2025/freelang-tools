@@ -1,0 +1,33 @@
+;; FreeLang-native normalized process result contract.
+
+(defn process-result [program args ok stdout stderr code signal error]
+  {:context "Create one normalized argv process result"
+   :returns "process contract"
+   :effects []}
+  {"schemaVersion" "freelang.process/v1"
+   "source" "freelang-native"
+   "ok" ok
+   "status" (if ok "PASS" "FAIL")
+   "program" program
+   "argv" args
+   "stdout" stdout
+   "stderr" stderr
+   "code" code
+   "signal" signal
+   "error" error})
+
+(defn normalize-result [program args result]
+  {:context "Normalize one native argv process result"
+   :returns "process contract"
+   :effects ["process"]}
+  (if (= (get result "_tag") "Ok")
+    (let [value (get result "value")]
+      (process-result program args true
+                      (get value "stdout")
+                      (get value "stderr")
+                      (get value "code")
+                      (get value "signal")
+                      nil))
+    (process-result program args false "" ""
+                    1 nil
+                    (get result "code"))))

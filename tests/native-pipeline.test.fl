@@ -1,0 +1,14 @@
+;; Native FreeLang tests for supervised pipeline aggregation.
+(load "../src/test/deftest-runner.fl")
+(load "../native/pipeline-contract.fl")
+
+(deftest "pipeline accepts zero exits and skipped deploy" (is= true
+  (pipeline-ok? "0" "0" "0" "0" "SKIPPED" "0")))
+(deftest "pipeline accepts deployed zero exit" (is= true
+  (pipeline-ok? "0" "0" "0" "0" "0" "0")))
+(deftest "pipeline rejects review failure" (is= false
+  (pipeline-ok? "0" "0" "1" "0" "SKIPPED" "0")))
+(deftest "pipeline rejects invalid handoff" (is= false
+  (pipeline-ok? "0" "0" "0" "0" "SKIPPED" "1")))
+
+(run-deftest-suite)

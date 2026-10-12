@@ -1,0 +1,12 @@
+;; Native FreeLang tests for review policy classification.
+(load "../src/test/deftest-runner.fl")
+(load "../native/review-contract.fl")
+
+(deftest "generated artifact is detected" (is= true
+  (has-fragment? [" M _app.fl"] "_app.fl")))
+(deftest "contract lock requires approval" (is= true
+  (has-fragment? [" M LANGUAGE_LOCK.md"] "LANGUAGE_LOCK.md")))
+(deftest "unrelated status is not generated" (is= false
+  (has-fragment? [" M README.md"] "_app.fl")))
+
+(run-deftest-suite)

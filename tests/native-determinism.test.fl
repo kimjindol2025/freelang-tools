@@ -1,0 +1,18 @@
+;; Native FreeLang tests for deterministic result comparison.
+(load "../src/test/deftest-runner.fl")
+(load "../native/determinism-contract.fl")
+
+(deftest "metadata does not change semantic equality" (is= true
+  (deterministic-match?
+    {"status" "PASS" "duration_ms" 10 "timestamp" "a"}
+    {"status" "PASS" "duration_ms" 99 "timestamp" "b"})))
+(deftest "semantic field difference is detected" (is= false
+  (deterministic-match? {"status" "PASS"} {"status" "FAIL"})))
+(deftest "nested maps are canonicalized" (is= true
+  (deterministic-match?
+    {"data" {"b" 2 "a" 1}}
+    {"data" {"a" 1 "b" 2}})))
+(deftest "arrays preserve semantic order" (is= false
+  (deterministic-match? {"items" [1 2]} {"items" [2 1]})))
+
+(run-deftest-suite)

@@ -1,0 +1,12 @@
+;; Native FreeLang tests for doctor prerequisites.
+(load "../src/test/deftest-runner.fl")
+(load "../native/doctor-contract.fl")
+
+(deftest "doctor passes complete prerequisites" (is= "PASS"
+  (doctor-status "PASS" "PASS")))
+(deftest "doctor blocks missing runner" (is= "BLOCKED"
+  (doctor-status "BLOCKED" "PASS")))
+(deftest "doctor blocks missing tools" (is= "BLOCKED"
+  (doctor-status "PASS" "BLOCKED")))
+
+(run-deftest-suite)

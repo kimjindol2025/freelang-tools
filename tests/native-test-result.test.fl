@@ -1,0 +1,14 @@
+;; Native FreeLang tests for the final test-output classifier.
+(load "../src/test/deftest-runner.fl")
+(load "../native/test-result-contract.fl")
+
+(deftest "complete PASS is accepted" (is= true
+  (test-output-pass? "Test Results: 2/2 passed FREELANG_FINAL_RESULT={\"complete\":true,\"status\":\"PASS\"}")))
+(deftest "SKIPPED is not accepted" (is= false
+  (test-output-pass? "Test Results: 0/0 skipped FREELANG_FINAL_RESULT={\"complete\":true,\"status\":\"SKIPPED\"}")))
+(deftest "FAIL is not accepted" (is= false
+  (test-output-pass? "Test Results: 1/2 FAILED FREELANG_FINAL_RESULT={\"complete\":true,\"status\":\"FAIL\"}")))
+(deftest "incomplete output is not accepted" (is= false
+  (test-output-pass? "Test Results: 2/2 passed")))
+
+(run-deftest-suite)

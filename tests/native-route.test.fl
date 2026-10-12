@@ -1,0 +1,12 @@
+;; Native FreeLang tests for route fallback semantics.
+(load "../src/test/deftest-runner.fl")
+(load "../native/route-report.fl")
+
+(deftest "route keeps selected command" (is= "fl-tools test ."
+  (value-or "fl-tools test ." "UNKNOWN")))
+(deftest "route reports unknown command when absent" (is= "UNKNOWN"
+  (value-or "" "UNKNOWN")))
+(deftest "route reports no files when absent" (is= "none"
+  (value-or nil "none")))
+
+(run-deftest-suite)

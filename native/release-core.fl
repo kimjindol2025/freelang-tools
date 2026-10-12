@@ -1,17 +1,5 @@
-;; FreeLang-native release readiness policy.
-;; Host adapters provide filesystem/Git observations; this module owns policy.
-
-(defn yes? [value]
-  {:context "Interpret a host observation as affirmative"
-   :returns "boolean"
-   :effects []}
-  (= value "YES"))
-
-(defn contains-any? [text fragments]
-  {:context "Require at least one release contract field"
-   :returns "boolean"
-   :effects []}
-  (> (length (filter (fn [fragment] (str-contains-in text fragment)) fragments)) 0))
+;; FreeLang-native release readiness policy runner.
+(load "release-contract.fl")
 
 (let [notes (shell_env "FL_TOOLS_RELEASE_NOTES")
       git (shell_env "FL_TOOLS_RELEASE_GIT")

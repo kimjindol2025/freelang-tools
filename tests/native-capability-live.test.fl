@@ -1,0 +1,24 @@
+;; Native capability probe execution. The probe itself owns the checks;
+;; this test only validates its structured native output and exit code.
+(load "../src/test/deftest-runner.fl")
+(capability-list)
+(capability-enable "native-process")
+
+(defn probe-output []
+  {:context "Run the FreeLang capability probe through the canonical runner"
+   :returns "child output"
+   :effects ["process"]}
+  (let [runner (shell_env "FREELANG_AFJ_RUNNER")
+        ;; fl-test does not inject a repository root; the runner inherits cwd.
+        result (process_spawn "node" [runner "run" "native/capability-probe.fl"]) ]
+    (if (= (get result "_tag") "Ok")
+      (str (get (get result "value") "stdout")
+           (get (get result "value") "stderr"))
+      "process-error")))
+
+(deftest "native capability probe passes all available checks" (is= true
+  (str-contains-in (probe-output) "\"overall\":\"PASS\"")))
+(deftest "native capability probe has no blocked checks" (is= true
+  (str-contains-in (probe-output) "\"blockedCount\":0")))
+
+(run-deftest-suite)

@@ -1,0 +1,21 @@
+;; Native FreeLang backend contract test with all seven categories.
+(load "../src/test/deftest-runner.fl")
+(load "../native/backend-contract.fl")
+
+(define backend-values
+  [(category-contract "system" {"ok" true "status" "PASS"})
+   (category-contract "json" {"ok" true "status" "PASS"})
+   (category-contract "http" {"status" 200 "headers" {} "body" "{}" "data" {} "error" nil})
+   (category-contract "process" {"code" 0 "argv" [] "stdout" "" "stderr" ""})
+   (category-contract "permission" {"root" "/tmp/project" "path" "/tmp/project/file" "operation" "read"})
+   (category-contract "git" {"code" 0 "head" "abc" "branch" "main" "diff" ""})
+   (category-contract "executor" {"ok" true "status" "PASS"})])
+
+(deftest "all backend categories pass when contracts are valid" (is= "PASS"
+  (contract-status backend-values)))
+(deftest "backend category count is fixed" (is= 7
+  (length backend-values)))
+(deftest "backend category metadata is native" (is= "native"
+  (get (first backend-values) "api")))
+
+(run-deftest-suite)

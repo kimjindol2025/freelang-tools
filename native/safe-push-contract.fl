@@ -1,0 +1,8 @@
+;; FreeLang-native safe-push preflight primitive.
+(defn safe-push-status [remotes clean local-head]
+  {:context "Require remote, clean worktree, and local head before push"
+   :returns "READY | BLOCKED"
+   :effects []}
+  (if (and (= remotes "PASS") (= clean "PASS") (not= local-head ""))
+    "READY"
+    "BLOCKED"))

@@ -1,0 +1,9 @@
+;; FreeLang-native classifier for runner output.
+(defn test-output-pass? [output]
+  {:context "Accept only a complete PASS report with no failure marker"
+   :returns "boolean"
+   :effects []}
+  (and (str-contains-in output "Test Results:")
+       (str-contains-in output "\"complete\":true")
+       (str-contains-in output "\"status\":\"PASS\"")
+       (not (str-contains-in output "FAILED"))))

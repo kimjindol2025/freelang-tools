@@ -1,0 +1,27 @@
+;; Native FreeLang tests for the check supervisor's process contract.
+(load "../src/test/deftest-runner.fl")
+(load "../native/check-supervisor.fl")
+
+(defn actual-check-code []
+  {:context "Run one real FreeLang source through the canonical check runner"
+   :returns "child exit code"
+   :effects ["process"]}
+  (let [runner (shell_env "FREELANG_AFJ_RUNNER")
+        ;; fl-test deliberately does not inject FL_TOOLS_ROOT; the canonical
+        ;; runner inherits the repository working directory instead.
+        source "native/check-supervisor.fl"
+        result (process_spawn "node" [runner "check" source])]
+    (result-code result)))
+
+(deftest "check accepts successful child" (is= 0
+  (result-code {"_tag" "Ok" "value" {"code" 0 "stdout" "ok" "stderr" ""}})))
+(deftest "check preserves failed child" (is= 3
+  (result-code {"_tag" "Ok" "value" {"code" 3 "stdout" "" "stderr" "bad"}})))
+(deftest "check turns process error into failure" (is= 1
+  (result-code {"_tag" "Err" "code" "E_PROCESS"})))
+(deftest "check combines child output" (is= "outwarn"
+  (result-output {"_tag" "Ok" "value" {"code" 0 "stdout" "out" "stderr" "warn"}})))
+(deftest "check executes a real FreeLang source" (is= 0
+  (actual-check-code)))
+
+(run-deftest-suite)

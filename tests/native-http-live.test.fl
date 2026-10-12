@@ -1,0 +1,14 @@
+;; Live FreeLang native HTTP test. The URL must point to a FreeLang server.
+(load "../src/test/deftest-runner.fl")
+(load "../native/http-contract.fl")
+
+(let [url (shell_env "FL_TOOLS_HTTP_TEST_URL")
+      raw (http_get url)
+      response (http-response url raw)]
+  (deftest "live FreeLang HTTP response is successful" (is= true
+    (get response "ok")))
+  (deftest "live FreeLang HTTP response has JSON data" (is= true
+    (map? (get response "data"))))
+  (deftest "live FreeLang HTTP response preserves status" (is= 200
+    (get response "status")))
+  (run-deftest-suite))

@@ -1,0 +1,24 @@
+;; Native FreeLang tests for argv and exit-code normalization.
+(load "../src/test/deftest-runner.fl")
+(load "../native/process-contract.fl")
+(capability-list)
+(capability-enable "native-process")
+
+(deftest "successful process preserves argv" (is= "safe value"
+  (get (get (normalize-result "printf" ["safe value"]
+    {"_tag" "Ok" "value" {"stdout" "safe value\n" "stderr" "" "code" 0 "signal" nil}}) "argv") 0)))
+(deftest "successful process is pass" (is= "PASS"
+  (get (normalize-result "true" []
+    {"_tag" "Ok" "value" {"stdout" "" "stderr" "" "code" 0 "signal" nil}}) "status")))
+(deftest "failed process preserves nonzero code" (is= "FAIL"
+  (get (normalize-result "missing" [] {"_tag" "Error" "code" "E_PROCESS_SPAWN"}) "status")))
+(deftest "failed process has error code" (is= "E_PROCESS_SPAWN"
+  (get (normalize-result "missing" [] {"_tag" "Error" "code" "E_PROCESS_SPAWN"}) "error")))
+(deftest "process contract identifies native source" (is= "freelang-native"
+  (get (normalize-result "true" []
+    {"_tag" "Ok" "value" {"stdout" "" "stderr" "" "code" 0 "signal" nil}}) "source")))
+(deftest "native argv process returns actual output" (is= "native-process"
+  (let [result (process_spawn "printf" ["native-process"])]
+    (get (normalize-result "printf" ["native-process"] result) "stdout"))))
+
+(run-deftest-suite)

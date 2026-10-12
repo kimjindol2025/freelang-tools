@@ -1,0 +1,9 @@
+;; FreeLang-native readiness policy primitive.
+(defn readiness-status [dialect git-state runner-ready dirty]
+  {:context "Classify AI preflight readiness without coercing missing state"
+   :returns "READY | READY_WITH_CHANGES | BLOCKED"
+   :effects []}
+  (if (or (= dialect "UNKNOWN") (= dialect "")
+          (= git-state "not-a-repository") (not runner-ready))
+    "BLOCKED"
+    (if dirty "READY_WITH_CHANGES" "READY")))

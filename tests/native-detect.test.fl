@@ -1,0 +1,14 @@
+;; Native FreeLang tests for dialect detection decisions.
+(load "../src/test/deftest-runner.fl")
+(load "../native/detect-core.fl")
+
+(deftest "AFJ family is stable" (is= "AFJ" (family-for "AFJ" "/tmp")))
+(deftest "Script family is stable" (is= "SCRIPT" (family-for "SCRIPT" "/tmp")))
+(deftest "suffix detection finds FreeLang source" (is= true
+  (has-suffix? ["/tmp/app.fl" "/tmp/readme.md"] ".fl")))
+(deftest "suffix detection rejects absent source" (is= false
+  (has-suffix? ["/tmp/readme.md"] ".fl")))
+(deftest "path detection matches explicit file" (is= true
+  (has-path? ["/tmp/project/tests/app.test.fl"] "tests/app.test.fl")))
+
+(run-deftest-suite)

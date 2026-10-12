@@ -1,0 +1,11 @@
+;; FreeLang-native pipeline aggregation primitive.
+(defn pipeline-ok? [init inspect review report deploy handoff]
+  {:context "Classify supervised pipeline step exit codes"
+   :returns "boolean"
+   :effects []}
+  (and (= (str-to-num init) 0)
+       (= (str-to-num inspect) 0)
+       (= (str-to-num review) 0)
+       (= (str-to-num report) 0)
+       (or (= deploy "SKIPPED") (= (str-to-num deploy) 0))
+       (= (str-to-num handoff) 0)))

@@ -1,0 +1,17 @@
+;; FreeLang-native safety policy primitives.
+
+(defn valid-mode? [mode]
+  {:context "Accept only the three declared safety modes"
+   :returns "boolean"
+   :effects []}
+  (or (= mode "strict") (= mode "advisory") (= mode "off")))
+
+(defn read-mode [path]
+  {:context "Read and normalize the safety state file"
+   :returns "safety mode"
+   :effects ["file-read"]}
+  (if (file-exists path)
+    (let [body (try (json-parse (file-read path)) (catch error {}))
+          value (get body "mode")]
+      (if (valid-mode? value) value "strict"))
+    "strict"))

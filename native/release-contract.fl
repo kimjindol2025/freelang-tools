@@ -1,0 +1,13 @@
+;; FreeLang-native release readiness policy primitives.
+
+(defn yes? [value]
+  {:context "Interpret a host observation as affirmative"
+   :returns "boolean"
+   :effects []}
+  (= value "YES"))
+
+(defn contains-any? [text fragments]
+  {:context "Require at least one release contract field"
+   :returns "boolean"
+   :effects []}
+  (> (length (filter (fn [fragment] (str-contains-in text fragment)) fragments)) 0))

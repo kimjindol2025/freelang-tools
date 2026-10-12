@@ -1,0 +1,22 @@
+;; Native FreeLang tests for the shared backend contract.
+(load "../src/test/deftest-runner.fl")
+(load "../native/backend-contract.fl")
+
+(deftest "all declared backend categories are present" (is= 7
+  (length categories)))
+(deftest "HTTP category normalizes successful response" (is= true
+  (get (get (category-contract "http"
+    {"status" 200 "headers" {} "body" "{}" "data" {} "error" nil}) "result") "ok")))
+(deftest "process category rejects nonzero code" (is= false
+  (get (get (category-contract "process"
+    {"code" 1 "argv" [] "stdout" "" "stderr" ""}) "result") "ok")))
+(deftest "permission category denies outside root" (is= "DENIED"
+  (get (get (category-contract "permission"
+    {"root" "/tmp/project" "path" "/etc/passwd" "operation" "read"}) "result") "status")))
+(deftest "git category preserves head" (is= "abc123"
+  (get (get (category-contract "git"
+    {"code" 0 "head" "abc123" "branch" "main" "diff" ""}) "result") "head")))
+(deftest "invalid category blocks aggregate" (is= "BLOCKED"
+  (contract-status [(category-contract "system" {})])))
+
+(run-deftest-suite)

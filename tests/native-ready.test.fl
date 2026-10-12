@@ -1,0 +1,14 @@
+;; Native FreeLang tests for readiness classification.
+(load "../src/test/deftest-runner.fl")
+(load "../native/ready-contract.fl")
+
+(deftest "ready is clean" (is= "READY"
+  (readiness-status "AFJ" "clean" true false)))
+(deftest "ready preserves dirty state" (is= "READY_WITH_CHANGES"
+  (readiness-status "AFJ" "clean" true true)))
+(deftest "ready blocks missing runner" (is= "BLOCKED"
+  (readiness-status "AFJ" "clean" false false)))
+(deftest "ready blocks unknown dialect" (is= "BLOCKED"
+  (readiness-status "UNKNOWN" "clean" true false)))
+
+(run-deftest-suite)

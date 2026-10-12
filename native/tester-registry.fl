@@ -1,0 +1,95 @@
+;; FreeLang-native tester registry.
+;; This is the fixed inventory used by the AI trust audit. A missing result is
+;; unresolved; aggregate results must never silently imply tester coverage.
+
+(defn entry [id kind]
+  {:context "Declare one public fl-tools verification surface"
+   :returns "tester registry entry"
+   :effects []}
+  {"id" id "kind" kind "owner" "freelang-native"})
+
+(let [registry
+       [(entry "start" "context")
+        (entry "ready" "context")
+        (entry "status" "context")
+        (entry "route" "context")
+        (entry "detect" "routing")
+        (entry "doctor" "health")
+        (entry "check" "source")
+        (entry "test" "native-test")
+        (entry "review" "review")
+        (entry "evidence" "evidence")
+        (entry "trust" "trust")
+        (entry "determinism" "determinism")
+        (entry "capabilities" "capability")
+        (entry "backend-contract" "backend")
+        (entry "system-json" "system-json")
+        (entry "process-native" "process")
+        (entry "http-native" "http")
+        (entry "git-native" "git")
+        (entry "workflow-test" "workflow-adapter")
+        (entry "native-workflow" "workflow-contract")
+        (entry "native-core" "native-core")
+        (entry "native-trust" "native-trust")
+        (entry "test-cli-contract" "cli-contract")
+        (entry "test-cli-isolation" "process-isolation")
+        (entry "test-effect-capability" "capability")
+        (entry "test-trust" "trust-contract")
+        (entry "test-deploy-fixture" "deploy-contract")
+        (entry "pipeline" "orchestration")
+        (entry "release-check" "release")
+        (entry "safe-push" "safe-write")
+        (entry "safety" "policy")]
+      input-path (shell_env "FL_TOOLS_TESTER_AUDIT_INPUT")
+      input (if (and (string? input-path) (file-exists input-path))
+              (json-parse (file-read input-path)) {})
+      results (if (array? (get input "results")) (get input "results") [])
+      result-for (fn [id]
+                   (first (filter (fn [result]
+                                    (and (map? result) (= (get result "id") id)))
+                                  results)))
+      valid-status? (fn [status]
+                      (or (= status "PASS") (= status "FAIL")
+                          (= status "BLOCKED") (= status "NOT_RUN")))
+      valid-result? (fn [result]
+                      (and (map? result)
+                           (string? (get result "id"))
+                           (valid-status? (get result "status"))
+                           (string? (get result "evidence"))
+                           (> (length (get result "evidence")) 0)
+                           (= (get result "reproducible") true)
+                           (= (get result "native") true)
+                           (= (get result "authority") "freelang-native")
+                           (= (get result "adapter") "afj-bootstrap-host")
+                           (string? (get result "command"))
+                           (> (length (get result "command")) 0)))
+      missing (filter (fn [item] (nil? (result-for (get item "id")))) registry)
+      invalid (filter (fn [result] (not (valid-result? result))) results)
+      unknown (filter (fn [result]
+                        (nil? (first (filter (fn [item]
+                                              (= (get item "id") (get result "id")))
+                                            registry)))) results)
+      failed (filter (fn [result] (= (get result "status") "FAIL")) results)
+      blocked (filter (fn [result] (= (get result "status") "BLOCKED")) results)
+      not-run (filter (fn [result] (= (get result "status") "NOT_RUN")) results)
+      complete (and (= (length missing) 0)
+                    (= (length invalid) 0)
+                    (= (length unknown) 0)
+                    (= (length results) (length registry)))
+      verdict (if (not complete) "UNRESOLVED"
+                (if (> (length blocked) 0) "BLOCKED"
+                  (if (or (> (length failed) 0) (> (length not-run) 0))
+                    "FAIL" "PASS")))]
+  (println (json-stringify
+             {"schemaVersion" "freelang.tester-registry/v1"
+              "source" "freelang-native"
+              "verdict" verdict
+              "expectedCount" (length registry)
+              "resultCount" (length results)
+              "missing" (map (fn [item] (get item "id")) missing)
+              "invalidCount" (length invalid)
+              "unknownCount" (length unknown)
+              "failedCount" (length failed)
+              "blockedCount" (length blocked)
+              "notRunCount" (length not-run)
+              "registry" registry})))

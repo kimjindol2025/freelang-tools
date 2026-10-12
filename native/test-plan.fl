@@ -3,8 +3,14 @@
 
 (let [root (shell_env "FL_TOOLS_TEST_PLAN_ROOT")
       testRoot (shell_env "FL_TOOLS_TEST_PLAN_TEST_ROOT")
+      live-url (shell_env "FL_TOOLS_HTTP_TEST_URL")
+      include-live (= (shell_env "FL_TOOLS_INCLUDE_LIVE_TESTS") "YES")
       names (if (and (string? testRoot) (file-exists testRoot))
-              (sort (filter (fn [name] (str-ends-with name ".test.fl"))
+              (sort (filter (fn [name]
+                              (and (str-ends-with name ".test.fl")
+                                   (or (not (str-ends-with name "-live.test.fl"))
+                                       include-live
+                                       (and (string? live-url) (not= live-url "")))))
                             (dir-list testRoot)))
               [])
       listing (str-join "\n" (map (fn [name] (str testRoot "/" name)) names))]

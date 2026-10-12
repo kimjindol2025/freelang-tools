@@ -1,0 +1,12 @@
+;; Native FreeLang tests for start readiness.
+(load "../src/test/deftest-runner.fl")
+(load "../native/start-contract.fl")
+
+(deftest "start accepts healthy context" (is= true
+  (start-ready? "PASS" "AFJ" "clean")))
+(deftest "start rejects unknown dialect" (is= false
+  (start-ready? "PASS" "UNKNOWN" "clean")))
+(deftest "start rejects non repository" (is= false
+  (start-ready? "PASS" "AFJ" "not-a-repository")))
+
+(run-deftest-suite)

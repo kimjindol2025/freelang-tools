@@ -1,0 +1,14 @@
+;; Native FreeLang tests for safe-push preflight.
+(load "../src/test/deftest-runner.fl")
+(load "../native/safe-push-contract.fl")
+
+(deftest "safe push accepts verified clean head" (is= "READY"
+  (safe-push-status "PASS" "PASS" "abc123")))
+(deftest "safe push blocks dirty worktree" (is= "BLOCKED"
+  (safe-push-status "PASS" "FAIL" "abc123")))
+(deftest "safe push blocks missing remote" (is= "BLOCKED"
+  (safe-push-status "BLOCKED" "PASS" "abc123")))
+(deftest "safe push blocks missing head" (is= "BLOCKED"
+  (safe-push-status "PASS" "PASS" "")))
+
+(run-deftest-suite)

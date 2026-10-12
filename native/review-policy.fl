@@ -1,11 +1,6 @@
-;; FreeLang-native review policy for generated files and contract drift.
+;; FreeLang-native review policy runner.
 ;; Git status is read through AFJ's capability-gated native-git API.
-
-(defn has-fragment? [lines fragment]
-  {:context "Classify Git status lines by one policy fragment"
-   :returns "boolean"
-   :effects []}
-  (> (length (filter (fn [line] (str-contains-in line fragment)) lines)) 0))
+(load "review-contract.fl")
 
 (capability-list)
 (capability-enable "native-git")

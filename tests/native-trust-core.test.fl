@@ -1,0 +1,11 @@
+;; Native FreeLang tests for trust gate primitives.
+(load "../src/test/deftest-runner.fl")
+(load "../native/trust-core.fl")
+
+(deftest "PASS is accepted" (is= true (pass? "PASS")))
+(deftest "PASS_WITH_APPROVAL is accepted" (is= true (pass? "PASS_WITH_APPROVAL")))
+(deftest "FAIL is not accepted" (is= false (pass? "FAIL")))
+(deftest "missing trust value uses blocked fallback" (is= "BLOCKED"
+  (value-or nil "BLOCKED")))
+
+(run-deftest-suite)

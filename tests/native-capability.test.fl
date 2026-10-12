@@ -1,0 +1,12 @@
+;; Native FreeLang tests for capability result semantics.
+(load "../src/test/deftest-runner.fl")
+(load "../native/capability-contract.fl")
+
+(deftest "true capability is PASS" (is= "PASS" (verdict true)))
+(deftest "false capability is BLOCKED" (is= "BLOCKED" (verdict false)))
+(deftest "capability result preserves boundary" (is= "native"
+  (get (capability-check "json" "json.parse" true "native") "boundary")))
+(deftest "blocked capability result is explicit" (is= "BLOCKED"
+  (get (capability-check "process" "process.capture" false "native") "status")))
+
+(run-deftest-suite)

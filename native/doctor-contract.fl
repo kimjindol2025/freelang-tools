@@ -1,0 +1,6 @@
+;; FreeLang-native doctor policy primitive.
+(defn doctor-status [runner tools]
+  {:context "Classify project doctor prerequisites"
+   :returns "PASS | BLOCKED"
+   :effects []}
+  (if (and (= runner "PASS") (= tools "PASS")) "PASS" "BLOCKED"))

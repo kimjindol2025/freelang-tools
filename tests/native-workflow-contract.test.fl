@@ -1,0 +1,25 @@
+;; Native FreeLang tests for external workflow evidence validation.
+(load "../src/test/deftest-runner.fl")
+(load "../src/test/workflow.fl")
+
+(define valid-workflow
+  {"schemaVersion" "freelang.workflow/v1"
+   "status" "PASS"
+   "root" "/tmp/project"
+   "discovered" {}
+   "results" [{"kind" "native" "label" "check" "command" "fl-check"
+                "exitCode" 0 "output" "PASS"}]})
+
+(deftest "valid workflow result is accepted" (is= true
+  (get (workflow-contract valid-workflow) "valid")))
+(deftest "workflow status is preserved" (is= "PASS"
+  (get (workflow-contract valid-workflow) "status")))
+(deftest "missing result field is blocked" (is= false
+  (get (workflow-contract
+    (assoc valid-workflow "results"
+      [{"kind" "native" "label" "check" "command" "fl-check" "exitCode" 0}]))
+    "valid")))
+(deftest "invalid schema is blocked" (is= "BLOCKED"
+  (get (workflow-contract (assoc valid-workflow "schemaVersion" "wrong")) "verdict")))
+
+(run-deftest-suite)

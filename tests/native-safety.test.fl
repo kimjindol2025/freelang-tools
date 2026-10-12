@@ -1,0 +1,10 @@
+;; Native FreeLang tests for safety policy modes.
+(load "../src/test/deftest-runner.fl")
+(load "../native/safety-contract.fl")
+
+(deftest "strict mode is valid" (is= true (valid-mode? "strict")))
+(deftest "advisory mode is valid" (is= true (valid-mode? "advisory")))
+(deftest "off mode is valid" (is= true (valid-mode? "off")))
+(deftest "unknown mode is rejected" (is= false (valid-mode? "unsafe")))
+
+(run-deftest-suite)

@@ -1,24 +1,5 @@
-;; FreeLang-native deterministic final-result comparator.
-;; Execution metadata is ignored; semantic result fields remain ordered and compared.
-
-(define ignored-keys ["duration" "duration_ms" "pid" "process_id"
-                      "timestamp" "started_at" "finished_at" "evidence_dir"])
-
-(defn canonical [value]
-  {:context "Normalize JSON values for deterministic semantic comparison"
-   :returns "canonical JSON-compatible value"
-   :effects []}
-  (if (array? value)
-    (map canonical value)
-    (if (map? value)
-      (reduce
-        (fn [result key]
-          (if (contains? ignored-keys key)
-            result
-            (assoc result key (canonical (get value key)))))
-        {}
-        (sort (keys value)))
-      value)))
+;; FreeLang-native deterministic final-result comparator runner.
+(load "determinism-contract.fl")
 
 (let [left-path (shell_env "FL_TOOLS_DETERMINISM_LEFT")
       right-path (shell_env "FL_TOOLS_DETERMINISM_RIGHT")
@@ -28,7 +9,6 @@
       right (if (and (string? right-path) (file-exists right-path))
               (json-parse (file-read right-path))
               nil)]
-  (if (= (json-stringify (canonical left))
-         (json-stringify (canonical right)))
+  (if (deterministic-match? left right)
     (println "DETERMINISM_MATCH=final-result")
     (println "DETERMINISM_MISMATCH=final-result")))

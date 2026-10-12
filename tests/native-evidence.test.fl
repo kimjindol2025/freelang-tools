@@ -1,0 +1,16 @@
+;; Native FreeLang tests for evidence classification.
+(load "../src/test/deftest-runner.fl")
+(load "../native/evidence-report.fl")
+
+(deftest "PASS test output is recognized" (is= "PASS"
+  (test-status-from "TEST=PASS")))
+(deftest "missing test output is not pass" (is= "UNKNOWN"
+  (test-status-from "TEST=BLOCKED")))
+(deftest "review approval is preserved" (is= "PASS_WITH_APPROVAL"
+  (review-status-from "REVIEW=PASS_WITH_APPROVAL")))
+(deftest "review failure is failure" (is= "FAIL"
+  (review-status-from "REVIEW=FAIL")))
+(deftest "approval status is accepted by policy" (is= true
+  (pass-review? "PASS_WITH_APPROVAL")))
+
+(run-deftest-suite)
