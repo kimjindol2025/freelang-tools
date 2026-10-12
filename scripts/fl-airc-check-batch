@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+ROOT="${1:?project root is required}"
+DIALECT="${2:?dialect is required}"
+RUNNER="${3:?AIRC runner is required}"
+
+if [[ "$DIALECT" != AIRC ]]; then
+  echo "AIRC_CHECK=BLOCKED"
+  echo "CAUSE=unexpected dialect: $DIALECT" >&2
+  exit 2
+fi
+if [[ ! -d "$ROOT" || ! -f "$RUNNER" ]]; then
+  echo "AIRC_CHECK=BLOCKED"
+  echo "CAUSE=project or runner not found: root=$ROOT runner=$RUNNER" >&2
+  exit 2
+fi
+
+# The plan is shared with AFJ, but source checks must run through the
+# project's declared AIRC/FX runner. AFJ check-supervisor.fl assumes AFJ
+# process builtins and cannot validate an AIRC project.
+PLAN_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-check-plan "$ROOT" "$DIALECT" "$RUNNER")"
+mapfile -t SOURCES < <(
+  printf '%s\n' "$PLAN_OUTPUT" |
+    sed -n '/^SOURCES=/,$p' |
+    sed '1s/^SOURCES=//' |
+    sed '/^$/d'
+)
+
+checked=0
+failed=0
+for source in "${SOURCES[@]}"; do
+  [[ -n "$source" ]] || continue
+  checked=$((checked + 1))
+  echo "[fl-check] $source"
+  if ! node "$RUNNER" check "$source"; then
+    failed=1
+  fi
+done
+
+echo "AIRC_CHECK_COUNT=$checked"
+echo "AIRC_CHECK_EXIT=$failed"
+if [[ "$failed" -ne 0 ]]; then
+  echo "AIRC_CHECK=FAIL"
+  exit 1
+fi
+
+echo "AIRC_CHECK=PASS"

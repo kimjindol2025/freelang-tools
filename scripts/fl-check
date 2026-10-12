@@ -18,7 +18,7 @@ if [[ "$DIALECT" == "AIRC" ]]; then
     echo "CAUSE=AIRC runner not found: $RUNNER" >&2
     exit 2
   fi
-  "$TOOLS_ROOT/scripts/fl-native-check-batch" "$ROOT" "$DIALECT" "$RUNNER"
+  "$TOOLS_ROOT/scripts/fl-airc-check-batch" "$ROOT" "$DIALECT" "$RUNNER"
   echo "FREELANG_CHECK=PASS"
   exit 0
 fi
