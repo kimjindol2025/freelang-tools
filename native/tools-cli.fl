@@ -119,9 +119,20 @@
     "safety" (str root "/scripts/fl-safety")
     "none"))
 
+(capability-enable "native-process")
+
+(defn run-adapter [adapter args]
+  {:context "Run one declared compatibility adapter through native argv execution"
+   :returns "adapter output"
+   :effects ["process"]}
+  (let [$result (process_spawn $adapter $args)]
+    (if (= (get $result "_tag") "Ok")
+      (get (get $result "value") "stdout")
+      (str "FL_TOOLS_ADAPTER_ERROR=" (get $result "code")))))
+
 (let [argv (process-argv)
-      root (shell_env "FL_TOOLS_DISPATCH_ROOT")
-      args (if (> (length argv) 2) (slice argv 2 (length argv)) [])
+      root (or (shell_env "FL_TOOLS_DISPATCH_ROOT") "/home/kim/kim/projects/freelang-tools")
+      args argv
       command (if (> (length args) 0) (get args 0) "help")
       adapter (script-for root command)]
   (if (or (= command "help") (= command "-h") (= command "--help"))
@@ -133,4 +144,7 @@
                   "route" (route-command command)
                   "adapter" adapter
                   "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))
-      (println (str "CLI_ADAPTER=" adapter)))))
+      (println (str "CLI_ADAPTER=" adapter))
+      (if (not (= adapter "none"))
+        (println (run-adapter adapter (if (> (length args) 1) (slice args 1 (length args)) [])))
+        nil))))
