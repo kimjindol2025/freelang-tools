@@ -6,6 +6,7 @@
 
 ## 완료 판정 규칙
 
+- `NATIVE_FREELANG_CANDIDATE`는 기능·검증은 완료됐지만 release clean worktree가 아직 닫히지 않은 상태다.
 - `MIXED_MIGRATION_REQUIRED`가 남아 있으면 전체 완성이 아니다.
 - 문서·카탈로그만으로 PASS를 만들지 않는다.
 - 단계마다 native check, 실제 실행, 회귀, `git diff --check`를 수행한다.
@@ -30,12 +31,12 @@
 ## 현재 상태
 
 - 기준 커밋: `841a879`
-- 현재 판정: `MIXED_MIGRATION_REQUIRED`
+- 현재 판정: `NATIVE_FREELANG_CANDIDATE` (deep gate PASS, release clean worktree 미완료)
 - 이미 완료된 기반: native trust/evidence/ready report, backend contract,
   native Git read contract
 - 1단계 기준선: 완료 (`docs/FREELANG-BOUNDARY-MANIFEST.md`)
 - 2단계 진행: `native/tools-cli.fl`와 `scripts/fl-native-cli` 추가, `fl-tools help/status/route/ready` 실제 native report 경로 확인
-- 2단계 잔여: check/test/review의 명령 의미를 native kernel로 이전
+- 2단계 완료: check/test/review의 명령 의미와 gate 조합은 native kernel/report가 소유하고 host는 runner 감독만 담당
 - 3단계 진행: `native/system-json.fl`와 allow-root read/write/list/parse/stringify 실제 검증 추가
 - 4단계 진행: `native/process-core.fl` argv-safe 실행 및 실패/injection 회귀 PASS
 - 5단계 진행: `native/http-core.fl` loopback 실제 요청/응답 정규화 PASS
@@ -57,14 +58,19 @@
 - safe-push 진행: `safe-push-core.fl`이 clean/remote/push authorization 사전 판정을 소유하고 실제 `git push`는 명시적 host 경계로 유지
 - deploy report 진행: `deploy-report.fl`이 deploy/smoke/hash/rollback 결과 조합을 소유하고 실제 외부 계약 실행은 host 경계로 유지
 - self-host gate 진행: AFJ deep trust에 `selfHost` gate를 추가하고 native runner check/run smoke를 실제 `PASS`로 확인
+- workflow host 축소: `fl-workflow-test`의 GitHub scan, config parse, plan list 변환 Node 블록 제거; native workflow 모듈이 단일 plan 정본
+- 테스트/준비 회귀 수정: `native/test-plan.fl`이 `dir-list`로 실제 `.test.fl`를 수집하고, `native/detect-core.fl`이 `native/tools-cli.fl` 표식을 인식하며, Git subprocess 권한 경계는 `fl-ready` host adapter와 native readiness 판정으로 분리
+- self-host 권한 경계 수정: runner의 실제 check/run은 host supervisor가 수행하고 결과 파일·exit code의 PASS 판정은 `native/selfhost-core.fl`이 소유
+- safety/capability 정책 이전: `native/safety-core.fl`이 안전 모드 상태·JSON을, `native/effect-capability.fl`이 capability probe 판정을 소유하고 Python/Node 정책 해석을 제거
+- check 대상 보강: `native/check-plan.fl`이 실제 `native/*.fl`와 `src/*.fl` 목록을 `dir-list`로 만들어 전체 native source check가 비어 있지 않도록 수정
 - review 정책 진행: `native/review-policy.fl`이 generated/contract drift 분류를 소유하고 `fl-review`는 gate 실행 감독만 담당
 - start 컨텍스트 진행: `native/start-report.fl`이 start 출력 계약을 소유하고 Bash는 탐색·doctor/Git host 관찰만 담당
 - readiness 진행: `native/ready-core.fl`이 Git·runner·READY/BLOCKED 판정을 소유하고 `fl-ready`는 감지·경로 host adapter만 담당
 - trust input 진행: `native/trust-input.fl`이 trust decision JSON 계약을 소유하고 `fl-trust`의 Node JSON 생성 로직 제거
 - handoff 진행: `native/handoff-core.fl`이 handoff JSON/Markdown 생성과 stale commit 검증을 소유
 - evidence 진행: `native/evidence-report.fl`이 raw status/review 해석과 최종 PASS 정책을 소유하고 Bash는 관문 실행·exit 감독만 담당
-- 최신 검증: `npm run check`, `npm test`, `./scripts/fl-review .`, `npm run selfhost-smoke`, `./scripts/fl-tools ai run --deep` 모두 실제 실행 PASS
+- 최신 검증: native source 52개 check, test 12개 실행, evidence/review/selfhost/capability, `./scripts/fl-tools ai run --deep` 모두 실제 실행 PASS
 - 결정성 검증: `./scripts/fl-tools determinism tests/cli/pass.fl 8` 실제 실행 PASS
 - 릴리스 정책 검증: native 성공 경로 PASS, 현재 dirty worktree에서는 `RELEASE_READY=NO`를 정확히 반환
-- 전체 완성 보류: `fl-check`/`fl-test` 실행 감독, `fl-cli`의 timeout/evidence host 경계, `fl-tools` 자체 dispatch가 아직 완전 native 소유가 아님
+- release 보류: 기능 gate는 `TRUSTED`지만 현재 worktree가 dirty라 `fl-release-check`가 `RELEASE_READY=NO`를 반환함. commit/push 후 clean release 검증이 남아 있음
 - 외부 자체 로직을 남긴 채 완성으로 보고하지 않는다.

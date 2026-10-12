@@ -54,43 +54,13 @@ if [[ "$API_DOC_CODE" -gt 1 ]]; then
   exit 2
 fi
 
-API_STATUS="$(node -e '
-const fs = require("fs");
-const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-if (!value || typeof value !== "object" || typeof value.found !== "boolean") process.exit(2);
-process.stdout.write(value.found ? "AVAILABLE" : "UNAVAILABLE");
-' "$API_DOC_OUT")" || {
-  echo "EFFECT_TAPE_PROBE=ERROR"
-  echo "CAUSE=invalid-effect-api-doc-json" >&2
-  exit 2
-}
-echo "API_DOC_STATUS=$API_STATUS"
-
-if [[ "$API_STATUS" == "AVAILABLE" && "$RUN_CODE" -ne 0 ]]; then
-  echo "EFFECT_TAPE_PROBE=ERROR"
-  echo "CAUSE=declared-effect-api-failed-at-runtime" >&2
-  exit 2
-fi
-if [[ "$API_STATUS" == "AVAILABLE" && "$RUN_CODE" -eq 0 ]]; then
-  if ! grep -q '^EFFECT_TAPE_PROBE_BODY_EXECUTED$' "$RUN_OUT"; then
-    echo "EFFECT_TAPE_PROBE=ERROR"
-    echo "CAUSE=effect-api-run-produced-no-observable-body" >&2
-    exit 2
-  fi
-  echo "EFFECT_TAPE_PROBE=SUPPORTED"
-  exit 0
-fi
-if [[ "$RUN_CODE" -eq 0 ]]; then
-  echo "EFFECT_TAPE_PROBE=ERROR"
-  echo "CAUSE=runtime-succeeded-while-api-doc-denied-capability" >&2
-  exit 2
-fi
-if grep -q '^EFFECT_TAPE_PROBE_BODY_EXECUTED$' "$RUN_OUT"; then
-  echo "EFFECT_TAPE_PROBE=ERROR"
-  echo "CAUSE=probe-body-ran-before-capability-confirmation" >&2
-  exit 2
-fi
-
-echo "EFFECT_TAPE_PROBE=BLOCKED"
-echo "CAUSE=runtime-did-not-expose-a-public-effect-tape-api"
-exit 0
+set +e
+FL_TOOLS_EFFECT_CHECK_CODE="$CHECK_CODE" \
+FL_TOOLS_EFFECT_API_CODE="$API_DOC_CODE" \
+FL_TOOLS_EFFECT_RUN_CODE="$RUN_CODE" \
+FL_TOOLS_EFFECT_API_OUTPUT="$API_DOC_OUT" \
+FL_TOOLS_EFFECT_RUN_OUTPUT="$RUN_OUT" \
+  node "$RUNTIME" run "$TOOLS_ROOT/native/effect-capability.fl"
+DECISION_CODE=$?
+set -e
+exit "$DECISION_CODE"

@@ -19,6 +19,17 @@
    :effects []}
   (> (length (filter (fn [path] (str-ends-with path (str "/" name))) files)) 0))
 
+(defn direct-test-files [root]
+  {:context "Discover direct FreeLang test files for project context reporting"
+   :returns "sorted absolute test paths"
+   :effects ["directory-read" "file-read"]}
+  (let [test-root (str root "/tests")]
+    (if (file-exists test-root)
+      (map (fn [name] (str test-root "/" name))
+           (sort (filter (fn [name] (str-ends-with name ".test.fl"))
+                         (dir-list test-root))))
+      [])))
+
 (defn first-existing [candidates]
   {:context "Select the first available FreeLang runner candidate"
    :returns "path or none"
@@ -72,7 +83,10 @@
   (let [listing (try (shell-safe "find" [root "-maxdepth" "3" "-type" "f" "-print"])
                      (catch error ""))
         files (sort (filter (fn [line] (not= line "")) (str-split listing "\n")))
-        fl? (has-suffix? files ".fl")
+        ;; The native runner can execute the canonical tool entrypoint even
+        ;; when the host process adapter returns no recursive listing.
+        native-tools? (has-file? root "native/tools-cli.fl")
+        fl? (or native-tools? (has-suffix? files ".fl"))
         fls? (has-suffix? files ".fls")
         flx? (has-suffix? files ".flx")
         aia? (has-suffix? files ".aia")
@@ -107,8 +121,7 @@
                              (if (= detectedDialect "SCRIPT") (if (has-file? root "bin/fl-script-unified.js") (str root "/bin/fl-script-unified.js") "none")
                                (if (= detectedDialect "FX") (if (has-file? root "fl-test.sh") (str root "/fl-test.sh") "none")
                                  (if (= detectedDialect "NODE") (str root "/package.json") "none"))))))))
-        discoveredTests (try (shell-safe "find" [root "-maxdepth" "3" "-type" "f" "-name" "*.test.fl" "-print"])
-                             (catch error "none"))]
+        discoveredTests (direct-test-files root)]
     {"project" (first (reverse (str-split root "/")))
      "root" root
      "dialect" detectedDialect
@@ -131,5 +144,4 @@
   (println (str "EXTENSIONS=" (str-join " " (get value "extensions"))))
   (println (str "RUNNER=" (get value "runner")))
   (println (str "TEST_ROOT=" (get value "testRoot")))
-  (println (str "TEST_FILES=" (try (shell-safe "find" [(get value "root") "-maxdepth" "3" "-type" "f" "-name" "*.test.fl" "-print"])
-                                 (catch error "none")))))
+  (println (str "TEST_FILES=" (get value "testFiles"))))

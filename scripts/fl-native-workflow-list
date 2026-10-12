@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+PLAN="${1:?plan path required}"; ACTION="${2:?package or workflow required}"
+FL_TOOLS_WORKFLOW_PLAN_PATH="$PLAN" FL_TOOLS_WORKFLOW_LIST_ACTION="$ACTION" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/workflow-list.fl" | sed -n '/	/p'

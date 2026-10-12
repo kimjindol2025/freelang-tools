@@ -1,0 +1,23 @@
+;; FreeLang-native workflow limit configuration reader.
+
+(defn positive? [value]
+  {:context "Validate one workflow limit"
+   :returns "boolean"
+   :effects []}
+  (and (integer? value) (> value 0)))
+
+(let [path (shell_env "FL_TOOLS_WORKFLOW_CONFIG")
+      value (if (file-exists path) (json-parse (file-read path)) {})
+      workflow (if (map? (get value "workflow")) (get value "workflow") {})
+      fields [["commandTimeoutSeconds" "commandTimeoutSeconds"]
+              ["cpuSeconds" "cpuSeconds"]
+              ["totalTimeoutSeconds" "totalTimeoutSeconds"]
+              ["maxCommands" "maxCommands"]]
+      present (filter (fn [pair] (not (nil? (get workflow (first pair))))
+                      fields))]
+  (map (fn [pair]
+         (let [key (first pair) value (get workflow key)]
+           (if (positive? value)
+             (println (str key "=" value))
+             (throw (str "invalid workflow config: " key)))))
+       present))

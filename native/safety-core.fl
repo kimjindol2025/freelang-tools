@@ -1,0 +1,38 @@
+;; FreeLang-native safety policy state.
+
+(defn valid-mode? [mode]
+  {:context "Accept only the three declared safety modes"
+   :returns "boolean"
+   :effects []}
+  (or (= mode "strict") (= mode "advisory") (= mode "off")))
+
+(defn read-mode [path]
+  {:context "Read and normalize the safety state file"
+   :returns "safety mode"
+   :effects ["file-read"]}
+  (if (file-exists path)
+    (let [body (try (json-parse (file-read path)) (catch error {}))
+          value (get body "mode")]
+      (if (valid-mode? value) value "strict"))
+    "strict"))
+
+(let [path (shell_env "FL_TOOLS_SAFETY_STATE")
+      action (shell_env "FL_TOOLS_SAFETY_ACTION")
+      requested (shell_env "FL_TOOLS_SAFETY_MODE")
+      current (if (= action "set") requested (read-mode path))
+      enabled (not= current "off")]
+  (if (and (= action "set") (not (valid-mode? requested)))
+    (do (println "SAFETY=INVALID")
+        (println "CAUSE=mode must be strict, advisory, or off")
+        (throw "invalid-safety-mode"))
+    (do
+      (if (= action "set")
+        (file-write path (str (json-stringify {"schema" "fl-safety/v1"
+                                               "mode" current
+                                               "enabled" enabled
+                                               "updated_at" (now_iso)}) "\n"))
+        nil)
+      (println (str "SAFETY_MODE=" current))
+      (println (str "SAFETY_ENABLED=" (if enabled "YES" "NO")))
+      (println (str "SAFETY_STATE=" path))
+      (println "SAFETY=PASS"))))

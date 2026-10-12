@@ -126,9 +126,11 @@
       adapter (script-for root command)]
   (if (or (= command "help") (= command "-h") (= command "--help"))
     (print-help)
-    (println (json-stringify
-               {"schemaVersion" "freelang.tools-cli/v1"
-                "source" "freelang-native"
-                "route" (route-command command)
-                "adapter" adapter
-                "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))))
+    (do
+      (println (json-stringify
+                 {"schemaVersion" "freelang.tools-cli/v1"
+                  "source" "freelang-native"
+                  "route" (route-command command)
+                  "adapter" adapter
+                  "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))
+      (println (str "CLI_ADAPTER=" adapter)))))

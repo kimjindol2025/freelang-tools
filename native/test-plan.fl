@@ -3,10 +3,11 @@
 
 (let [root (shell_env "FL_TOOLS_TEST_PLAN_ROOT")
       testRoot (shell_env "FL_TOOLS_TEST_PLAN_TEST_ROOT")
-      listing (if (and (string? testRoot) (file-exists testRoot))
-                (try (shell-safe "find" [testRoot "-type" "f" "-name" "*.test.fl" "-print"])
-                     (catch error ""))
-                "")]
+      names (if (and (string? testRoot) (file-exists testRoot))
+              (sort (filter (fn [name] (str-ends-with name ".test.fl"))
+                            (dir-list testRoot)))
+              [])
+      listing (str-join "\n" (map (fn [name] (str testRoot "/" name)) names))]
   (println "PLAN_SCHEMA=freelang.test-plan/v1")
   (println "PLAN_ACTION=test")
   (println (str "ROOT=" root))

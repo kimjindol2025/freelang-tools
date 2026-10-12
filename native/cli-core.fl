@@ -47,4 +47,5 @@
               "git" git
               "ready" ready
               "verdict" verdict
-              "next" (if ready "review" "resolve-runtime-or-git-boundary")})))
+              "next" (if ready "review" "resolve-runtime-or-git-boundary")}))
+  (println (str "CLI_CORE_VERDICT=" verdict)))

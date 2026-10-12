@@ -1,27 +1,14 @@
 ;; FreeLang-native readiness decision and report.
 ;; The only host boundary is argv-safe Git/file observation.
 
-(defn git-observation [root]
-  {:context "Read Git readiness facts through argv-safe native process calls"
-   :returns "git observation map"
-   :effects ["process" "git-read"]}
-  (let [marker (try (str-trim (shell-safe "git" ["-C" root "rev-parse" "--is-inside-work-tree"]))
-                    (catch error "none"))]
-    (if (= marker "true")
-      (let [statusText (try (shell-safe "git" ["-C" root "status" "--short"]) (catch error ""))
-            branchValue (try (str-trim (shell-safe "git" ["-C" root "branch" "--show-current"])) (catch error "none"))
-            commitValue (try (str-trim (shell-safe "git" ["-C" root "rev-parse" "HEAD"])) (catch error "none"))]
-        {"state" (if (= (str-trim statusText) "") "clean" "dirty")
-         "branch" branchValue
-         "commit" commitValue})
-      {"state" "not-a-repository" "branch" "none" "commit" "none"})))
-
 (let [projectName (shell_env "FL_TOOLS_READY_PROJECT")
       rootPath (shell_env "FL_TOOLS_READY_ROOT")
       dialectValue (shell_env "FL_TOOLS_READY_DIALECT")
       familyValue (shell_env "FL_TOOLS_READY_FAMILY")
       runnerValue (shell_env "FL_TOOLS_READY_RUNNER")
-      gitValue (git-observation rootPath)
+      gitValue {"state" (shell_env "FL_TOOLS_READY_GIT_STATE")
+                "branch" (shell_env "FL_TOOLS_READY_GIT_BRANCH")
+                "commit" (shell_env "FL_TOOLS_READY_GIT_COMMIT")}
       runnerReady (if (= dialectValue "NODE")
                     (and (file-exists (str rootPath "/package.json"))
                          (file-exists (str rootPath "/node_modules")))

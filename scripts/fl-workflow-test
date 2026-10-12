@@ -56,21 +56,7 @@ CONFIG_FILE="$ROOT/freelang-tools.json"
 if [[ -f "$CONFIG_FILE" ]]; then
   CONFIG_VALUES=()
   CONFIG_OUTPUT=""
-  if ! CONFIG_OUTPUT="$(node - "$CONFIG_FILE" <<'NODE'
-const fs = require('fs');
-const file = process.argv[2];
-const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-const workflow = value.workflow || {};
-for (const field of ['commandTimeoutSeconds', 'cpuSeconds', 'totalTimeoutSeconds', 'maxCommands']) {
-  if (workflow[field] !== undefined) {
-    if (!Number.isInteger(workflow[field]) || workflow[field] <= 0) {
-      throw new Error(`workflow.${field} must be a positive integer`);
-    }
-    process.stdout.write(`${field}\t${workflow[field]}\n`);
-  }
-}
-NODE
-  )"; then
+  if ! CONFIG_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-workflow-config "$CONFIG_FILE")"; then
     echo '{"schemaVersion":"freelang.workflow/v1","status":"BLOCKED","reason":"invalid-freelang-tools-config"}'
     echo "WORKFLOW_TEST=BLOCKED" >&2
     exit 2
@@ -119,21 +105,13 @@ run_command() {
 }
 
 RESULT_LINES=()
-mapfile -t PACKAGE_TESTS < <(node - "$TMP_DIR/plan.json" <<'NODE'
-const p=JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
-for (const x of p.packageScripts) console.log(`${x.name}\t${x.name}`);
-NODE
-)
+mapfile -t PACKAGE_TESTS < <("$TOOLS_ROOT/scripts/fl-native-workflow-list" "$TMP_DIR/plan.json" package)
 for item in "${PACKAGE_TESTS[@]}"; do
   IFS=$'\t' read -r name label <<<"$item"
   run_command package-script "$label" "npm run $name --if-present"
 done
 
-mapfile -t WORKFLOW_TESTS < <(node - "$TMP_DIR/plan.json" <<'NODE'
-const p=JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
-for (const x of p.workflowCommands) console.log(`${x.file}\t${x.command}`);
-NODE
-)
+mapfile -t WORKFLOW_TESTS < <("$TOOLS_ROOT/scripts/fl-native-workflow-list" "$TMP_DIR/plan.json" workflow)
 for item in "${WORKFLOW_TESTS[@]}"; do
   IFS=$'\t' read -r file command <<<"$item"
   run_command github-workflow "$file" "$command"

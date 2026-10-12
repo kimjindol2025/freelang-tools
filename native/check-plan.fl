@@ -13,15 +13,25 @@
    :effects []}
   (if (and (string? value) (not= value "")) value "none"))
 
+(defn fl-files [directory]
+  {:context "List direct FreeLang source files from one declared source directory"
+   :returns "absolute source paths"
+   :effects ["directory-read" "file-read"]}
+  (if (file-exists directory)
+    (map (fn [name] (str directory "/" name))
+         (sort (filter (fn [name] (str-ends-with name ".fl"))
+                       (dir-list directory))))
+    []))
+
 (let [root (shell_env "FL_TOOLS_PLAN_ROOT")
       dialectValue (plan-dialect (shell_env "FL_TOOLS_PLAN_DIALECT"))
       runnerValue (plan-runner (shell_env "FL_TOOLS_PLAN_RUNNER"))
       sourceListing (if (= dialectValue "AFJ")
-                      (try (shell-safe "find" [(str root "/src") "-type" "f" "-name" "*.fl" "-print"])
-                           (catch error ""))
+                      (str-join "\n" (sort (concat (fl-files (str root "/src"))
+                                                   (concat (fl-files (str root "/native"))
+                                                           (fl-files root)))))
                       (if (= dialectValue "AIRC")
-                        (try (shell-safe "find" [root "-maxdepth" "1" "-type" "f" "-name" "*.fl" "-print"])
-                             (catch error ""))
+                        (str-join "\n" (fl-files root))
                         ""))]
   (println "PLAN_SCHEMA=freelang.execution-plan/v1")
   (println "PLAN_ACTION=check")

@@ -1,0 +1,11 @@
+;; FreeLang-native workflow plan list adapter.
+
+(let [path (shell_env "FL_TOOLS_WORKFLOW_PLAN_PATH")
+      action (shell_env "FL_TOOLS_WORKFLOW_LIST_ACTION")
+      plan (if (file-exists path) (json-parse (file-read path)) {})
+      values (if (= action "package") (get plan "packageScripts") (get plan "workflowCommands"))]
+  (map (fn [item]
+         (if (= action "package")
+           (println (str (get item "name") "\t" (get item "name")))
+           (println (str (get item "file") "\t" (get item "command")))))
+       (if (array? values) values [])))

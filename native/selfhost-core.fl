@@ -1,13 +1,17 @@
 ;; FreeLang-native AFJ runner smoke.
 
-(let [runner (shell_env "FL_TOOLS_SELFHOST_RUNNER")
-      probe (shell_env "FL_TOOLS_SELFHOST_PROBE")
-      check (try (shell-safe "node" [runner "check" probe]) (catch error ""))
-      run (try (shell-safe "node" [runner "run" probe]) (catch error ""))
+(let [check-path (shell_env "FL_TOOLS_SELFHOST_CHECK_OUTPUT")
+      run-path (shell_env "FL_TOOLS_SELFHOST_RUN_OUTPUT")
+      check-code (shell_env "FL_TOOLS_SELFHOST_CHECK_CODE")
+      run-code (shell_env "FL_TOOLS_SELFHOST_RUN_CODE")
+      check (if (file-exists check-path) (file-read check-path) "")
+      run (if (file-exists run-path) (file-read run-path) "")
       check-ok (str-contains-in check "문법 이상 없음")
-      run-ok (str-contains-in run "SELFHOST_PROBE=PASS")]
-  (println (str "SELFHOST_CHECK=" (if check-ok "PASS" "FAIL")))
-  (println (str "SELFHOST_RUN=" (if run-ok "PASS" "FAIL")))
-  (if (and check-ok run-ok)
+      run-ok (str-contains-in run "SELFHOST_PROBE=PASS")
+      check-pass (and (= check-code "0") check-ok)
+      run-pass (and (= run-code "0") run-ok)]
+  (println (str "SELFHOST_CHECK=" (if check-pass "PASS" "FAIL")))
+  (println (str "SELFHOST_RUN=" (if run-pass "PASS" "FAIL")))
+  (if (and check-pass run-pass)
     (println "SELFHOST_SMOKE=PASS")
     (do (println "SELFHOST_SMOKE=FAIL") (throw "selfhost-smoke-failed"))))
