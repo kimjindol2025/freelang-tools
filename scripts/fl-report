@@ -42,43 +42,10 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-TEST_STATUS="UNKNOWN"
-if grep -q '^TEST=PASS$' <<<"$STATUS_OUTPUT"; then
-  TEST_STATUS=PASS
-elif grep -q '^TEST=FAIL$' <<<"$STATUS_OUTPUT"; then
-  TEST_STATUS=FAIL
-elif grep -q '^TEST=NOT_RUN$' <<<"$STATUS_OUTPUT"; then
-  TEST_STATUS=NOT_RUN
-fi
-
-if [[ "$REVIEW_CODE" -eq 0 ]] && grep -q '^REVIEW=PASS$' <<<"$REVIEW_OUTPUT"; then
-  REVIEW_STATUS=PASS
-else
-  REVIEW_STATUS=FAIL
-fi
-
-cat <<EOF
-# FreeLang Tools Report
-
-PROJECT=$PROJECT
-ROOT=$ROOT
-DIALECT=$DIALECT
-RUNNER=$RUNNER
-BRANCH=$BRANCH
-GIT=$GIT_STATUS
-TEST=$TEST_STATUS
-REVIEW=$REVIEW_STATUS
-
-## Status
-
-$STATUS_OUTPUT
-
-## Review
-
-$REVIEW_OUTPUT
-EOF
-
-if [[ "$REVIEW_STATUS" == PASS && "$TEST_STATUS" == PASS ]]; then
+REPORT_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-report "$PROJECT" "$ROOT" "$DIALECT" "$RUNNER" "$BRANCH" "$GIT_STATUS" "$STATUS_OUTPUT" "$REVIEW_OUTPUT" "$STATUS_CODE" "$REVIEW_CODE")"
+REPORT_STATUS="$(sed -n 's/^REPORT_STATUS=//p' <<<"$REPORT_OUTPUT")"
+sed '/^REPORT_STATUS=/d' <<<"$REPORT_OUTPUT"
+if [[ "$REPORT_STATUS" == PASS ]]; then
   echo "REPORT=PASS"
 else
   echo "REPORT=FAIL"

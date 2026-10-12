@@ -1,0 +1,2 @@
+;; Minimal FreeLang program used to prove the AFJ runner can check and execute native code.
+(println "SELFHOST_PROBE=PASS")

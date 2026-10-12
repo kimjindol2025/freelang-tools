@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+REMOTES="${1:?remote status required}"; CLEAN="${2:?clean status required}"; LOCAL_HEAD="${3:?local head required}"; BRANCH="${4:?branch required}"; PUSH="${5:?push request required}"; REPORT="${6:-}"
+FL_TOOLS_SAFE_PUSH_REMOTES="$REMOTES" FL_TOOLS_SAFE_PUSH_CLEAN="$CLEAN" \
+FL_TOOLS_SAFE_PUSH_LOCAL_HEAD="$LOCAL_HEAD" FL_TOOLS_SAFE_PUSH_BRANCH="$BRANCH" \
+FL_TOOLS_SAFE_PUSH_REQUESTED="$PUSH" FL_TOOLS_SAFE_PUSH_REMOTE_REPORT="$REPORT" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/safe-push-core.fl"

@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # effect module remains the owner of the BLOCKED product decision.
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNTIME="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNTIME="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 PROBE="$TOOLS_ROOT/tests/capability/effect-tape-probe.fl"
 STAMP="${TMPDIR:-/tmp}/freelang-effect-capability.$$"
 CHECK_OUT="${STAMP}.check.log"

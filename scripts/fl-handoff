@@ -43,39 +43,12 @@ if [[ "$VERIFY" == YES ]]; then
   if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     CURRENT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
   fi
-
-  if node -e '
-    const fs = require("fs");
-    const file = process.argv[1];
-    const currentCommit = process.argv[2];
-    let value;
-    try { value = JSON.parse(fs.readFileSync(file, "utf8")); } catch (error) {
-      console.error(`CAUSE=invalid handoff JSON: ${error.message}`);
-      process.exit(1);
-    }
-    const valid = value.schemaVersion === "freelang.handoff/v1" &&
-      value.git && typeof value.git.commit === "string" &&
-      value.project && typeof value.project.root === "string" &&
-      (currentCommit === "none" || value.git.commit === currentCommit);
-    if (!valid) {
-      if (currentCommit !== "none" && value.git?.commit !== currentCommit) {
-        console.error(`CAUSE=stale handoff commit: recorded=${value.git?.commit ?? "missing"} current=${currentCommit}`);
-      } else {
-        console.error("CAUSE=handoff JSON schema validation failed");
-      }
-      process.exit(1);
-    }
-  ' "$JSON_OUTPUT" "$CURRENT_COMMIT"; then
-    echo "HANDOFF_JSON=$JSON_OUTPUT"
-    echo "STALE_COMMIT=NO"
-    echo "HANDOFF_VERIFY=PASS"
-  else
-    echo "HANDOFF_JSON=$JSON_OUTPUT"
-    echo "STALE_COMMIT=YES"
-    echo "HANDOFF_VERIFY=FAIL"
-    exit 1
-  fi
-  exit 0
+  FL_TOOLS_HANDOFF_MODE=verify \
+  FL_TOOLS_HANDOFF_ROOT="$ROOT" \
+  FL_TOOLS_HANDOFF_JSON_OUTPUT="$JSON_OUTPUT" \
+  FL_TOOLS_HANDOFF_CURRENT_COMMIT="$CURRENT_COMMIT" \
+    "$TOOLS_ROOT/scripts/fl-native-handoff-core"
+  exit $?
 fi
 
 mkdir -p "$(dirname -- "$OUTPUT")"
@@ -106,58 +79,19 @@ REPORT_OUTPUT="$($TOOLS_ROOT/scripts/fl-report "$ROOT" 2>&1)"
 REPORT_CODE=$?
 set -e
 
-cat > "$OUTPUT" <<EOF
-# FreeLang Handoff
-
-Generated: $(date -Iseconds)
-
-## Project
-
-- Project: $PROJECT
-- Root: $ROOT
-- Dialect: $DIALECT
-- Runner: $RUNNER
-- Branch: $BRANCH
-- Commit: $COMMIT
-- Git: $GIT_STATUS
-
-## Next commands
-
-\`\`\`bash
-fl-tools inspect $ROOT
-fl-tools report $ROOT
-fl-tools evidence --json $ROOT
-\`\`\`
-
-## Latest report
-
-$REPORT_OUTPUT
-EOF
-
-REPORT_CODE="$REPORT_CODE" REPORT_OUTPUT="$REPORT_OUTPUT" \
-PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" RUNNER="$RUNNER" \
-BRANCH="$BRANCH" COMMIT="$COMMIT" GIT_STATUS="$GIT_STATUS" \
-JSON_OUTPUT="$JSON_OUTPUT" node -e '
-  const fs = require("fs");
-  const env = process.env;
-  const payload = {
-    schemaVersion: "freelang.handoff/v1",
-    generatedAt: new Date().toISOString(),
-    project: { name: env.PROJECT, root: env.ROOT, dialect: env.DIALECT, runner: env.RUNNER },
-    git: { branch: env.BRANCH, commit: env.COMMIT, state: env.GIT_STATUS },
-    verification: {
-      report: Number(env.REPORT_CODE) === 0 ? "PASS" : "FAIL",
-      reportExitCode: Number(env.REPORT_CODE)
-    },
-    nextCommands: [
-      `fl-tools inspect ${env.ROOT}`,
-      `fl-tools report ${env.ROOT}`,
-      `fl-tools evidence --json ${env.ROOT}`
-    ],
-    report: env.REPORT_OUTPUT
-  };
-  fs.writeFileSync(env.JSON_OUTPUT, JSON.stringify(payload, null, 2) + "\n");
-'
+FL_TOOLS_HANDOFF_MODE=generate \
+FL_TOOLS_HANDOFF_ROOT="$ROOT" \
+FL_TOOLS_HANDOFF_OUTPUT="$OUTPUT" \
+FL_TOOLS_HANDOFF_JSON_OUTPUT="$JSON_OUTPUT" \
+FL_TOOLS_HANDOFF_PROJECT="$PROJECT" \
+FL_TOOLS_HANDOFF_DIALECT="$DIALECT" \
+FL_TOOLS_HANDOFF_RUNNER="$RUNNER" \
+FL_TOOLS_HANDOFF_BRANCH="$BRANCH" \
+FL_TOOLS_HANDOFF_COMMIT="$COMMIT" \
+FL_TOOLS_HANDOFF_GIT_STATE="$GIT_STATUS" \
+FL_TOOLS_HANDOFF_REPORT_CODE="$REPORT_CODE" \
+FL_TOOLS_HANDOFF_REPORT_OUTPUT="$REPORT_OUTPUT" \
+  "$TOOLS_ROOT/scripts/fl-native-handoff-core"
 
 printf 'HANDOFF_FILE=%s\n' "$OUTPUT"
 printf 'HANDOFF_JSON=%s\n' "$JSON_OUTPUT"

@@ -17,51 +17,9 @@ DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 FAMILY="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^FAMILY=//p')"
 RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 
-GIT_STATE=not-a-repository
-BRANCH=none
-COMMIT=none
-if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  BRANCH="$(git -C "$ROOT" branch --show-current)"
-  COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
-  GIT_STATE=clean
-  if [[ -n "$(git -C "$ROOT" status --short)" ]]; then GIT_STATE=dirty; fi
-fi
-
-RUNNER_READY=false
-if [[ "$DIALECT" == "NODE" ]]; then
-  if [[ -f "$ROOT/package.json" && -d "$ROOT/node_modules" ]]; then RUNNER_READY=true; fi
-elif [[ "$RUNNER" != "none" && -f "$RUNNER" ]]; then
-  RUNNER_READY=true
-fi
-
-STATUS=READY
-REASON=ready-for-ai
-if [[ "$DIALECT" == UNKNOWN || "$DIALECT" == "" ]]; then
-  STATUS=BLOCKED
-  REASON=unknown-project-dialect
-elif [[ "$GIT_STATE" == not-a-repository ]]; then
-  STATUS=BLOCKED
-  REASON=not-a-git-project
-elif [[ "$RUNNER_READY" != true ]]; then
-  STATUS=BLOCKED
-  REASON=runner-or-dependencies-not-ready
-elif [[ "$GIT_STATE" == dirty ]]; then
-  STATUS=READY_WITH_CHANGES
-  REASON=dirty-worktree-review-before-deploy
-fi
-
 FL_TOOLS_READY_PROJECT="$PROJECT" \
 FL_TOOLS_READY_ROOT="$ROOT" \
 FL_TOOLS_READY_DIALECT="$DIALECT" \
 FL_TOOLS_READY_FAMILY="$FAMILY" \
 FL_TOOLS_READY_RUNNER="$RUNNER" \
-FL_TOOLS_READY_GIT_STATE="$GIT_STATE" \
-FL_TOOLS_READY_BRANCH="$BRANCH" \
-FL_TOOLS_READY_COMMIT="$COMMIT" \
-FL_TOOLS_READY_STATUS="$STATUS" \
-FL_TOOLS_READY_REASON="$REASON" \
-FL_TOOLS_READY_RUNNER_READY="$RUNNER_READY" \
-  "$TOOLS_ROOT/scripts/fl-native-ready-report"
-
-if [[ "$STATUS" == BLOCKED ]]; then exit 2; fi
-exit 0
+  "$TOOLS_ROOT/scripts/fl-native-ready-core"

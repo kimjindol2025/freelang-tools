@@ -18,11 +18,8 @@ if [[ "$DIALECT" == "AIRC" ]]; then
     echo "CAUSE=AIRC runner not found: $RUNNER" >&2
     exit 2
   fi
-  SOURCE_LIST_FILE="$(mktemp)"
-  cleanup() { rm -f "$SOURCE_LIST_FILE"; }
-  trap cleanup EXIT INT TERM
-  find "$ROOT" -maxdepth 1 -type f -name '*.fl' -print | sort > "$SOURCE_LIST_FILE"
-  mapfile -t SOURCES < "$SOURCE_LIST_FILE"
+  PLAN_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-check-plan "$ROOT" "$DIALECT" "$RUNNER")"
+  mapfile -t SOURCES < <(printf '%s\n' "$PLAN_OUTPUT" | sed -n '/^SOURCES=/,$p' | sed '1s/^SOURCES=//' | sed '/^$/d')
   for source in "${SOURCES[@]}"; do
     echo "[fl-check] $source"
     node "$RUNNER" check "$source"
@@ -55,15 +52,8 @@ if [[ ! -f "$RUNNER" ]]; then
   exit 2
 fi
 
-SOURCE_LIST_FILE="$(mktemp)"
-cleanup() { rm -f "$SOURCE_LIST_FILE"; }
-trap cleanup EXIT INT TERM
-if [[ -d "$ROOT/src" ]]; then
-  find "$ROOT/src" -type f -name '*.fl' -print | sort > "$SOURCE_LIST_FILE"
-else
-  : > "$SOURCE_LIST_FILE"
-fi
-mapfile -t SOURCES < "$SOURCE_LIST_FILE"
+PLAN_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-check-plan "$ROOT" "$DIALECT" "$RUNNER")"
+mapfile -t SOURCES < <(printf '%s\n' "$PLAN_OUTPUT" | sed -n '/^SOURCES=/,$p' | sed '1s/^SOURCES=//' | sed '/^$/d')
 for source in "${SOURCES[@]}"; do
   echo "[fl-check] $source"
   node "$RUNNER" check "$source"

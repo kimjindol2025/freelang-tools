@@ -1,0 +1,18 @@
+;; FreeLang-native blocked trust response for an invalid project target.
+
+(let [target (shell_env "FL_TOOLS_TRUST_BLOCKED_TARGET")
+      report {"schemaVersion" "freelang.trust/v1"
+              "generatedAt" (now_iso)
+              "verdict" "BLOCKED"
+              "project" {"name" "" "root" target "dialect" "UNKNOWN" "runner" "none"}
+              "git" {"branch" "none" "commit" "none" "state" "unknown"}
+              "gates" {"check" "BLOCKED" "test" "BLOCKED" "review" "BLOCKED"
+                       "evidence" "BLOCKED" "diffCheck" "BLOCKED"
+                       "workflow" "BLOCKED" "selfHost" "BLOCKED" "capabilityCoverage" "UNKNOWN"}
+              "decision" {"source" "unavailable" "command" "trust-core"}
+              "approvalRequired" false
+              "limitations" ["project directory not found"]
+              "evidence" {"commands" [(str "fl-tools trust " target)]
+                           "artifacts" ["schemas/trust.schema.json"]}
+              "next" "fix-blocked-gates-and-rerun-trust"}]
+  (println (json-stringify report)))

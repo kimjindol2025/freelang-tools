@@ -1,0 +1,18 @@
+;; FreeLang-native deploy result and artifact report.
+;; The deploy/smoke commands and hashing are host adapters.
+
+(let [deploy-code (str-to-num (shell_env "FL_TOOLS_DEPLOY_CODE"))
+      smoke-code (str-to-num (shell_env "FL_TOOLS_SMOKE_CODE"))
+      artifact (shell_env "FL_TOOLS_ARTIFACT_HASH")
+      rollback (shell_env "FL_TOOLS_ROLLBACK")
+      target (shell_env "FL_TOOLS_DEPLOY_TARGET")
+      deploy-ok (= deploy-code 0)
+      smoke-ok (= smoke-code 0)]
+  (println (str "DEPLOY_TARGET=" target))
+  (if deploy-ok (println "DEPLOY=PASS") (println "DEPLOY=FAIL"))
+  (if smoke-ok (println "SMOKE=PASS") (println "SMOKE=FAIL"))
+  (println (str "ARTIFACT_HASH=" artifact))
+  (println (str "ROLLBACK_AVAILABLE=" rollback))
+  (if (and deploy-ok smoke-ok)
+    nil
+    (throw "deploy-report-failed")))

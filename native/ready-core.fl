@@ -1,0 +1,45 @@
+;; FreeLang-native readiness decision and report.
+;; The only host boundary is argv-safe Git/file observation.
+
+(defn git-observation [root]
+  {:context "Read Git readiness facts through argv-safe native process calls"
+   :returns "git observation map"
+   :effects ["process" "git-read"]}
+  (let [marker (try (str-trim (shell-safe "git" ["-C" root "rev-parse" "--is-inside-work-tree"]))
+                    (catch error "none"))]
+    (if (= marker "true")
+      (let [statusText (try (shell-safe "git" ["-C" root "status" "--short"]) (catch error ""))
+            branchValue (try (str-trim (shell-safe "git" ["-C" root "branch" "--show-current"])) (catch error "none"))
+            commitValue (try (str-trim (shell-safe "git" ["-C" root "rev-parse" "HEAD"])) (catch error "none"))]
+        {"state" (if (= (str-trim statusText) "") "clean" "dirty")
+         "branch" branchValue
+         "commit" commitValue})
+      {"state" "not-a-repository" "branch" "none" "commit" "none"})))
+
+(let [projectName (shell_env "FL_TOOLS_READY_PROJECT")
+      rootPath (shell_env "FL_TOOLS_READY_ROOT")
+      dialectValue (shell_env "FL_TOOLS_READY_DIALECT")
+      familyValue (shell_env "FL_TOOLS_READY_FAMILY")
+      runnerValue (shell_env "FL_TOOLS_READY_RUNNER")
+      gitValue (git-observation rootPath)
+      runnerReady (if (= dialectValue "NODE")
+                    (and (file-exists (str rootPath "/package.json"))
+                         (file-exists (str rootPath "/node_modules")))
+                    (and (not= runnerValue "none") (file-exists runnerValue)))
+      statusValue (if (or (= dialectValue "UNKNOWN") (= dialectValue "")) "BLOCKED"
+                    (if (= (get gitValue "state") "not-a-repository") "BLOCKED"
+                      (if (not runnerReady) "BLOCKED"
+                        (if (= (get gitValue "state") "dirty") "READY_WITH_CHANGES" "READY"))))
+      reasonValue (if (= statusValue "BLOCKED")
+                    (if (or (= dialectValue "UNKNOWN") (= dialectValue "")) "unknown-project-dialect"
+                      (if (= (get gitValue "state") "not-a-repository") "not-a-git-project" "runner-or-dependencies-not-ready"))
+                    (if (= statusValue "READY_WITH_CHANGES") "dirty-worktree-review-before-deploy" "ready-for-ai"))
+      result {"schemaVersion" "freelang.ready/v1"
+              "status" statusValue
+              "project" {"name" projectName "root" rootPath "dialect" dialectValue "family" familyValue "runner" runnerValue}
+              "git" gitValue
+              "dependencies" {"runnerReady" runnerReady}
+              "next" (if (= statusValue "BLOCKED") "resolve-readiness-reason-and-rerun" (str "fl-tools ai verify " rootPath))
+              "reason" reasonValue}]
+  (println (json-stringify result))
+  (if (= statusValue "BLOCKED") (throw "readiness-blocked") nil))

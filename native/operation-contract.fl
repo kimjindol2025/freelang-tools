@@ -1,0 +1,27 @@
+;; FreeLang-native operation contract validator.
+;; The host only locates the contract file and invokes the runner.
+
+(defn allowed-risk? [value]
+  {:context "Validate operation risk classification"
+   :returns "boolean"
+   :effects []}
+  (or (= value "medium") (= value "high") (= value "critical")))
+
+(let [path (shell_env "FL_TOOLS_CONTRACT_PATH")
+      action (shell_env "FL_TOOLS_CONTRACT_ACTION")
+      body (if (file-exists path) (json-parse (file-read path)) nil)
+      valid (and (map? body)
+                 (= (get body "schemaVersion") "freelang.operation-contract/v1")
+                 (= (get body "action") action)
+                 (= (get body "approvalRequired") true)
+                 (allowed-risk? (get body "risk")))]
+  (if valid
+    (do
+      (println "CONTRACT=VALID")
+      (println (str "CONTRACT_SOURCE=" path))
+      (println "APPROVAL_REQUIRED=YES")
+      (println (str "RISK=" (get body "risk"))))
+    (do
+      (println "CONTRACT=INVALID")
+      (println "CAUSE=contract fields or action mismatch")
+      (throw "invalid-operation-contract"))))

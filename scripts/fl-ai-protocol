@@ -9,7 +9,7 @@ TARGET="${3:-.}"
 CODE="${4:-0}"
 DEEP="${5:-NO}"
 PERSIST="${6:-NO}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 
 if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
   exit 2

@@ -1,0 +1,20 @@
+;; FreeLang-native workflow evidence composer.
+
+(let [plan-path (shell_env "FL_TOOLS_WORKFLOW_PLAN")
+      results-path (shell_env "FL_TOOLS_WORKFLOW_RESULTS")
+      status (shell_env "FL_TOOLS_WORKFLOW_STATUS")
+      root (shell_env "FL_TOOLS_WORKFLOW_ROOT")
+      run-workflows (shell_env "FL_TOOLS_WORKFLOW_RUN")
+      plan (if (file-exists plan-path) (json-parse (file-read plan-path)) {})
+      raw (if (file-exists results-path) (file-read results-path) "")
+      results (map json-parse (filter (fn [line] (not= line "")) (str-split raw "\n")))
+      report {"schemaVersion" "freelang.workflow/v1"
+              "status" status
+              "root" root
+              "runWorkflows" run-workflows
+              "discovered" {"packageScripts" (get plan "packageScripts")
+                            "workflowCommands" (get plan "workflowCommands")
+                            "skippedWorkflowCommands" (get plan "skippedWorkflowCommands")}
+              "results" results}]
+  (println (json-stringify report))
+  (file-write (shell_env "FL_TOOLS_WORKFLOW_REPORT") (str (json-stringify report) "\n")))

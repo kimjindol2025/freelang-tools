@@ -1,0 +1,135 @@
+;; FreeLang-native project detection.
+;; Recursive filesystem inspection is delegated to one argv-safe find adapter.
+
+(defn has-file? [root name]
+  {:context "Check one project file without shell interpolation"
+   :returns "boolean"
+   :effects ["file-read"]}
+  (file-exists (str root "/" name)))
+
+(defn has-suffix? [files suffix]
+  {:context "Check whether a discovered file has one source suffix"
+   :returns "boolean"
+   :effects []}
+  (> (length (filter (fn [path] (str-ends-with path suffix)) files)) 0))
+
+(defn has-path? [files name]
+  {:context "Check a discovered relative or absolute file name"
+   :returns "boolean"
+   :effects []}
+  (> (length (filter (fn [path] (str-ends-with path (str "/" name))) files)) 0))
+
+(defn first-existing [candidates]
+  {:context "Select the first available FreeLang runner candidate"
+   :returns "path or none"
+   :effects ["file-read"]}
+  (if (= (length candidates) 0)
+    "none"
+    (if (file-exists (get candidates 0))
+      (get candidates 0)
+      (first-existing (slice candidates 1 (length candidates))))))
+
+(defn family-for [dialect root]
+  {:context "Map detected dialect to the stable project family"
+   :returns "family string"
+   :effects ["file-read"]}
+  (if (= dialect "AIRC") "AIRC"
+    (if (= dialect "AIA") "AIA"
+      (if (= dialect "FRONT") (if (or (has-file? root "server.fl") (has-file? root "web/server.fl")) "FRONT/AFJ" "FRONT")
+        (if (= dialect "SCRIPT") "SCRIPT"
+          (if (= dialect "AFJ") "AFJ"
+            (if (= dialect "FX") "FX"
+              (if (= dialect "NODE") "NODE" "UNKNOWN"))))))))
+
+(defn runner-for [dialect root]
+  {:context "Select the canonical runner for the detected dialect"
+   :returns "runner path or none"
+   :effects ["file-read"]}
+  (if (= dialect "AIRC") (first-existing [
+                                       (str root "/bootstrap.js")
+                                       "/home/kim/kim/platform/freelang-v11-fx/bootstrap.js"
+                                       "/home/kim/kim/platform/freelang-v11/bootstrap.js"
+                                       "/home/kim/freelang-v11/bootstrap.js"])
+    (if (= dialect "AIA") (if (has-file? root "tools/verify-aia-cold-boot.sh") (str root "/tools/verify-aia-cold-boot.sh") "none")
+      (if (= dialect "FRONT") (if (has-file? root "fl-front-build.js") (str root "/fl-front-build.js")
+                                  (if (has-file? root "web/fl-front-build.js") (str root "/web/fl-front-build.js") "none")
+        (if (= dialect "SCRIPT") (if (has-file? root "bin/fl-script-unified.js") (str root "/bin/fl-script-unified.js") "none")
+          (if (= dialect "AFJ") (if (has-file? root "bootstrap.js") (str root "/bootstrap.js")
+                                      (first-existing [
+                                        (str root "/bootstrap-native.js")
+                                        (str root "/bootstrap.js")
+                                        "/home/kim/platform/freelang-afj/bootstrap-native.js"
+                                        "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"
+                                        "/home/kim/platform/freelang-afj/bootstrap.js"
+                                        "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"]))
+            (if (= dialect "FX") (if (has-file? root "fl-test.sh") (str root "/fl-test.sh") "none")
+              (if (= dialect "NODE") (str root "/package.json") "none")))))))))
+
+(defn detect [root]
+  {:context "Detect project dialect, runner, tests, and source extensions"
+   :returns "FreeLang project detection report"
+   :effects ["file-read" "process"]}
+  (let [listing (try (shell-safe "find" [root "-maxdepth" "3" "-type" "f" "-print"])
+                     (catch error ""))
+        files (sort (filter (fn [line] (not= line "")) (str-split listing "\n")))
+        fl? (has-suffix? files ".fl")
+        fls? (has-suffix? files ".fls")
+        flx? (has-suffix? files ".flx")
+        aia? (has-suffix? files ".aia")
+        airc? (has-suffix? files ".airc")
+        detectedDialect (if (or (has-file? root "airc.fl")
+                        (and (has-file? root "SPEC.airc") airc?)) "AIRC"
+                  (if (or (has-file? root "tools/verify-aia-cold-boot.sh") aia?) "AIA"
+                    (if (or (has-file? root "fl-front-build.js") (has-file? root "web/fl-front-build.js") flx?) "FRONT"
+                      (if (or (has-file? root "freelang.json") (has-file? root "bin/fl-script-unified.js") fls?) "SCRIPT"
+                        (if (or fl? (has-suffix? files ".fl")) "AFJ" (if (has-file? root "package.json") "NODE"
+                                          (if (or (has-file? root "fl-test.sh") (has-file? root "fl-run.sh") (has-file? root "fx-std.fl")) "FX" "UNKNOWN")))))))
+        familyValue (if (= detectedDialect "AIRC") "AIRC"
+                     (if (= detectedDialect "AIA") "AIA"
+                       (if (= detectedDialect "FRONT") "FRONT"
+                         (if (= detectedDialect "SCRIPT") "SCRIPT"
+                           (if (= detectedDialect "AFJ") "AFJ"
+                             (if (= detectedDialect "FX") "FX"
+                               (if (= detectedDialect "NODE") "NODE" "UNKNOWN")))))))
+        runnerValue (if (= detectedDialect "AIRC") (first-existing [
+                                                   (str root "/bootstrap.js")
+                                                   "/home/kim/kim/platform/freelang-v11-fx/bootstrap.js"
+                                                   "/home/kim/kim/platform/freelang-v11/bootstrap.js"
+                                                   "/home/kim/freelang-v11/bootstrap.js"])
+                         (if (= detectedDialect "AFJ") (first-existing [
+                                                   (str root "/bootstrap-native.js")
+                                                   (str root "/bootstrap.js")
+                                                   "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"
+                                                   "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"])
+                         (if (= detectedDialect "AIA") (if (has-file? root "tools/verify-aia-cold-boot.sh") (str root "/tools/verify-aia-cold-boot.sh") "none")
+                           (if (= detectedDialect "FRONT") (if (has-file? root "fl-front-build.js") (str root "/fl-front-build.js")
+                                                       (if (has-file? root "web/fl-front-build.js") (str root "/web/fl-front-build.js") "none")
+                             (if (= detectedDialect "SCRIPT") (if (has-file? root "bin/fl-script-unified.js") (str root "/bin/fl-script-unified.js") "none")
+                               (if (= detectedDialect "FX") (if (has-file? root "fl-test.sh") (str root "/fl-test.sh") "none")
+                                 (if (= detectedDialect "NODE") (str root "/package.json") "none"))))))))
+        discoveredTests (try (shell-safe "find" [root "-maxdepth" "3" "-type" "f" "-name" "*.test.fl" "-print"])
+                             (catch error "none"))]
+    {"project" (first (reverse (str-split root "/")))
+     "root" root
+     "dialect" detectedDialect
+     "family" familyValue
+     "extensions" (filter (fn [ext] (contains? [".fl" ".fls" ".flx" ".aia" ".airc"] ext))
+                          (concat (if fl? [".fl"] [])
+                                  (concat (if fls? [".fls"] [])
+                                          (concat (if flx? [".flx"] [])
+                                                  (concat (if aia? [".aia"] []) (if airc? [".airc"] []))))))
+     "runner" runnerValue
+     "testRoot" (str root "/tests")
+     "testFiles" (if (> (length discoveredTests) 0) (str-join "," discoveredTests) "none")}))
+
+(let [root (shell_env "FL_TOOLS_DETECT_ROOT")
+      value (detect root)]
+  (println (str "PROJECT=" (get value "project")))
+  (println (str "ROOT=" (get value "root")))
+  (println (str "DIALECT=" (get value "dialect")))
+  (println (str "FAMILY=" (get value "family")))
+  (println (str "EXTENSIONS=" (str-join " " (get value "extensions"))))
+  (println (str "RUNNER=" (get value "runner")))
+  (println (str "TEST_ROOT=" (get value "testRoot")))
+  (println (str "TEST_FILES=" (try (shell-safe "find" [(get value "root") "-maxdepth" "3" "-type" "f" "-name" "*.test.fl" "-print"])
+                                 (catch error "none")))))

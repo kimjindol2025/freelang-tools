@@ -12,20 +12,8 @@ if [[ "${1:-}" == "--quick" ]]; then
 fi
 
 if [[ ! -d "$TARGET" ]]; then
-  node - "$TARGET" <<'NODE'
-const target = process.argv[2];
-process.stdout.write(JSON.stringify({
-  schemaVersion: 'freelang.trust/v1', generatedAt: new Date().toISOString(), verdict: 'BLOCKED',
-  project: { name: '', root: target, dialect: 'UNKNOWN', runner: 'none' },
-  git: { branch: 'none', commit: 'none', state: 'unknown' },
-  gates: { check: 'BLOCKED', test: 'BLOCKED', review: 'BLOCKED', evidence: 'BLOCKED', diffCheck: 'BLOCKED', workflow: 'BLOCKED', capabilityCoverage: 'UNKNOWN' },
-  decision: { source: 'unavailable', command: 'trust-core' },
-  approvalRequired: false,
-  limitations: ['project directory not found'],
-  evidence: { commands: ['fl-tools trust ' + target], artifacts: ['schemas/trust.schema.json'] },
-  next: 'fix-blocked-gates-and-rerun-trust'
-}, null, 2) + '\n');
-NODE
+  FL_TOOLS_TRUST_BLOCKED_TARGET="$TARGET" \
+    node "${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}" run "$TOOLS_ROOT/native/trust-blocked.fl"
   exit 2
 fi
 
@@ -65,6 +53,8 @@ if [[ "$MODE" == quick ]]; then
   printf 'EVIDENCE=NOT_RUN\n' > "$TMP_DIR/evidence.out"
   printf '3' > "$TMP_DIR/capabilities.code"
   printf 'CAPABILITIES=NOT_RUN\n' > "$TMP_DIR/capabilities.out"
+  printf '3' > "$TMP_DIR/selfhost.code"
+  printf 'SELFHOST=NOT_RUN\n' > "$TMP_DIR/selfhost.out"
   printf '0' > "$TMP_DIR/workflow.code"
   printf 'WORKFLOW_TEST=NOT_APPLICABLE\n' > "$TMP_DIR/workflow.out"
 else
@@ -76,6 +66,12 @@ else
   run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
   run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
   run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
+  if [[ "$DIALECT" == AFJ ]]; then
+    run_gate selfhost "$TOOLS_ROOT/scripts/fl-native-selfhost"
+  else
+    printf '0' > "$TMP_DIR/selfhost.code"
+    printf 'SELFHOST=NOT_APPLICABLE\n' > "$TMP_DIR/selfhost.out"
+  fi
   if [[ "$DIALECT" == "NODE" ]]; then
     run_gate workflow "$TOOLS_ROOT/scripts/fl-workflow-test" --workflows "$ROOT"
   else
@@ -89,20 +85,25 @@ TEST_CODE="$(cat "$TMP_DIR/test.code")"
 REVIEW_CODE="$(cat "$TMP_DIR/review.code")"
 EVIDENCE_CODE="$(cat "$TMP_DIR/evidence.code")"
 CAPABILITY_CODE="$(cat "$TMP_DIR/capabilities.code")"
+SELFHOST_CODE="$(cat "$TMP_DIR/selfhost.code")"
 WORKFLOW_CODE="$(cat "$TMP_DIR/workflow.code")"
 CHECK_STATUS=FAIL; TEST_STATUS=FAIL; REVIEW_STATUS=FAIL; EVIDENCE_STATUS=FAIL; DIFF_STATUS=FAIL
 WORKFLOW_STATUS=NOT_APPLICABLE
 CAPABILITY_STATUS=UNKNOWN
+SELFHOST_STATUS=NOT_APPLICABLE
 if [[ "$MODE" == quick ]]; then
   TEST_STATUS=NOT_RUN
   REVIEW_STATUS=NOT_RUN
   EVIDENCE_STATUS=NOT_RUN
   CAPABILITY_STATUS=NOT_RUN
+  SELFHOST_STATUS=NOT_RUN
 fi
 if [[ "$CHECK_CODE" -eq 0 ]]; then CHECK_STATUS=PASS; fi
 if [[ "$TEST_CODE" -eq 0 ]]; then TEST_STATUS=PASS; fi
 if [[ "$CHECK_CODE" -eq 2 ]]; then CHECK_STATUS=BLOCKED; fi
 if [[ "$TEST_CODE" -eq 2 ]]; then TEST_STATUS=BLOCKED; fi
+if grep -q '^SELFHOST_SMOKE=PASS$' "$TMP_DIR/selfhost.out"; then SELFHOST_STATUS=PASS; fi
+if [[ "$SELFHOST_CODE" -eq 2 ]]; then SELFHOST_STATUS=BLOCKED; fi
 if grep -q '^REVIEW=PASS$' "$TMP_DIR/review.out"; then REVIEW_STATUS=PASS; fi
 if grep -q '^REVIEW=PASS_WITH_APPROVAL$' "$TMP_DIR/review.out"; then REVIEW_STATUS=PASS_WITH_APPROVAL; fi
 if [[ "$EVIDENCE_CODE" -eq 0 ]]; then EVIDENCE_STATUS=PASS; fi
@@ -131,32 +132,25 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if [[ -n "$(git -C "$ROOT" status --short)" ]]; then GIT_STATE=dirty; fi
 fi
 
-LIMITATIONS_JSON='[]'
-if [[ "$CAPABILITY_STATUS" == PARTIAL ]]; then
-  LIMITATIONS_JSON='["capability probe is currently AFJ-only; this project capability surface was not fully exercised"]'
-elif [[ "$CAPABILITY_STATUS" == UNKNOWN ]]; then
-  LIMITATIONS_JSON='["capability coverage could not be established"]'
-fi
-if [[ "$REVIEW_STATUS" == PASS_WITH_APPROVAL ]]; then
-  LIMITATIONS_JSON="$(node -e 'const a=JSON.parse(process.argv[1]); a.push("review detected contract/spec drift; explicit approval is required before deploy"); process.stdout.write(JSON.stringify(a))' "$LIMITATIONS_JSON")"
-fi
+LIMITATIONS_JSON="$($TOOLS_ROOT/scripts/fl-native-trust-limitations "$CAPABILITY_STATUS" "$REVIEW_STATUS" | sed -n 's/^LIMITATIONS_JSON=//p')"
 
-FREELANG_TRUST_MODE="$MODE" node - "$TMP_DIR/decision-input.json" "$PROJECT" "$CHECK_STATUS" "$TEST_STATUS" \
-  "$REVIEW_STATUS" "$EVIDENCE_STATUS" "$DIFF_STATUS" "$WORKFLOW_STATUS" "$APPROVAL_REQUIRED" <<'NODE'
-const fs = require('fs');
-const [file, project, check, test, review, evidence, diffCheck, workflow, approval] = process.argv.slice(2);
-fs.writeFileSync(file, JSON.stringify({
-  project, check, test, review, evidence, diffCheck, workflow,
-  mode: process.env.FREELANG_TRUST_MODE || 'deep',
-  approvalRequired: approval === 'true'
-}) + '\n');
-NODE
+FL_TOOLS_TRUST_INPUT_PROJECT="$PROJECT" \
+FL_TOOLS_TRUST_INPUT_CHECK="$CHECK_STATUS" \
+FL_TOOLS_TRUST_INPUT_TEST="$TEST_STATUS" \
+FL_TOOLS_TRUST_INPUT_REVIEW="$REVIEW_STATUS" \
+FL_TOOLS_TRUST_INPUT_EVIDENCE="$EVIDENCE_STATUS" \
+FL_TOOLS_TRUST_INPUT_DIFF="$DIFF_STATUS" \
+FL_TOOLS_TRUST_INPUT_WORKFLOW="$WORKFLOW_STATUS" \
+  FL_TOOLS_TRUST_INPUT_SELFHOST="$SELFHOST_STATUS" \
+FL_TOOLS_TRUST_INPUT_MODE="$MODE" \
+FL_TOOLS_TRUST_INPUT_APPROVAL="$APPROVAL_REQUIRED" \
+  "$TOOLS_ROOT/scripts/fl-native-trust-input" "$TMP_DIR/decision-input.json" >/dev/null
 run_gate native_decision "$TOOLS_ROOT/scripts/fl-native-trust" --input "$TMP_DIR/decision-input.json"
 NATIVE_CODE="$(cat "$TMP_DIR/native_decision.code")"
 NATIVE_VERDICT=BLOCKED
 NATIVE_SOURCE=unavailable
 if [[ "$NATIVE_CODE" -eq 0 ]]; then
-  NATIVE_VERDICT="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.verdict)' "$(cat "$TMP_DIR/native_decision.out")")"
+  NATIVE_VERDICT="$(sed -n 's/.*"verdict":"\([^"]*\)".*/\1/p' "$TMP_DIR/native_decision.out")"
   NATIVE_SOURCE=freelang-native
 fi
 
@@ -173,6 +167,7 @@ FL_TOOLS_TRUST_REPORT_REVIEW="$REVIEW_STATUS" \
 FL_TOOLS_TRUST_REPORT_EVIDENCE="$EVIDENCE_STATUS" \
 FL_TOOLS_TRUST_REPORT_DIFF="$DIFF_STATUS" \
 FL_TOOLS_TRUST_REPORT_WORKFLOW="$WORKFLOW_STATUS" \
+FL_TOOLS_TRUST_REPORT_SELFHOST="$SELFHOST_STATUS" \
 FL_TOOLS_TRUST_REPORT_CAPABILITY="$CAPABILITY_STATUS" \
 FL_TOOLS_TRUST_REPORT_APPROVAL="$APPROVAL_REQUIRED" \
 FL_TOOLS_TRUST_REPORT_LIMITATIONS="$LIMITATIONS_JSON" \

@@ -72,7 +72,7 @@ if [[ -x "$ROOT/.freelang/deploy.sh" ]]; then
 elif [[ -x "$ROOT/scripts/deploy" ]]; then
   DEPLOY_CONTRACT="$ROOT/scripts/deploy"
 elif [[ -f "$ROOT/package.json" ]]; then
-  PACKAGE_DEPLOY="$(node -e 'const p=require(process.argv[1]); process.stdout.write(p.scripts?.deploy || "")' "$ROOT/package.json" 2>/dev/null || true)"
+  PACKAGE_DEPLOY="$($TOOLS_ROOT/scripts/fl-native-package-script "$ROOT" deploy 2>/dev/null | sed -n 's/^PACKAGE_SCRIPT=//p' || true)"
   if [[ -n "$PACKAGE_DEPLOY" && "$PACKAGE_DEPLOY" != *"fl-deploy"* && "$PACKAGE_DEPLOY" != *"fl-tools deploy"* ]]; then
     DEPLOY_CONTRACT="npm --prefix $ROOT run deploy"
   fi
@@ -106,20 +106,15 @@ DEPLOY_CODE=$?
 set -e
 if [[ "$DEPLOY_CODE" -ne 0 ]]; then
   echo "DEPLOY=FAIL"
-  exit "$DEPLOY_CODE"
-fi
-echo "DEPLOY=PASS"
-
-set +e
-(cd "$ROOT" && "$SMOKE_CONTRACT")
-SMOKE_CODE=$?
-set -e
-if [[ "$SMOKE_CODE" -eq 0 ]]; then
-  echo "SMOKE=PASS"
+  SMOKE_CODE=1
 else
-  echo "SMOKE=FAIL"
-  exit "$SMOKE_CODE"
+  echo "DEPLOY=PASS"
+  set +e
+  (cd "$ROOT" && "$SMOKE_CONTRACT")
+  SMOKE_CODE=$?
+  set -e
 fi
+if [[ "$SMOKE_CODE" -ne 0 ]]; then echo "SMOKE=FAIL"; fi
 
 ARTIFACT_HASH=NONE
 for artifact in "$ROOT/.freelang/artifact" "$ROOT/dist" "$ROOT/build"; do
@@ -128,9 +123,13 @@ for artifact in "$ROOT/.freelang/artifact" "$ROOT/dist" "$ROOT/build"; do
     break
   fi
 done
-echo "ARTIFACT_HASH=$ARTIFACT_HASH"
+ROLLBACK_AVAILABLE=NO
 if [[ -x "$ROOT/.freelang/rollback.sh" || -x "$ROOT/scripts/rollback" ]]; then
-  echo "ROLLBACK_AVAILABLE=YES"
-else
-  echo "ROLLBACK_AVAILABLE=NO"
+  ROLLBACK_AVAILABLE=YES
 fi
+
+set +e
+"$TOOLS_ROOT/scripts/fl-native-deploy-report" "$DEPLOY_CODE" "$SMOKE_CODE" "$ARTIFACT_HASH" "$ROLLBACK_AVAILABLE" "$ROOT"
+REPORT_CODE=$?
+set -e
+exit "$REPORT_CODE"

@@ -1,0 +1,12 @@
+;; FreeLang-native trust limitation policy.
+
+(let [capability (shell_env "FL_TOOLS_TRUST_CAPABILITY")
+      review (shell_env "FL_TOOLS_TRUST_REVIEW")
+      values (concat
+              (if (= capability "PARTIAL")
+                ["capability probe is currently AFJ-only; this project capability surface was not fully exercised"]
+                (if (= capability "UNKNOWN") ["capability coverage could not be established"] []))
+              (if (= review "PASS_WITH_APPROVAL")
+                ["review detected contract/spec drift; explicit approval is required before deploy"]
+                []))]
+  (println (str "LIMITATIONS_JSON=" (json-stringify values))))

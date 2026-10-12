@@ -5,7 +5,7 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 LEFT_PATH="${1:-}"
 RIGHT_PATH="${2:-}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 
 if [[ -z "$LEFT_PATH" || -z "$RIGHT_PATH" || ! -f "$LEFT_PATH" || ! -f "$RIGHT_PATH" || ! -f "$RUNNER" ]]; then
   exit 2

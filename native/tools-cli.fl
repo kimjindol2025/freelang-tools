@@ -1,0 +1,134 @@
+;; FreeLang-native CLI kernel.
+;; This is the first command surface owned entirely by FreeLang.
+
+(define command-lines
+  ["  fl-tools start [경로]      작업 시작 컨텍스트·준비 상태 출력"
+   "  fl-tools ready [경로]      AI 실행 전 읽기 전용 준비 상태(JSON)"
+   "  fl-tools status [경로]     프로젝트·Git·테스트 상태 출력"
+   "  fl-tools route [경로]      프로젝트 작업 경로·명령 요약"
+   "  fl-tools backend-contract --input 파일  backend 공통 계약 판정"
+   "  fl-tools git-native [경로]  native 읽기 전용 Git 표준 API"
+   "  fl-tools ai run --deep      전체 FreeLang 신뢰 게이트 실행"
+   "  fl-tools check [경로]      FreeLang 소스·테스트 검사"
+   "  fl-tools test [경로]       FreeLang 테스트 실행"
+   "  fl-tools review [경로]     전체 검토·회귀·diff 검사"
+   "  fl-tools help              이 도움말"])
+
+(defn print-help []
+  {:context "Print the FreeLang-native fl-tools command surface"
+   :returns "true"
+   :effects ["io"]}
+  (println "FreeLang Tools — FreeLang native command kernel")
+  (println "사용법:")
+  (map (fn [line] (println line)) command-lines)
+  nil)
+
+(defn route-command [command]
+  {:context "Resolve one CLI command to its native ownership"
+   :returns "route result map"
+   :effects []}
+  (case command
+    "help" {"command" "help" "owner" "freelang-native" "status" "PASS"}
+    "start" {"command" "start" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "ready" {"command" "ready" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "status" {"command" "status" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "route" {"command" "route" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "check" {"command" "check" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "test" {"command" "test" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "review" {"command" "review" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "detect" {"command" "detect" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "backend-contract" {"command" "backend-contract" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "git-native" {"command" "git-native" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "system-json" {"command" "system-json" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "process-native" {"command" "process-native" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "http-native" {"command" "http-native" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "ai" {"command" "ai" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "workflow-test" {"command" "workflow-test" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "native-workflow" {"command" "native-workflow" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "native-trust" {"command" "native-trust" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "capabilities" {"command" "capabilities" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "native-core" {"command" "native-core" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "evidence" {"command" "evidence" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "trust" {"command" "trust" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "determinism" {"command" "determinism" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "test-cli-contract" {"command" "test-cli-contract" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "test-cli-isolation" {"command" "test-cli-isolation" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "test-effect-capability" {"command" "test-effect-capability" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "test-trust" {"command" "test-trust" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "test-deploy-fixture" {"command" "test-deploy-fixture" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "deploy" {"command" "deploy" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "safe-push" {"command" "safe-push" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    "safety" {"command" "safety" "owner" "freelang-native" "status" "HOST_ADAPTER"}
+    {"command" command "owner" "unknown" "status" "BLOCKED"}))
+
+(defn script-for [root command]
+  {:context "Map one native CLI command to its allowed host adapter"
+   :returns "adapter path or none"
+   :effects []}
+  (case command
+    "start" (str root "/scripts/fl-start")
+    "ready" (str root "/scripts/fl-ready")
+    "init" (str root "/scripts/fl-init")
+    "inspect" (str root "/scripts/fl-inspect")
+    "report" (str root "/scripts/fl-report")
+    "pipeline" (str root "/scripts/fl-pipeline")
+    "auto" (str root "/scripts/fl-pipeline")
+    "handoff" (str root "/scripts/fl-handoff")
+    "evidence" (str root "/scripts/fl-evidence")
+    "trust" (str root "/scripts/fl-trust")
+    "ai" (str root "/scripts/fl-ai")
+    "server" (str root "/scripts/fl-server")
+    "workflow-test" (str root "/scripts/fl-workflow-test")
+    "native-workflow" (str root "/scripts/fl-native-workflow")
+    "native-trust" (str root "/scripts/fl-native-trust")
+    "capabilities" (str root "/scripts/fl-capabilities")
+    "native-core" (str root "/scripts/fl-native-core")
+    "native-ready-report" (str root "/scripts/fl-native-ready-report")
+    "native-status-report" (str root "/scripts/fl-native-status-report")
+    "native-route-report" (str root "/scripts/fl-native-route-report")
+    "native-gate-report" (str root "/scripts/fl-native-gate-report")
+    "backend-contract" (str root "/scripts/fl-backend-contract")
+    "git-native" (str root "/scripts/fl-git-native")
+    "system-json" (str root "/scripts/fl-system-json")
+    "process-native" (str root "/scripts/fl-process-native")
+    "http-native" (str root "/scripts/fl-http-native")
+    "adapter" (str root "/scripts/fl-adapter")
+    "airc" (str root "/scripts/fl-airc")
+    "cli" (str root "/scripts/fl-cli")
+    "ci" (str root "/scripts/fl-ci")
+    "determinism" (str root "/scripts/fl-determinism")
+    "test-cli-contract" (str root "/tests/cli/contract-test.sh")
+    "test-cli-isolation" (str root "/tests/cli/timeout-signal-test.sh")
+    "test-effect-capability" (str root "/tests/capability/effect-tape-probe.sh")
+    "test-trust" (str root "/tests/trust/contract-test.sh")
+    "test-deploy-fixture" (str root "/tests/deploy-fixture/run.sh")
+    "deploy" (str root "/scripts/fl-deploy")
+    "safe-push" (str root "/scripts/fl-safe-push")
+    "safety" (str root "/scripts/fl-safety")
+    "review" (str root "/scripts/fl-review")
+    "test" (str root "/scripts/fl-test")
+    "check" (str root "/scripts/fl-check")
+    "detect" (str root "/scripts/fl-detect")
+    "status" (str root "/scripts/fl-status")
+    "route" (str root "/scripts/fl-route")
+    "router" (str root "/scripts/fl-route")
+    "doctor" (str root "/scripts/fl-doctor")
+    "session" (str root "/scripts/fl-session")
+    "journal" (str root "/scripts/fl-journal")
+    "release-check" (str root "/scripts/fl-release-check")
+    "safety" (str root "/scripts/fl-safety")
+    "none"))
+
+(let [argv (process-argv)
+      root (shell_env "FL_TOOLS_DISPATCH_ROOT")
+      args (if (> (length argv) 2) (slice argv 2 (length argv)) [])
+      command (if (> (length args) 0) (get args 0) "help")
+      adapter (script-for root command)]
+  (if (or (= command "help") (= command "-h") (= command "--help"))
+    (print-help)
+    (println (json-stringify
+               {"schemaVersion" "freelang.tools-cli/v1"
+                "source" "freelang-native"
+                "route" (route-command command)
+                "adapter" adapter
+                "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))))

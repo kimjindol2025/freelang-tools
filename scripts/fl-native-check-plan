@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+ROOT_PATH="${1:?root required}"
+DIALECT_VALUE="${2:-UNKNOWN}"
+RUNNER_VALUE="${3:-none}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+FL_TOOLS_PLAN_ROOT="$ROOT_PATH" \
+FL_TOOLS_PLAN_DIALECT="$DIALECT_VALUE" \
+FL_TOOLS_PLAN_RUNNER="$RUNNER_VALUE" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/check-plan.fl"

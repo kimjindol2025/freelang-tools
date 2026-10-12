@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "freelang.operation-contract/v1",
+  "action": "deploy",
+  "approvalRequired": true,
+  "risk": "high"
+}

@@ -1,0 +1,32 @@
+;; FreeLang-native release readiness policy.
+;; Host adapters provide filesystem/Git observations; this module owns policy.
+
+(defn yes? [value]
+  {:context "Interpret a host observation as affirmative"
+   :returns "boolean"
+   :effects []}
+  (= value "YES"))
+
+(defn contains-any? [text fragments]
+  {:context "Require at least one release contract field"
+   :returns "boolean"
+   :effects []}
+  (> (length (filter (fn [fragment] (str-contains-in text fragment)) fragments)) 0))
+
+(let [notes (shell_env "FL_TOOLS_RELEASE_NOTES")
+      git (shell_env "FL_TOOLS_RELEASE_GIT")
+      clean (shell_env "FL_TOOLS_RELEASE_CLEAN")
+      tags (shell_env "FL_TOOLS_RELEASE_TAGS")
+      fields (shell_env "FL_TOOLS_RELEASE_FIELDS")
+      contracts (shell_env "FL_TOOLS_RELEASE_CONTRACTS")
+      ready (and (= notes "PASS") (= git "PASS") (yes? clean)
+                 (= fields "PASS") (= contracts "PASS"))]
+  (println (str "RELEASE_NOTES=" notes))
+  (println (str "GIT=" git))
+  (if (yes? clean) (println "WORKTREE=CLEAN") (println "WORKTREE=CLEAN_REQUIRED"))
+  (println (str "TAGS=" tags))
+  (println (str "RELEASE_FIELDS=" fields))
+  (println (str "NATIVE_CONTRACTS=" contracts))
+  (if ready
+    (println "RELEASE_READY=YES")
+    (do (println "RELEASE_READY=NO") (throw "release-not-ready"))))

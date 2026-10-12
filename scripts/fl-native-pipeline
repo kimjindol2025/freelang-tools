@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+FL_TOOLS_PIPELINE_INIT="${1:?init code required}" FL_TOOLS_PIPELINE_INSPECT="${2:?inspect code required}" \
+FL_TOOLS_PIPELINE_REVIEW="${3:?review code required}" FL_TOOLS_PIPELINE_REPORT="${4:?report code required}" \
+FL_TOOLS_PIPELINE_DEPLOY="${5:?deploy code required}" FL_TOOLS_PIPELINE_HANDOFF="${6:?handoff code required}" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/pipeline-core.fl"

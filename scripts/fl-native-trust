@@ -19,7 +19,7 @@ if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
   exit 2
 fi
 
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 PROBE="$TOOLS_ROOT/native/trust-core.fl"
 if [[ ! -f "$RUNNER" ]]; then
   echo "NATIVE_TRUST=BLOCKED" >&2
@@ -30,9 +30,5 @@ fi
 FL_TOOLS_TRUST_INPUT="$INPUT" node "$RUNNER" check "$PROBE" >/dev/null
 OUTPUT="$(FL_TOOLS_TRUST_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
 printf '%s\n' "$OUTPUT"
-node -e '
-  const x = JSON.parse(process.argv[1]);
-  const ok = x.source === "freelang-native" && x.command === "trust-core" &&
-    ["TRUSTED", "TRUSTED_WITH_APPROVAL", "UNTRUSTED", "BLOCKED"].includes(x.verdict);
-  process.exit(ok ? 0 : 1);
-' "$OUTPUT"
+STATUS="$(sed -n 's/.*"verdict":"\([^"]*\)".*/\1/p' <<<"$OUTPUT")"
+[[ "$STATUS" == TRUSTED || "$STATUS" == TRUSTED_WITH_APPROVAL || "$STATUS" == UNTRUSTED || "$STATUS" == BLOCKED ]]

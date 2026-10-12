@@ -1,0 +1,134 @@
+;; FreeLang-native package test planner.
+;; Filesystem reading is host-backed; selection policy is FreeLang-owned.
+
+(defn test-name? [name]
+  {:context "Recognize package scripts that represent test commands"
+   :returns "boolean"
+   :effects []}
+  (let [value (str-lower name)]
+    (or (str-starts-with value "test")
+        (str-starts-with value "jest")
+        (str-starts-with value "vitest"))))
+
+(defn skipped-name? [name]
+  {:context "Exclude slow, mutating, or interactive test profiles"
+   :returns "boolean"
+   :effects []}
+  (let [value (str-lower name)]
+    (or (= value "test")
+        (= value "test:run")
+        (str-contains-in value "with-build")
+        (str-contains-in value "watch")
+        (str-contains-in value "ci")
+        (str-contains-in value "coverage")
+        (str-contains-in value "prepare")
+        (str-contains-in value "integration")
+        (str-contains-in value "verbose")
+        (str-contains-in value "focused")
+        (str-contains-in value "local")
+        (str-contains-in value "changed"))))
+
+(defn candidate? [name command]
+  {:context "Select safe external test scripts and exclude fl-tools recursion"
+   :returns "boolean"
+   :effects []}
+  (and (test-name? name)
+       (not (skipped-name? name))
+       (not (str-contains-in (str-lower command) "fl-tools"))
+       (not (str-contains-in (str-lower command) "freelang-tools"))))
+
+(defn workflow-interesting? [command]
+  {:context "Select workflow run commands relevant to verification"
+   :returns "boolean"
+   :effects []}
+  (let [value (str-lower command)]
+    (or (str-contains-in value "test")
+        (str-contains-in value "jest")
+        (str-contains-in value "vitest")
+        (str-contains-in value "check")
+        (str-contains-in value "lint"))))
+
+(defn workflow-unsafe? [command]
+  {:context "Reject mutating or environment-dependent workflow commands"
+   :returns "boolean"
+   :effects []}
+  (let [value (str-lower command)]
+    (or (str-contains-in value "deploy")
+        (str-contains-in value "publish")
+        (str-contains-in value "release")
+        (str-contains-in value "push")
+        (str-contains-in value "checkout")
+        (str-contains-in value "docker")
+        (str-contains-in value "ssh")
+        (str-contains-in value "pm2")
+        (str-contains-in command "${{" )
+        (str-contains-in command "${"))))
+
+(defn workflow-entry [file line]
+  {:context "Normalize one workflow run line"
+   :returns "workflow plan entry"
+   :effects []}
+  (let [trimmed (str-trim line)
+        prefix "run:"
+        raw (str-trim (str-slice trimmed (length prefix)))
+        command (if (and (> (length raw) 1)
+                         (or (and (= (str-slice raw 0 1) "'")
+                                  (= (str-slice raw (- (length raw) 1) (length raw)) "'"))
+                             (and (= (str-slice raw 0 1) "\"")
+                                  (= (str-slice raw (- (length raw) 1) (length raw)) "\""))))
+                   (str-slice raw 1 (- (length raw) 1))
+                   raw)]
+    {"file" file "command" command}))
+
+(defn workflow-entries [root file]
+  {:context "Extract deterministic run entries from one workflow file"
+   :returns "workflow plan entries"
+   :effects ["filesystem"]}
+  (let [full (str root "/.github/workflows/" file)
+        prefix "run:"
+        lines (if (file-exists full) (str-split (file-read full) "\n") [])
+        candidates (filter (fn [line] (str-starts-with (str-trim line) prefix)) lines)]
+    (map (fn [line] (workflow-entry file line)) candidates)))
+
+(let [root (shell_env "FL_TOOLS_WORKFLOW_ROOT")
+      all-tests (shell_env "FL_TOOLS_WORKFLOW_ALL_TESTS")
+      package-path (str root "/package.json")
+      package (if (file-exists package-path) (json-parse (file-read package-path)) {})
+      scripts (if (map? (get package "scripts")) (get package "scripts") {})
+      names (sort (keys scripts))
+      candidates (map (fn [name] {"name" name "command" (get scripts name)})
+                      (filter (fn [name] (candidate? name (get scripts name))) names))
+      preferred-fast (first (filter (fn [item] (= (get item "name") "test:fast")) candidates))
+      preferred (if (= all-tests "YES") nil (or preferred-fast (first candidates)))
+      selected (if (= all-tests "YES") candidates (if (map? preferred) [preferred] []))
+      skipped (if (= all-tests "YES") []
+                  (map (fn [item] {"script" (get item "name")
+                                   "command" (get item "command")
+                                   "reason" "fast-profile"})
+                       (filter (fn [item] (or (not (map? preferred))
+                                              (not= (get item "name") (get preferred "name"))))
+                               candidates)))
+      workflow-dir (str root "/.github/workflows")
+      workflow-files (if (file-exists workflow-dir)
+                       (sort (filter (fn [file]
+                                       (or (str-ends-with file ".yml")
+                                           (str-ends-with file ".yaml")))
+                                     (dir-list workflow-dir)))
+                       [])
+      workflow-items (reduce (fn [all file]
+                               (concat all (workflow-entries root file)))
+                             [] workflow-files)
+      workflow-commands (if (= all-tests "YES")
+                          (filter (fn [item]
+                                    (and (workflow-interesting? (get item "command"))
+                                         (not (workflow-unsafe? (get item "command")))))
+                                  workflow-items)
+                          [])
+      workflow-skipped (filter (fn [item]
+                                 (or (workflow-unsafe? (get item "command"))
+                                     (not (= all-tests "YES"))))
+                               (filter (fn [item] (workflow-interesting? (get item "command")))
+                                       workflow-items))]
+  (println (json-stringify {"packageScripts" selected
+                            "workflowCommands" workflow-commands
+                            "skippedWorkflowCommands" (concat skipped workflow-skipped)})))

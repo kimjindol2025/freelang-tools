@@ -1,0 +1,14 @@
+;; FreeLang-native package.json script lookup.
+
+(let [root (shell_env "FL_TOOLS_PACKAGE_ROOT")
+      action (shell_env "FL_TOOLS_PACKAGE_ACTION")
+      path (str root "/package.json")
+      package (if (file-exists path) (json-parse (file-read path)) {})
+      scripts (if (map? (get package "scripts")) (get package "scripts") {})
+      names (sort (keys scripts))]
+  (case action
+    "list" (println (str "PACKAGE_SCRIPTS=" (if (> (length names) 0) (str-join "," names) "none")))
+    (let [value (get scripts action)]
+      (if (and (string? value) (not= value ""))
+        (println (str "PACKAGE_SCRIPT=" value))
+        (do (println (str "PACKAGE_SCRIPT_MISSING=" action)) (throw "package-script-missing"))))))

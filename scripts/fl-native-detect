@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+TARGET="${1:-.}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+if [[ ! -d "$TARGET" || ! -f "$RUNNER" ]]; then
+  echo "PROJECT_DETECT=BLOCKED"
+  echo "CAUSE=directory-or-runner-not-found" >&2
+  exit 2
+fi
+ROOT_PATH="$(cd -- "$TARGET" && pwd -P)"
+FL_TOOLS_DETECT_ROOT="$ROOT_PATH" node "$RUNNER" run "$TOOLS_ROOT/native/detect-core.fl"

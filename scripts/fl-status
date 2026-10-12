@@ -6,26 +6,25 @@ ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 
 DETECT_OUTPUT="$($ROOT/scripts/fl-detect "$TARGET")"
-printf '%s\n' "$DETECT_OUTPUT"
 
 TARGET_ROOT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^ROOT=//p')"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 
 if git -C "$TARGET_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if [[ -n "$(git -C "$TARGET_ROOT" status --short)" ]]; then
-    echo "GIT=dirty"
+    GIT=dirty
   else
-    echo "GIT=clean"
+    GIT=clean
   fi
 else
-  echo "GIT=not-a-repository"
+  GIT=not-a-repository
 fi
 
 RELEASE="UNKNOWN"
 if [[ -f "$TARGET_ROOT/CHANGELOG.md" ]]; then
   RELEASE="$(sed -n 's/^## \(v[^ —]*\).*/\1/p' "$TARGET_ROOT/CHANGELOG.md" | head -1)"
 fi
-printf 'RELEASE=%s\n' "${RELEASE:-UNKNOWN}"
+RELEASE="${RELEASE:-UNKNOWN}"
 
 set +e
 TEST_OUTPUT="$($ROOT/scripts/fl-test "$TARGET_ROOT" 2>&1)"
@@ -33,31 +32,44 @@ TEST_CODE=$?
 set -e
 if [[ "$TEST_CODE" -eq 0 ]]; then
   if grep -q '^FREELANG_TEST=PASS$' <<<"$TEST_OUTPUT"; then
-    echo "TEST=PASS"
+    TEST=PASS
   else
-    echo "TEST=NOT_RUN"
+    TEST=NOT_RUN
   fi
 elif [[ "$TEST_CODE" -eq 3 ]] && grep -q '^FREELANG_TEST=NOT_RUN$' <<<"$TEST_OUTPUT"; then
   echo "TEST=NOT_RUN"
 else
-  echo "TEST=FAIL"
+  TEST=FAIL
 fi
 
+SELFHOST=NOT_APPLICABLE
+COLD_BOOT=NOT_APPLICABLE
 case "$DIALECT" in
   AIA)
     if grep -q '^SELFHOST_SMOKE=.*PASS$' <<<"$TEST_OUTPUT"; then
-      echo "SELFHOST=PASS"
+      SELFHOST=PASS
     else
-      echo "SELFHOST=UNRESOLVED"
+      SELFHOST=UNRESOLVED
     fi
     if grep -q '^GOLDEN=.*PASS$' <<<"$TEST_OUTPUT" && \
        grep -q '^ERRORS=.*PASS$' <<<"$TEST_OUTPUT" && \
        grep -q '^DETERMINISTIC=PASS$' <<<"$TEST_OUTPUT"; then
-      echo "COLD_BOOT=PASS"
+      COLD_BOOT=PASS
     else
-      echo "COLD_BOOT=UNRESOLVED"
+      COLD_BOOT=UNRESOLVED
     fi
     ;;
-  FX) echo "SELFHOST=UNRESOLVED"; echo "COLD_BOOT=UNRESOLVED" ;;
-  *) echo "SELFHOST=NOT_APPLICABLE" ;;
+  FX) SELFHOST=UNRESOLVED; COLD_BOOT=UNRESOLVED ;;
+  *) : ;;
 esac
+
+FL_TOOLS_STATUS_DETECT="$DETECT_OUTPUT" \
+FL_TOOLS_STATUS_PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')" \
+FL_TOOLS_STATUS_ROOT="$TARGET_ROOT" \
+FL_TOOLS_STATUS_DIALECT="$DIALECT" \
+FL_TOOLS_STATUS_GIT="$GIT" \
+FL_TOOLS_STATUS_RELEASE="$RELEASE" \
+FL_TOOLS_STATUS_TEST="$TEST" \
+FL_TOOLS_STATUS_SELFHOST="$SELFHOST" \
+FL_TOOLS_STATUS_COLD_BOOT="$COLD_BOOT" \
+  "$ROOT/scripts/fl-native-status-report"

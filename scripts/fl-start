@@ -35,7 +35,7 @@ TEST_COMMAND="fl-tools test $TARGET"
 CHECK_COMMAND="fl-tools check $TARGET"
 BUILD_COMMAND=none
 if [[ -f "$PROJECT_ROOT/package.json" ]]; then
-  if node -e 'const p=require(process.argv[1]); process.exit(p.scripts?.build ? 0 : 1)' "$PROJECT_ROOT/package.json" 2>/dev/null; then
+  if "$TOOLS_ROOT/scripts/fl-native-package-script" "$PROJECT_ROOT" build >/dev/null 2>&1; then
     BUILD_COMMAND="npm run build"
   fi
 fi
@@ -61,22 +61,22 @@ DOCTOR_OUTPUT="$($TOOLS_ROOT/scripts/fl-doctor "$PROJECT_ROOT" 2>&1)"
 DOCTOR_CODE=$?
 set -e
 
-printf 'PROJECT=%s\n' "$PROJECT"
-printf 'LANGUAGE=%s\n' "$DIALECT"
-printf 'FAMILY=FreeLang\n'
-printf 'RUNTIME=%s\n' "$RUNTIME"
-printf 'ENTRYPOINT=%s\n' "$ENTRYPOINT"
-printf 'RUNNER=%s\n' "$RUNNER"
-printf 'TEST_COMMAND=%s\n' "$TEST_COMMAND"
-printf 'CHECK_COMMAND=%s\n' "$CHECK_COMMAND"
-printf 'BUILD_COMMAND=%s\n' "$BUILD_COMMAND"
-printf 'DOCUMENTS=%s\n' "$DOCS"
-printf 'GIT=%s\n' "$GIT"
-printf 'CURRENT_BRANCH=%s\n' "$BRANCH"
-if [[ "$DOCTOR_CODE" -eq 0 && "$DIALECT" != UNKNOWN && "$GIT" != not-a-repository ]]; then
-  echo "READY=YES"
-else
-  echo "READY=NO"
+DOCTOR_STATUS=FAIL
+[[ "$DOCTOR_CODE" -eq 0 ]] && DOCTOR_STATUS=PASS
+FL_TOOLS_START_PROJECT="$PROJECT" \
+FL_TOOLS_START_DIALECT="$DIALECT" \
+FL_TOOLS_START_RUNTIME="$RUNTIME" \
+FL_TOOLS_START_ENTRYPOINT="$ENTRYPOINT" \
+FL_TOOLS_START_RUNNER="$RUNNER" \
+FL_TOOLS_START_TARGET="$TARGET" \
+FL_TOOLS_START_BUILD="$BUILD_COMMAND" \
+FL_TOOLS_START_DOCS="$DOCS" \
+FL_TOOLS_START_GIT="$GIT" \
+FL_TOOLS_START_BRANCH="$BRANCH" \
+FL_TOOLS_START_DOCTOR="$DOCTOR_STATUS" \
+  "$TOOLS_ROOT/scripts/fl-native-start-report"
+
+if [[ "$DOCTOR_CODE" -ne 0 || "$DIALECT" == UNKNOWN || "$GIT" == not-a-repository ]]; then
   [[ "$DOCTOR_CODE" -ne 0 ]] && printf '%s\n' "$DOCTOR_OUTPUT" >&2
   exit 1
 fi

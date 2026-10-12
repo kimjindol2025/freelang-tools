@@ -26,11 +26,9 @@ cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT INT TERM
 
 if [[ -f "$ROOT/package.json" && ! -d "$ROOT/node_modules" ]]; then
-  WORKFLOW_JSON="$TMP_DIR/workflow.json" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" node -e '
-const fs=require("fs"), value={schemaVersion:"freelang.workflow/v1",status:"BLOCKED",root:process.env.ROOT,runWorkflows:process.env.RUN_WORKFLOWS,discovered:{packageScripts:[],workflowCommands:[],skippedWorkflowCommands:[]},results:[]};
-fs.writeFileSync(process.env.WORKFLOW_JSON, JSON.stringify(value,null,2));
-console.log(JSON.stringify(value,null,2));
-'
+  WORKFLOW_JSON="$TMP_DIR/workflow.json"
+  "$TOOLS_ROOT/scripts/fl-native-workflow-blocked" "$ROOT" "$RUN_WORKFLOWS" "node_modules-not-installed" "$WORKFLOW_JSON"
+  cat "$WORKFLOW_JSON"
   if ! "$TOOLS_ROOT/scripts/fl-native-workflow" --input "$TMP_DIR/workflow.json" >/dev/null; then
     echo "WORKFLOW_CONTRACT=BLOCKED" >&2
   fi
@@ -38,55 +36,10 @@ console.log(JSON.stringify(value,null,2));
   exit 2
 fi
 
-  node - "$ROOT" "$RUN_WORKFLOWS" "$TMP_DIR/plan.json" "$ALL_TESTS" <<'NODE'
-const fs = require('fs'), path = require('path');
-const [root, runWorkflows, out, allTests] = process.argv.slice(2);
-const plan = { packageScripts: [], workflowCommands: [], skippedWorkflowCommands: [] };
-const testName = /^(test|test:|jest|vitest)/i;
-const skippedScript = /(^test$)|(^test:run$)|(^|:)(with-build|watch|ci(?::|$)|coverage|prepare|integration|verbose|focused|local|changed)/i;
-const unsafe = /(deploy|publish|release|push|checkout|docker|ssh|pm2)/i;
-try {
-  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  const candidates = Object.entries(pkg.scripts || {})
-    .filter(([name, command]) => testName.test(name) && !skippedScript.test(name) && !/fl-tools|freelang-tools/.test(command))
-    .map(([name, command]) => ({name, command}));
-  if (allTests === 'YES') {
-    plan.packageScripts.push(...candidates);
-  } else {
-    const preferred = candidates.find(item => item.name === 'test:fast') || candidates[0];
-    if (preferred) plan.packageScripts.push(preferred);
-    for (const item of candidates) if (!preferred || item.name !== preferred.name) plan.skippedWorkflowCommands.push({script: item.name, command: item.command, reason: 'fast-profile'});
-  }
-} catch (_) {}
-const workflowDir = path.join(root, '.github', 'workflows');
-if (fs.existsSync(workflowDir)) {
-  for (const file of fs.readdirSync(workflowDir).filter(x => /\.(yml|yaml)$/.test(x)).sort()) {
-    const full = path.join(workflowDir, file);
-    const lines = fs.readFileSync(full, 'utf8').split(/\r?\n/);
-    for (const line of lines) {
-      const match = line.match(/^\s*run:\s*(.+?)\s*$/);
-      if (!match) continue;
-      const raw = match[1].trim();
-      const command = ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"')))
-        ? raw.slice(1, -1)
-        : raw;
-      if (!/(test|jest|vitest|check|lint)/i.test(command)) continue;
-      const item = {file: path.relative(root, full), command};
-      if (unsafe.test(command) || /\$\{\{|\$\{[A-Z_][A-Z0-9_]*\}/.test(command)) plan.skippedWorkflowCommands.push(item);
-      else if (runWorkflows === 'YES') plan.workflowCommands.push(item);
-      else plan.skippedWorkflowCommands.push(item);
-    }
-  }
-}
-fs.writeFileSync(out, JSON.stringify(plan));
-NODE
+  "$TOOLS_ROOT/scripts/fl-native-workflow-plan" "$ROOT" "$ALL_TESTS" >"$TMP_DIR/plan.json"
 
-RESULTS_FILE="$TMP_DIR/results.json"
-node - "$TMP_DIR/plan.json" "$RESULTS_FILE" <<'NODE'
-const fs = require('fs');
-const plan = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-fs.writeFileSync(process.argv[3], JSON.stringify({plan, results: []}));
-NODE
+RESULT_LINES_FILE="$TMP_DIR/result-lines.ndjson"
+: >"$RESULT_LINES_FILE"
 
 FAIL=0
 BLOCKED=0
@@ -160,10 +113,9 @@ run_command() {
       FAIL=1
     fi
   fi
-  RESULT_LINES+=("$(KIND="$kind" LABEL="$label" COMMAND="$command" CODE="$code" OUTPUT_FILE="$output" node -e '
-    const fs=require("fs"), e=process.env;
-    process.stdout.write(JSON.stringify({kind:e.KIND,label:e.LABEL,command:e.COMMAND,exitCode:Number(e.CODE),output:fs.readFileSync(e.OUTPUT_FILE,"utf8").slice(-12000)}));
-  ')")
+  entry="$($TOOLS_ROOT/scripts/fl-native-workflow-entry "$kind" "$label" "$command" "$code" "$output")"
+  RESULT_LINES+=("$entry")
+  printf '%s\n' "$entry" >>"$RESULT_LINES_FILE"
 }
 
 RESULT_LINES=()
@@ -188,18 +140,12 @@ for item in "${WORKFLOW_TESTS[@]}"; do
 done
 
 if [[ "$LIMIT_REACHED" -eq 1 ]]; then BLOCKED=1; fi
-PLAN_JSON="$(cat "$TMP_DIR/plan.json")"
-RESULTS_JSON="$(printf '%s\n' "${RESULT_LINES[@]:-}" | node -e '
-  const fs=require("fs"), lines=fs.readFileSync(0,"utf8").trim();
-  process.stdout.write(JSON.stringify(lines ? lines.split(/\n/).map(JSON.parse) : []));
-')"
 STATUS=PASS
 if [[ ${#RESULT_LINES[@]} -eq 0 ]]; then STATUS=NOT_APPLICABLE; fi
 if [[ "$BLOCKED" -eq 1 ]]; then STATUS=BLOCKED; fi
 [[ "$FAIL" -eq 0 ]] || STATUS=FAIL
 WORKFLOW_JSON="$TMP_DIR/workflow.json"
-PLAN_JSON="$PLAN_JSON" RESULTS_JSON="$RESULTS_JSON" STATUS="$STATUS" ROOT="$ROOT" RUN_WORKFLOWS="$RUN_WORKFLOWS" WORKFLOW_JSON="$WORKFLOW_JSON" \
-  node -e 'const fs=require("fs"), p=JSON.parse(process.env.PLAN_JSON), r=JSON.parse(process.env.RESULTS_JSON); const value={schemaVersion:"freelang.workflow/v1",status:process.env.STATUS,root:process.env.ROOT,runWorkflows:process.env.RUN_WORKFLOWS,discovered:{packageScripts:p.packageScripts,workflowCommands:p.workflowCommands,skippedWorkflowCommands:p.skippedWorkflowCommands},results:r}; fs.writeFileSync(process.env.WORKFLOW_JSON, JSON.stringify(value,null,2)); console.log(JSON.stringify(value,null,2));'
+"$TOOLS_ROOT/scripts/fl-native-workflow-report" "$TMP_DIR/plan.json" "$RESULT_LINES_FILE" "$STATUS" "$ROOT" "$RUN_WORKFLOWS" "$WORKFLOW_JSON"
 if ! "$TOOLS_ROOT/scripts/fl-native-workflow" --input "$WORKFLOW_JSON" >/dev/null; then
   STATUS=BLOCKED
   FAIL=1

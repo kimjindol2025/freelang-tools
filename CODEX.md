@@ -115,3 +115,18 @@ npm run review -- .
 Script를 우선 검토한다. 다만 이 저장소의 기존 CLI는 POSIX/Bash 실행 호환성이
 핵심이므로, 런너 통합·운영체제 API·기존 CLI 유지에 필요한 최소 Bash/Node.js
 수정은 허용한다.
+
+이 허용은 제품 본체 구현을 다른 언어로 작성할 수 있다는 뜻이 아니다.
+이 서버의 자체 코드는 전부 FreeLang 계열로 작성한다. 애플리케이션·자동화·
+에이전트는 FreeLang Script (`.fls`), 서비스·업무·도메인은 AFJ/FreeLang
+(`.fl`), 화면은 FreeLang Front (`.flx`), 네이티브·런타임 계층은 FreeLang FX
+및 정본 runtime을 사용한다. Bash/Node.js/TypeScript/Python은 외부 클론·
+벤더 원본, 런너·OS API·빌드·검증 같은 불가피한 경계에만 남긴다.
+
+FreeLang에서 기능이 부족하면 다른 언어로 본체를 우회하지 않고, 부족한 층을
+FreeLang 언어·stdlib·runtime·권한으로 승격해 구현한다.
+
+외부 GitHub 클론·벤더 코드는 원본 보존 예외로 표시하고, 자체 비-FreeLang
+본체는 `MIXED_MIGRATION_REQUIRED` 또는
+`NON_FREELANG_OWN_IMPLEMENTATION`으로 보고한다. 확장자나 프로젝트 이름만
+보고 FreeLang PASS를 만들지 않는다.

@@ -1,0 +1,23 @@
+;; FreeLang-native HTTP response contract.
+
+(defn http-response [url raw]
+  {:context "Normalize one HTTP response into status/headers/body/data/error"
+   :returns "HTTP response contract"
+   :effects ["network"]}
+  (let [status (if (number? (get raw "status")) (get raw "status") 0)
+        body (if (string? (get raw "body")) (get raw "body") "")
+        data (try (json-parse body) (catch error nil))
+        error (get raw "error" nil)]
+    {"schemaVersion" "freelang.http/v1"
+     "source" "freelang-native"
+     "ok" (and (>= status 200) (< status 300) (nil? error))
+     "status" status
+     "url" url
+     "headers" (if (map? (get raw "headers")) (get raw "headers") {})
+     "body" body
+     "data" data
+     "error" error}))
+
+(let [url (shell_env "FL_TOOLS_HTTP_URL")
+      raw (http_get url)]
+  (println (json-stringify (http-response url raw))))

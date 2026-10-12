@@ -1,0 +1,78 @@
+;; FreeLang-native handoff generator and verifier.
+;; File creation and schema/stale-commit policy live here.
+
+(defn valid-handoff? [value currentCommit]
+  {:context "Validate handoff schema and reject stale Git commits"
+   :returns "boolean"
+   :effects []}
+  (and (map? value)
+       (= (get value "schemaVersion") "freelang.handoff/v1")
+       (map? (get value "git"))
+       (string? (get (get value "git") "commit"))
+       (map? (get value "project"))
+       (string? (get (get value "project") "root"))
+       (or (= currentCommit "none")
+           (= (get (get value "git") "commit") currentCommit))))
+
+(let [mode (shell_env "FL_TOOLS_HANDOFF_MODE")
+      root (shell_env "FL_TOOLS_HANDOFF_ROOT")
+      output (shell_env "FL_TOOLS_HANDOFF_OUTPUT")
+      jsonOutput (shell_env "FL_TOOLS_HANDOFF_JSON_OUTPUT")
+      currentCommit (shell_env "FL_TOOLS_HANDOFF_CURRENT_COMMIT")
+      project (shell_env "FL_TOOLS_HANDOFF_PROJECT")
+      dialect (shell_env "FL_TOOLS_HANDOFF_DIALECT")
+      runner (shell_env "FL_TOOLS_HANDOFF_RUNNER")
+      branch (shell_env "FL_TOOLS_HANDOFF_BRANCH")
+      commit (shell_env "FL_TOOLS_HANDOFF_COMMIT")
+      gitState (shell_env "FL_TOOLS_HANDOFF_GIT_STATE")
+      reportCode (str-to-num (shell_env "FL_TOOLS_HANDOFF_REPORT_CODE"))
+      reportOutput (shell_env "FL_TOOLS_HANDOFF_REPORT_OUTPUT")
+      value (if (and (string? jsonOutput) (file-exists jsonOutput))
+             (json-parse (file-read jsonOutput))
+             nil)
+      valid (valid-handoff? value currentCommit)]
+  (if (= mode "verify")
+    (do
+      (println (str "HANDOFF_JSON=" jsonOutput))
+      (if valid
+        (do
+          (println "STALE_COMMIT=NO")
+          (println "HANDOFF_VERIFY=PASS"))
+        (do
+          (println "STALE_COMMIT=YES")
+          (println "HANDOFF_VERIFY=FAIL")
+          (throw "handoff-verify-failed"))))
+    (let [payload {"schemaVersion" "freelang.handoff/v1"
+                   "generatedAt" (now_iso)
+                   "project" {"name" project "root" root "dialect" dialect "runner" runner}
+                   "git" {"branch" branch "commit" commit "state" gitState}
+                   "verification" {"report" (if (= reportCode 0) "PASS" "FAIL")
+                                   "reportExitCode" reportCode}
+                   "nextCommands" [(str "fl-tools inspect " root)
+                                   (str "fl-tools report " root)
+                                   (str "fl-tools evidence --json " root)]
+                   "report" reportOutput}
+          markdown (str "# FreeLang Handoff\n\n"
+                        "Generated: " (now_iso) "\n\n"
+                        "## Project\n\n"
+                        "- Project: " project "\n"
+                        "- Root: " root "\n"
+                        "- Dialect: " dialect "\n"
+                        "- Runner: " runner "\n"
+                        "- Branch: " branch "\n"
+                        "- Commit: " commit "\n"
+                        "- Git: " gitState "\n\n"
+                        "## Next commands\n\n"
+                        "```bash\n"
+                        "fl-tools inspect " root "\n"
+                        "fl-tools report " root "\n"
+                        "fl-tools evidence --json " root "\n"
+                        "```\n\n"
+                        "## Latest report\n\n" reportOutput "\n")]
+      (file-write jsonOutput (str (json-stringify payload) "\n"))
+      (file-write output markdown)
+      (println (str "HANDOFF_FILE=" output))
+      (println (str "HANDOFF_JSON=" jsonOutput))
+      (if (= reportCode 0)
+        (do (println "REPORT=PASS") (println "HANDOFF=PASS"))
+        (do (println "REPORT=FAIL") (println "HANDOFF=PASS_WITH_FAILED_REPORT"))))))

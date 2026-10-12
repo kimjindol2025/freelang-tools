@@ -1,0 +1,14 @@
+;; FreeLang-native test execution plan.
+;; Host shell remains responsible only for invoking each selected test process.
+
+(let [root (shell_env "FL_TOOLS_TEST_PLAN_ROOT")
+      testRoot (shell_env "FL_TOOLS_TEST_PLAN_TEST_ROOT")
+      listing (if (and (string? testRoot) (file-exists testRoot))
+                (try (shell-safe "find" [testRoot "-type" "f" "-name" "*.test.fl" "-print"])
+                     (catch error ""))
+                "")]
+  (println "PLAN_SCHEMA=freelang.test-plan/v1")
+  (println "PLAN_ACTION=test")
+  (println (str "ROOT=" root))
+  (println (str "TEST_ROOT=" testRoot))
+  (println (str "TEST_FILES=" listing)))

@@ -1,0 +1,47 @@
+;; FreeLang-native human report composer.
+
+(defn test-status [output]
+  {:context "Classify project status test output"
+   :returns "test status"
+   :effects []}
+  (if (str-contains-in output "TEST=PASS") "PASS"
+    (if (str-contains-in output "TEST=FAIL") "FAIL"
+      (if (str-contains-in output "TEST=NOT_RUN") "NOT_RUN" "UNKNOWN"))))
+
+(defn review-status [output code]
+  {:context "Classify review output and preserve approval state"
+   :returns "review status"
+   :effects []}
+  (if (= code 0)
+    (if (str-contains-in output "REVIEW=PASS_WITH_APPROVAL") "PASS_WITH_APPROVAL"
+      (if (str-contains-in output "REVIEW=PASS") "PASS" "FAIL"))
+    "FAIL"))
+
+(let [project (shell_env "FL_TOOLS_REPORT_PROJECT")
+      root (shell_env "FL_TOOLS_REPORT_ROOT")
+      dialect (shell_env "FL_TOOLS_REPORT_DIALECT")
+      runner (shell_env "FL_TOOLS_REPORT_RUNNER")
+      branch (shell_env "FL_TOOLS_REPORT_BRANCH")
+      git (shell_env "FL_TOOLS_REPORT_GIT")
+      status-output (shell_env "FL_TOOLS_REPORT_STATUS_OUTPUT")
+      review-output (shell_env "FL_TOOLS_REPORT_REVIEW_OUTPUT")
+      status-code (str-to-num (shell_env "FL_TOOLS_REPORT_STATUS_CODE"))
+      review-code (str-to-num (shell_env "FL_TOOLS_REPORT_REVIEW_CODE"))
+      test (test-status status-output)
+      review (review-status review-output review-code)
+      report (str "# FreeLang Tools Report\n\n"
+                  "PROJECT=" project "\n"
+                  "ROOT=" root "\n"
+                  "DIALECT=" dialect "\n"
+                  "RUNNER=" runner "\n"
+                  "BRANCH=" branch "\n"
+                  "GIT=" git "\n"
+                  "TEST=" test "\n"
+                  "REVIEW=" review "\n\n"
+                  "## Status\n\n" status-output "\n\n"
+                  "## Review\n\n" review-output "\n")]
+  (println report)
+  (println (str "REPORT_STATUS=" (if (and (= test "PASS")
+                                            (or (= review "PASS")
+                                                (= review "PASS_WITH_APPROVAL")))
+                                     "PASS" "FAIL"))))

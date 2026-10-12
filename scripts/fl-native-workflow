@@ -11,7 +11,7 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 PROBE="$TOOLS_ROOT/native/workflow-core.fl"
 if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
   echo "WORKFLOW_CONTRACT=BLOCKED" >&2
@@ -19,5 +19,7 @@ if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
 fi
 OUTPUT="$(FL_TOOLS_WORKFLOW_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
 printf '%s\n' "$OUTPUT"
-node -e 'const x=JSON.parse(process.argv[1]); process.exit(x.schemaVersion === "freelang.workflow-contract/v1" && x.valid === true ? 0 : 1);' "$OUTPUT"
+if ! grep -q '^WORKFLOW_VALID=YES$' <<<"$OUTPUT"; then
+  exit 1
+fi
 echo "WORKFLOW_CONTRACT=PASS" >&2

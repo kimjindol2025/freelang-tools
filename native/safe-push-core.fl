@@ -1,0 +1,21 @@
+;; FreeLang-native safe-push preflight policy.
+;; Git remote inspection and the actual push remain host adapters.
+
+(let [remotes (shell_env "FL_TOOLS_SAFE_PUSH_REMOTES")
+      clean (shell_env "FL_TOOLS_SAFE_PUSH_CLEAN")
+      local-head (shell_env "FL_TOOLS_SAFE_PUSH_LOCAL_HEAD")
+      branch (shell_env "FL_TOOLS_SAFE_PUSH_BRANCH")
+      push (shell_env "FL_TOOLS_SAFE_PUSH_REQUESTED")
+      report (shell_env "FL_TOOLS_SAFE_PUSH_REMOTE_REPORT")
+      valid (and (= remotes "PASS") (= clean "PASS") (not= local-head ""))]
+  (println (str "WORKTREE=" (if (= clean "PASS") "CLEAN" "DIRTY")))
+  (println (str "LOCAL_HEAD=" local-head))
+  (println (str "BRANCH=" branch))
+  (println report)
+  (if valid
+    (if (= push "YES")
+      (println "PUSH_AUTHORIZATION=YES")
+      (println "SAFE_PUSH=READY_CHECK_ONLY"))
+    (do
+      (println "SAFE_PUSH=BLOCKED")
+      (throw "safe-push-preflight-failed"))))

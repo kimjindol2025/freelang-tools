@@ -1,0 +1,11 @@
+;; FreeLang-native workflow command result encoder.
+
+(let [kind (shell_env "FL_TOOLS_WORKFLOW_KIND")
+      label (shell_env "FL_TOOLS_WORKFLOW_LABEL")
+      command (shell_env "FL_TOOLS_WORKFLOW_COMMAND")
+      code (str-to-num (shell_env "FL_TOOLS_WORKFLOW_CODE"))
+      output-path (shell_env "FL_TOOLS_WORKFLOW_OUTPUT")
+      output (if (file-exists output-path) (file-read output-path) "")
+      entry {"kind" kind "label" label "command" command
+             "exitCode" code "output" (str-slice output (max 0 (- (length output) 12000)))}]
+  (println (json-stringify entry)))

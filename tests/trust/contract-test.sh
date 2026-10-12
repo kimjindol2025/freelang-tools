@@ -12,7 +12,7 @@ node - "$SELF_JSON" <<'NODE'
 const fs = require('fs');
 const value = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 if (value.schemaVersion !== 'freelang.trust/v1' || value.verdict !== 'TRUSTED') process.exit(1);
-for (const gate of ['check', 'test', 'review', 'evidence', 'diffCheck', 'capabilityCoverage']) {
+for (const gate of ['check', 'test', 'review', 'evidence', 'diffCheck', 'workflow', 'selfHost', 'capabilityCoverage']) {
   if (!(gate in value.gates)) process.exit(1);
 }
 if (!Array.isArray(value.evidence.commands) || !Array.isArray(value.limitations) ||

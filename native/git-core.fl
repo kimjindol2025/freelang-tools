@@ -27,12 +27,14 @@
       status (git-read root ["status" "--porcelain"])
       head (git-read root ["rev-parse" "HEAD"])
       branch (git-read root ["branch" "--show-current"])
+      diff (git-read root ["diff" "--"])
       result {"schemaVersion" "freelang.git/v1"
               "source" "freelang-native"
               "root" root
               "status" status
               "head" head
               "branch" branch
+              "diff" diff
               "readOnly" true}]
   (println (json-stringify result))
   (println (str "GIT_NATIVE=" (if (and (get status "ok") (get head "ok")) "PASS" "FAIL"))))

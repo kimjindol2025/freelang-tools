@@ -22,7 +22,7 @@
     "git": { "type": "object" },
     "gates": {
       "type": "object",
-      "required": ["check", "test", "review", "evidence", "diffCheck", "workflow", "capabilityCoverage"],
+      "required": ["check", "test", "review", "evidence", "diffCheck", "workflow", "selfHost", "capabilityCoverage"],
       "properties": {
         "check": { "type": "string" },
         "test": { "type": "string" },
@@ -30,6 +30,7 @@
         "evidence": { "type": "string" },
         "diffCheck": { "type": "string" },
         "workflow": { "type": "string" },
+        "selfHost": { "type": "string" },
         "capabilityCoverage": { "enum": ["FULL", "PARTIAL", "UNKNOWN"] }
       },
       "additionalProperties": false

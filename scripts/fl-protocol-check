@@ -6,7 +6,7 @@ TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 RESULT_PATH="${1:-}"
 EXIT_MARKER="${2:-}"
 PROCESS_EXIT="${3:-}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 
 if [[ -z "$RESULT_PATH" || -z "$EXIT_MARKER" || -z "$PROCESS_EXIT" || ! -f "$RESULT_PATH" || ! -f "$RUNNER" ]]; then
   echo "PROTOCOL_ERROR=missing-input-or-runner" >&2

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+CAPABILITY="${1:?capability status required}"
+REVIEW="${2:?review status required}"
+FL_TOOLS_TRUST_CAPABILITY="$CAPABILITY" FL_TOOLS_TRUST_REVIEW="$REVIEW" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/trust-limitations.fl"

@@ -1,0 +1,30 @@
+;; FreeLang-native argv process API.
+
+(defn process-result [program args ok output error]
+  {:context "Create one normalized argv process result"
+   :returns "process contract"
+   :effects []}
+  {"schemaVersion" "freelang.process/v1"
+   "source" "freelang-native"
+   "ok" ok
+   "status" (if ok "PASS" "FAIL")
+   "program" program
+   "argv" args
+   "stdout" (if ok output "")
+   "stderr" (if ok "" (str error))
+   "code" (if ok 0 1)
+   "error" (if ok nil (str error))})
+
+(defn run-argv [program args]
+  {:context "Run a program through argv-safe shell adapter without shell interpolation"
+   :returns "process contract"
+   :effects ["process"]}
+  (try (process-result program args true (shell-safe program args) nil)
+       (catch error (process-result program args false "" error))))
+
+(let [program (shell_env "FL_TOOLS_PROCESS_PROGRAM")
+      args-input (shell_env "FL_TOOLS_PROCESS_ARGS")
+      args (if (and (string? args-input) (not= args-input ""))
+             (json-parse args-input)
+             [])]
+  (println (json-stringify (run-argv program args))))

@@ -1,0 +1,31 @@
+;; FreeLang-native review policy for generated files and contract drift.
+;; Git is the host adapter; classification is native policy.
+
+(defn has-fragment? [lines fragment]
+  {:context "Classify Git status lines by one policy fragment"
+   :returns "boolean"
+   :effects []}
+  (> (length (filter (fn [line] (str-contains-in line fragment)) lines)) 0))
+
+(let [root (shell_env "FL_TOOLS_REVIEW_ROOT")
+      statusText (try (shell-safe "git" ["-C" root "status" "--porcelain"])
+                      (catch error ""))
+      lines (filter (fn [line] (not= line "")) (str-split statusText "\n"))
+      generated (or (has-fragment? lines "_app.fl")
+                    (has-fragment? lines "dist/")
+                    (has-fragment? lines "build/")
+                    (has-fragment? lines ".generated."))
+      approval (or (has-fragment? lines "LANGUAGE_LOCK.md")
+                   (has-fragment? lines "SPEC.airc"))
+      hard (and (has-fragment? lines "CONTRACT") (not approval))]
+  (println (str "GENERATED_FILES=" (if generated "DIRTY" "CLEAN")))
+  (if approval
+    (do
+      (println "CONTRACT_DRIFT=DETECTED")
+      (println "CONTRACT_DRIFT_KIND=APPROVAL")
+      (println "APPROVAL_REQUIRED=YES"))
+    (if hard
+      (do
+        (println "CONTRACT_DRIFT=DETECTED")
+        (println "CONTRACT_DRIFT_KIND=HARD"))
+      (println "CONTRACT_DRIFT=0"))))

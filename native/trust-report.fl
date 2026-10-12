@@ -20,6 +20,7 @@
       evidence (shell_env "FL_TOOLS_TRUST_REPORT_EVIDENCE")
       diff-check (shell_env "FL_TOOLS_TRUST_REPORT_DIFF")
       workflow (shell_env "FL_TOOLS_TRUST_REPORT_WORKFLOW")
+      self-host (shell_env "FL_TOOLS_TRUST_REPORT_SELFHOST")
       capability (shell_env "FL_TOOLS_TRUST_REPORT_CAPABILITY")
       approval-required (= (shell_env "FL_TOOLS_TRUST_REPORT_APPROVAL") "true")
       limitations-input (shell_env "FL_TOOLS_TRUST_REPORT_LIMITATIONS")
@@ -37,7 +38,7 @@
               "git" {"branch" branch "commit" commit "state" git-state}
               "gates" {"check" check "test" test "review" review
                        "evidence" evidence "diffCheck" diff-check
-                       "workflow" workflow "capabilityCoverage" capability}
+                       "workflow" workflow "selfHost" self-host "capabilityCoverage" capability}
               "decision" {"source" source "command" "trust-core"}
               "approvalRequired" approval-required
               "limitations" limitations

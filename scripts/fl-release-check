@@ -5,54 +5,47 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 ROOT="$(cd -- "$TARGET" && pwd -P)"
-READY=YES
-
-if [[ -f "$ROOT/CHANGELOG.md" || -d "$ROOT/releases" ]]; then
-  echo "RELEASE_NOTES=PASS"
-else
-  echo "RELEASE_NOTES=BLOCKED"
-  READY=NO
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+if [[ ! -f "$RUNNER" ]]; then
+  echo "RELEASE_READY=NO"
+  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
+  exit 2
 fi
 
+NOTES=BLOCKED
+if [[ -f "$ROOT/CHANGELOG.md" || -d "$ROOT/releases" ]]; then NOTES=PASS; fi
+
+GIT=BLOCKED
+CLEAN=NO
+TAGS=NONE
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "GIT=PASS"
-  if [[ -n "$(git -C "$ROOT" status --short)" ]]; then
-    echo "WORKTREE=CLEAN_REQUIRED"
-    READY=NO
-  else
-    echo "WORKTREE=CLEAN"
-  fi
-else
-  echo "GIT=BLOCKED"
-  READY=NO
+  GIT=PASS
+  [[ -z "$(git -C "$ROOT" status --short)" ]] && CLEAN=YES
+  [[ -n "$(git -C "$ROOT" tag --list 'v*' 2>/dev/null)" ]] && TAGS=PASS
 fi
 
-if [[ -n "$(git -C "$ROOT" tag --list 'v*' 2>/dev/null)" ]]; then
-  echo "TAGS=PASS"
-else
-  echo "TAGS=NONE"
-fi
-
+FIELDS=UNRESOLVED
 if [[ -f "$ROOT/CHANGELOG.md" ]] && grep -qE 'TECHNICAL_BASELINE|RELEASE_COMMIT|KNOWN_LIMITS|REGRESSION_RESULT|ARTIFACT_HASH' "$ROOT/CHANGELOG.md"; then
-  echo "RELEASE_FIELDS=PASS"
-else
-  echo "RELEASE_FIELDS=UNRESOLVED"
+  FIELDS=PASS
 fi
 
+CONTRACTS=BLOCKED
 if [[ -f "$ROOT/schemas/handoff.schema.json" &&
       -f "$ROOT/schemas/capabilities.schema.json" &&
       -f "$ROOT/schemas/cli-core.schema.json" &&
       -f "$ROOT/native/capability-probe.fl" &&
       -f "$ROOT/native/cli-core.fl" ]]; then
-  echo "NATIVE_CONTRACTS=PASS"
-else
-  echo "NATIVE_CONTRACTS=BLOCKED"
-  READY=NO
+  CONTRACTS=PASS
 fi
 
-if [[ "$READY" == YES ]]; then
-  echo "RELEASE_READY=YES"
-else
-  echo "RELEASE_READY=NO"
-  exit 1
-fi
+set +e
+FL_TOOLS_RELEASE_NOTES="$NOTES" \
+FL_TOOLS_RELEASE_GIT="$GIT" \
+FL_TOOLS_RELEASE_CLEAN="$CLEAN" \
+FL_TOOLS_RELEASE_TAGS="$TAGS" \
+FL_TOOLS_RELEASE_FIELDS="$FIELDS" \
+FL_TOOLS_RELEASE_CONTRACTS="$CONTRACTS" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/release-core.fl"
+CODE=$?
+set -e
+exit "$CODE"

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+CONTRACT_PATH="${1:?contract path required}"
+ACTION="${2:?action required}"
+[[ -f "$RUNNER" && -f "$CONTRACT_PATH" ]] || { echo "CONTRACT=INVALID"; exit 2; }
+set +e
+FL_TOOLS_CONTRACT_PATH="$CONTRACT_PATH" FL_TOOLS_CONTRACT_ACTION="$ACTION" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/operation-contract.fl"
+CODE=$?
+set -e
+exit "$CODE"

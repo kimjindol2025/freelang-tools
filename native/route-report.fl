@@ -1,0 +1,25 @@
+;; FreeLang-native route report composer.
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for route fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "")) fallback value))
+
+(let [dialect (shell_env "FL_TOOLS_ROUTE_DIALECT")
+      project-root (shell_env "FL_TOOLS_ROUTE_PROJECT_ROOT")
+      runner (shell_env "FL_TOOLS_ROUTE_RUNNER")
+      test-root (shell_env "FL_TOOLS_ROUTE_TEST_ROOT")
+      test-files (value-or (shell_env "FL_TOOLS_ROUTE_TEST_FILES") "none")
+      dev-command (value-or (shell_env "FL_TOOLS_ROUTE_DEV_COMMAND") "UNKNOWN")
+      package-scripts (value-or (shell_env "FL_TOOLS_ROUTE_PACKAGE_SCRIPTS") "none")
+      target (value-or (shell_env "FL_TOOLS_ROUTE_TARGET") ".")]
+  (println (str "DEV_COMMAND=" dev-command))
+  (println (str "PACKAGE_SCRIPTS=" package-scripts))
+  (println (str "PROJECT_ROOT=" project-root))
+  (println (str "DIALECT=" dialect))
+  (println (str "RUNNER=" runner))
+  (println (str "TEST_ROOT=" test-root))
+  (println (str "TEST_FILES=" test-files))
+  (println (str "TEST_COMMAND=fl-tools test " target))
+  (println (str "CHECK_COMMAND=fl-tools check " target)))

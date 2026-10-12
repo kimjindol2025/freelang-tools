@@ -1,0 +1,22 @@
+;; FreeLang-native trust gate input builder.
+;; It replaces host-language JSON construction with one stable contract.
+
+(defn bool-value [value]
+  {:context "Convert the explicit approval flag to a boolean"
+   :returns "boolean"
+   :effects []}
+  (= value "true"))
+
+(let [path (shell_env "FL_TOOLS_TRUST_INPUT_OUT")
+      result {"project" (shell_env "FL_TOOLS_TRUST_INPUT_PROJECT")
+              "check" (shell_env "FL_TOOLS_TRUST_INPUT_CHECK")
+              "test" (shell_env "FL_TOOLS_TRUST_INPUT_TEST")
+              "review" (shell_env "FL_TOOLS_TRUST_INPUT_REVIEW")
+              "evidence" (shell_env "FL_TOOLS_TRUST_INPUT_EVIDENCE")
+              "diffCheck" (shell_env "FL_TOOLS_TRUST_INPUT_DIFF")
+              "workflow" (shell_env "FL_TOOLS_TRUST_INPUT_WORKFLOW")
+              "selfHost" (shell_env "FL_TOOLS_TRUST_INPUT_SELFHOST")
+              "mode" (shell_env "FL_TOOLS_TRUST_INPUT_MODE")
+              "approvalRequired" (bool-value (shell_env "FL_TOOLS_TRUST_INPUT_APPROVAL"))}]
+  (file-write path (str (json-stringify result) "\n"))
+  (println (json-stringify result)))

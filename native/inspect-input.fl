@@ -1,0 +1,10 @@
+;; FreeLang-native inspect context input builder.
+
+(let [path (shell_env "FL_TOOLS_INSPECT_INPUT")
+      value {"project" (shell_env "FL_TOOLS_INSPECT_PROJECT")
+             "root" (shell_env "FL_TOOLS_INSPECT_ROOT")
+             "dialect" (shell_env "FL_TOOLS_INSPECT_DIALECT")
+             "runner" (shell_env "FL_TOOLS_INSPECT_RUNNER")
+             "git" (shell_env "FL_TOOLS_INSPECT_GIT")}]
+  (file-write path (str (json-stringify value) "\n"))
+  (println (json-stringify value)))

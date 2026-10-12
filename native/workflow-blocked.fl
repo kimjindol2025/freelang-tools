@@ -1,0 +1,13 @@
+;; FreeLang-native blocked workflow report.
+
+(let [root (shell_env "FL_TOOLS_WORKFLOW_BLOCKED_ROOT")
+      run-workflows (shell_env "FL_TOOLS_WORKFLOW_BLOCKED_RUN")
+      reason (shell_env "FL_TOOLS_WORKFLOW_BLOCKED_REASON")
+      report {"schemaVersion" "freelang.workflow/v1"
+              "status" "BLOCKED"
+              "reason" reason
+              "root" root
+              "runWorkflows" run-workflows
+              "discovered" {"packageScripts" [] "workflowCommands" [] "skippedWorkflowCommands" []}
+              "results" []}]
+  (println (json-stringify report)))

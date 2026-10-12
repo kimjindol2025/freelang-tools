@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+STDOUT_PATH="${1:?stdout path required}"
+FINAL_PATH="${2:?final path required}"
+[[ -f "$RUNNER" && -f "$STDOUT_PATH" ]] || { echo "CLI_PROTOCOL=FAIL"; exit 2; }
+set +e
+OUTPUT="$(FL_TOOLS_CLI_STDOUT="$STDOUT_PATH" FL_TOOLS_CLI_FINAL="$FINAL_PATH" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/cli-protocol.fl" 2>&1)"
+CODE=$?
+set -e
+printf '%s\n' "$OUTPUT"
+exit "$CODE"

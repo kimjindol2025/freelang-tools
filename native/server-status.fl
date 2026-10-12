@@ -1,0 +1,20 @@
+;; FreeLang-native server installation status report.
+
+(let [ready (shell_env "FL_TOOLS_SERVER_READY")
+      path-configured (shell_env "FL_TOOLS_SERVER_PATH_CONFIGURED")
+      install-root (shell_env "FL_TOOLS_SERVER_INSTALL_ROOT")
+      bin-dir (shell_env "FL_TOOLS_SERVER_BIN_DIR")
+      tools-root (shell_env "FL_TOOLS_SERVER_TOOLS_ROOT")
+      is-ready (and (= ready "YES") (= path-configured "YES"))
+      status (if is-ready "READY" "NOT_READY")
+      report {"protocol" "freelang.server/v1"
+              "status" status
+              "installRoot" install-root
+              "binDir" bin-dir
+              "toolsRoot" tools-root
+              "commands" {"flTools" (str bin-dir "/fl-tools")
+                           "flTest" (str bin-dir "/fl-test")}
+              "pathConfigured" (= path-configured "YES")
+              "next" (if is-ready "fl-tools ai run" "fl-tools server install")}]
+  (println (json-stringify report))
+  (if is-ready nil (throw "server-not-ready")))

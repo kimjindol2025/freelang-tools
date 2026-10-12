@@ -1,0 +1,24 @@
+;; FreeLang-native status report composer.
+;; Host supplies raw detection/effect observations; native owns the output contract.
+
+(defn value-or [value fallback]
+  {:context "Use a stable fallback for status fields"
+   :returns "value or fallback"
+   :effects []}
+  (if (or (nil? value) (= value "")) fallback value))
+
+(let [detect (shell_env "FL_TOOLS_STATUS_DETECT")
+      project (shell_env "FL_TOOLS_STATUS_PROJECT")
+      root (shell_env "FL_TOOLS_STATUS_ROOT")
+      dialect (shell_env "FL_TOOLS_STATUS_DIALECT")
+      git (shell_env "FL_TOOLS_STATUS_GIT")
+      release (value-or (shell_env "FL_TOOLS_STATUS_RELEASE") "UNKNOWN")
+      test (value-or (shell_env "FL_TOOLS_STATUS_TEST") "NOT_RUN")
+      selfhost (value-or (shell_env "FL_TOOLS_STATUS_SELFHOST") "NOT_APPLICABLE")
+      cold-boot (value-or (shell_env "FL_TOOLS_STATUS_COLD_BOOT") "NOT_APPLICABLE")]
+  (println detect)
+  (println (str "GIT=" git))
+  (println (str "RELEASE=" release))
+  (println (str "TEST=" test))
+  (println (str "SELFHOST=" selfhost))
+  (println (str "COLD_BOOT=" cold-boot)))

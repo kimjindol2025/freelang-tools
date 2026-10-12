@@ -25,16 +25,17 @@ case "$DIALECT" in
 esac
 
 if [[ -f "$PROJECT_ROOT/package.json" ]]; then
-  PACKAGE_SCRIPTS="$(node -e 'const p=require(process.argv[1]); console.log(Object.keys(p.scripts||{}).join(",")||"none")' "$PROJECT_ROOT/package.json" 2>/dev/null || echo unavailable)"
+  PACKAGE_SCRIPTS="$($TOOLS_ROOT/scripts/fl-native-package-script "$PROJECT_ROOT" list 2>/dev/null | sed -n 's/^PACKAGE_SCRIPTS=//p' || echo unavailable)"
 else
   PACKAGE_SCRIPTS=none
 fi
 
-printf 'DEV_COMMAND=%s\n' "$DEV_COMMAND"
-printf 'PACKAGE_SCRIPTS=%s\n' "$PACKAGE_SCRIPTS"
-printf 'PROJECT_ROOT=%s\n' "$PROJECT_ROOT"
-printf 'RUNNER=%s\n' "$RUNNER"
-printf 'TEST_ROOT=%s\n' "$TEST_ROOT"
-printf 'TEST_FILES=%s\n' "$TEST_FILES"
-printf 'TEST_COMMAND=fl-tools test %s\n' "$TARGET"
-printf 'CHECK_COMMAND=fl-tools check %s\n' "$TARGET"
+FL_TOOLS_ROUTE_DIALECT="$DIALECT" \
+FL_TOOLS_ROUTE_PROJECT_ROOT="$PROJECT_ROOT" \
+FL_TOOLS_ROUTE_RUNNER="$RUNNER" \
+FL_TOOLS_ROUTE_TEST_ROOT="$TEST_ROOT" \
+FL_TOOLS_ROUTE_TEST_FILES="$TEST_FILES" \
+FL_TOOLS_ROUTE_DEV_COMMAND="$DEV_COMMAND" \
+FL_TOOLS_ROUTE_PACKAGE_SCRIPTS="$PACKAGE_SCRIPTS" \
+FL_TOOLS_ROUTE_TARGET="$TARGET" \
+  "$TOOLS_ROOT/scripts/fl-native-route-report"

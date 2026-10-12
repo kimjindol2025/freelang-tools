@@ -7,6 +7,21 @@
    :effects []}
   (or (= value "PASS") (= value "PASS_WITH_APPROVAL")))
 
+(defn test-status-from [output]
+  {:context "Classify the native test report without host-language policy"
+   :returns "test gate status"
+   :effects []}
+  (if (str-contains-in output "TEST=PASS") "PASS"
+    (if (str-contains-in output "TEST=NOT_RUN") "NOT_RUN"
+      (if (str-contains-in output "TEST=FAIL") "FAIL" "UNKNOWN"))))
+
+(defn review-status-from [output]
+  {:context "Classify the native review report without host-language policy"
+   :returns "review gate status"
+   :effects []}
+  (if (str-contains-in output "REVIEW=PASS_WITH_APPROVAL") "PASS_WITH_APPROVAL"
+    (if (str-contains-in output "REVIEW=PASS") "PASS" "FAIL")))
+
 (let [project (shell_env "FL_TOOLS_EVIDENCE_PROJECT")
       root (shell_env "FL_TOOLS_EVIDENCE_ROOT")
       dialect (shell_env "FL_TOOLS_EVIDENCE_DIALECT")
@@ -15,14 +30,14 @@
       commit (shell_env "FL_TOOLS_EVIDENCE_COMMIT")
       git-state (shell_env "FL_TOOLS_EVIDENCE_GIT_STATE")
       git-status (shell_env "FL_TOOLS_EVIDENCE_GIT_STATUS")
-      test-status (shell_env "FL_TOOLS_EVIDENCE_TEST")
-      review-status (shell_env "FL_TOOLS_EVIDENCE_REVIEW")
       status-code (str-to-num (shell_env "FL_TOOLS_EVIDENCE_STATUS_CODE"))
       review-code (str-to-num (shell_env "FL_TOOLS_EVIDENCE_REVIEW_CODE"))
       diff-check (shell_env "FL_TOOLS_EVIDENCE_DIFF")
       detect-output (shell_env "FL_TOOLS_EVIDENCE_RAW_DETECT")
       status-output (shell_env "FL_TOOLS_EVIDENCE_RAW_STATUS")
       review-output (shell_env "FL_TOOLS_EVIDENCE_RAW_REVIEW")
+      test-status (test-status-from status-output)
+      review-status (review-status-from review-output)
       review-ok (pass-review? review-status)
       status (if (and (= test-status "PASS") review-ok
                       (= status-code 0) (= review-code 0)

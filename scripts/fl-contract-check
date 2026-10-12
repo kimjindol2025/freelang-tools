@@ -1,29 +1,15 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 ACTION="${2:-deploy}"
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 CONTRACT="$ROOT/.freelang/contract.json"
 
 if [[ -f "$CONTRACT" ]]; then
-  CONTRACT_PATH="$CONTRACT" ACTION="$ACTION" node - <<'NODE'
-const fs = require('fs');
-const path = process.env.CONTRACT_PATH;
-const action = process.env.ACTION;
-let body;
-try { body = JSON.parse(fs.readFileSync(path, 'utf8')); }
-catch (error) { console.log('CONTRACT=INVALID'); console.log('CAUSE=invalid JSON contract'); process.exit(2); }
-const valid = body.schemaVersion === 'freelang.operation-contract/v1' &&
-  body.action === action && body.approvalRequired === true &&
-  ['medium', 'high', 'critical'].includes(body.risk);
-if (!valid) { console.log('CONTRACT=INVALID'); console.log('CAUSE=contract fields or action mismatch'); process.exit(2); }
-console.log('CONTRACT=VALID');
-console.log('CONTRACT_SOURCE=' + path);
-console.log('APPROVAL_REQUIRED=YES');
-console.log('RISK=' + body.risk);
-NODE
-  exit $?
+  exec "$TOOLS_ROOT/scripts/fl-native-contract" "$CONTRACT" "$ACTION"
 fi
 
 if [[ -x "$ROOT/.freelang/deploy.sh" && -x "$ROOT/.freelang/smoke.sh" ]]; then

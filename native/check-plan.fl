@@ -1,0 +1,31 @@
+;; FreeLang-native check execution plan.
+;; The host only supervises the actual runner process.
+
+(defn plan-dialect [value]
+  {:context "Normalize the detected dialect for a check plan"
+   :returns "dialect string"
+   :effects []}
+  (if (and (string? value) (not= value "")) value "UNKNOWN"))
+
+(defn plan-runner [value]
+  {:context "Normalize the selected runner path for a check plan"
+   :returns "runner path or none"
+   :effects []}
+  (if (and (string? value) (not= value "")) value "none"))
+
+(let [root (shell_env "FL_TOOLS_PLAN_ROOT")
+      dialectValue (plan-dialect (shell_env "FL_TOOLS_PLAN_DIALECT"))
+      runnerValue (plan-runner (shell_env "FL_TOOLS_PLAN_RUNNER"))
+      sourceListing (if (= dialectValue "AFJ")
+                      (try (shell-safe "find" [(str root "/src") "-type" "f" "-name" "*.fl" "-print"])
+                           (catch error ""))
+                      (if (= dialectValue "AIRC")
+                        (try (shell-safe "find" [root "-maxdepth" "1" "-type" "f" "-name" "*.fl" "-print"])
+                             (catch error ""))
+                        ""))]
+  (println "PLAN_SCHEMA=freelang.execution-plan/v1")
+  (println "PLAN_ACTION=check")
+  (println (str "ROOT=" root))
+  (println (str "DIALECT=" dialectValue))
+  (println (str "RUNNER=" runnerValue))
+  (println (str "SOURCES=" sourceListing)))

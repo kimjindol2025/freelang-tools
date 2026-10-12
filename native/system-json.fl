@@ -1,0 +1,46 @@
+;; FreeLang-native system/file/JSON standard API probe.
+
+(defn allowed-path? [root path]
+  {:context "Allow filesystem effects only under the explicit root"
+   :returns "boolean"
+   :effects []}
+  (and (string? root) (not= root "")
+       (string? path)
+       (or (= root path) (str-starts-with path (str root "/")))))
+
+(defn result [operation ok value error]
+  {:context "Create the shared system/JSON result contract"
+   :returns "system-json result map"
+   :effects []}
+  {"schemaVersion" "freelang.system-json/v1"
+   "source" "freelang-native"
+   "operation" operation
+   "ok" ok
+   "status" (if ok "PASS" "FAIL")
+   "value" value
+   "error" error})
+
+(defn run-action [action root path payload]
+  {:context "Execute one allow-rooted file or JSON standard operation"
+   :returns "system-json result map"
+   :effects ["file-read" "file-write" "directory-read"]}
+  (if (not (allowed-path? root path))
+    (result action false nil "path-outside-allowed-root")
+    (case action
+      "exists" (result action true (file-exists path) nil)
+      "read" (if (file-exists path)
+               (result action true (file-read path) nil)
+               (result action false nil "file-not-found"))
+      "write" (do (file-write path payload) (result action true path nil))
+      "list" (result action true (dir-list path) nil)
+      "parse" (try (result action true (json-parse payload) nil)
+                    (catch error (result action false nil (str error))))
+      "stringify" (try (result action true (json-stringify (json-parse payload)) nil)
+                        (catch error (result action false nil (str error))))
+      (result action false nil "unknown-system-json-operation"))))
+
+(let [action (shell_env "FL_TOOLS_SYSTEM_JSON_ACTION")
+      root (shell_env "FL_TOOLS_SYSTEM_JSON_ROOT")
+      path (shell_env "FL_TOOLS_SYSTEM_JSON_PATH")
+      payload (shell_env "FL_TOOLS_SYSTEM_JSON_PAYLOAD")]
+  (println (json-stringify (run-action action root path payload))))

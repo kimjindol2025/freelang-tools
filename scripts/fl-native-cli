@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+[[ -f "$RUNNER" ]] || { echo "TOOLS_CLI=BLOCKED" >&2; exit 2; }
+OUTPUT="$(FL_TOOLS_DISPATCH_ROOT="$TOOLS_ROOT" node "$RUNNER" run "$TOOLS_ROOT/native/tools-cli.fl" "$@")"
+if [[ "$#" -eq 0 || "${1:-}" == "help" || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  printf '%s\n' "$OUTPUT"
+  exit 0
+fi
+ADAPTER="$(printf '%s\n' "$OUTPUT" | sed -n 's/.*"adapter":"\([^"]*\)".*/\1/p' | tail -1)"
+if [[ -z "$ADAPTER" || "$ADAPTER" == "none" || ! -f "$ADAPTER" ]]; then
+  printf '%s\n' "$OUTPUT"
+  exit 2
+fi
+exec bash "$ADAPTER" "${@:2}"

@@ -8,6 +8,8 @@ ROOT="$(cd -- "$TARGET" && pwd -P)"
 FAIL=0
 APPROVAL_REQUIRED=NO
 HARD_CONTRACT_DRIFT=NO
+GATE_LINT_STATUS=NOT_APPLICABLE
+GATE_BUILD_STATUS=NOT_APPLICABLE
 
 run_gate() {
   local name="$1"
@@ -25,8 +27,10 @@ run_gate() {
   fi
   if [[ "$code" -eq 0 ]]; then
     echo "$name=PASS"
+    printf -v "GATE_${name}_STATUS" '%s' PASS
   else
     echo "$name=FAIL"
+    printf -v "GATE_${name}_STATUS" '%s' FAIL
     FAIL=1
   fi
 }
@@ -35,13 +39,13 @@ run_gate CHECK "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
 run_gate TEST "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
 run_gate NATIVE_INSPECT "$TOOLS_ROOT/scripts/fl-inspect" "$ROOT"
 
-if [[ -f "$ROOT/package.json" ]] && node -e 'const p=require(process.argv[1]); process.exit(p.scripts?.lint ? 0 : 1)' "$ROOT/package.json" 2>/dev/null; then
+if [[ -f "$ROOT/package.json" ]] && "$TOOLS_ROOT/scripts/fl-native-package-script" "$ROOT" lint >/dev/null 2>&1; then
   run_gate LINT npm --prefix "$ROOT" run lint
 else
   echo "LINT=NOT_APPLICABLE"
 fi
 
-if [[ -f "$ROOT/package.json" ]] && node -e 'const p=require(process.argv[1]); process.exit(p.scripts?.build ? 0 : 1)' "$ROOT/package.json" 2>/dev/null; then
+if [[ -f "$ROOT/package.json" ]] && "$TOOLS_ROOT/scripts/fl-native-package-script" "$ROOT" build >/dev/null 2>&1; then
   run_gate BUILD npm --prefix "$ROOT" run build
 else
   echo "BUILD=NOT_APPLICABLE"
@@ -49,40 +53,37 @@ fi
 
 if git -C "$ROOT" diff --check; then
   echo "DIFF_CHECK=PASS"
+  GATE_DIFF_STATUS=PASS
 else
   echo "DIFF_CHECK=FAIL"
+  GATE_DIFF_STATUS=FAIL
   FAIL=1
 fi
 
-CHANGED="$(git -C "$ROOT" status --porcelain 2>/dev/null || true)"
-if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(_app\.fl|dist/|build/|.*\.generated\.)'; then
-  echo "GENERATED_FILES=DIRTY"
-  FAIL=1
-else
-  echo "GENERATED_FILES=CLEAN"
-fi
-
-if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(LANGUAGE_LOCK\.md|SPEC\.airc)'; then
-  echo "CONTRACT_DRIFT=DETECTED"
-  echo "APPROVAL_REQUIRED=YES"
+POLICY_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-review-policy "$ROOT")"
+printf '%s\n' "$POLICY_OUTPUT"
+GATE_GENERATED_STATUS="$(printf '%s\n' "$POLICY_OUTPUT" | sed -n 's/^GENERATED_FILES=//p')"
+GATE_CONTRACT_STATUS=NONE
+if [[ "$GATE_GENERATED_STATUS" == DIRTY ]]; then FAIL=1; fi
+if grep -q '^CONTRACT_DRIFT_KIND=APPROVAL$' <<<"$POLICY_OUTPUT"; then
   APPROVAL_REQUIRED=YES
-elif printf '%s\n' "$CHANGED" | grep -Eq '(^| )(.*CONTRACT.*)'; then
-  echo "CONTRACT_DRIFT=DETECTED"
-  echo "CONTRACT_DRIFT_KIND=HARD"
+  GATE_CONTRACT_STATUS=APPROVAL
+elif grep -q '^CONTRACT_DRIFT_KIND=HARD$' <<<"$POLICY_OUTPUT"; then
   HARD_CONTRACT_DRIFT=YES
+  GATE_CONTRACT_STATUS=HARD
   FAIL=1
-else
-  echo "CONTRACT_DRIFT=0"
 fi
 
-echo "REGRESSION=$( [[ "$FAIL" -eq 0 ]] && echo PASS || echo FAIL )"
-if [[ "$FAIL" -eq 0 ]]; then
-  if [[ "$APPROVAL_REQUIRED" == YES ]]; then
-    echo "REVIEW=PASS_WITH_APPROVAL"
-  else
-    echo "REVIEW=PASS"
-  fi
-else
-  echo "REVIEW=FAIL"
-  exit 1
-fi
+GATE_OUTPUT="$(FL_TOOLS_GATE_CHECK="${GATE_CHECK_STATUS:-FAIL}" \
+FL_TOOLS_GATE_TEST="${GATE_TEST_STATUS:-FAIL}" \
+FL_TOOLS_GATE_INSPECT="${GATE_NATIVE_INSPECT_STATUS:-FAIL}" \
+FL_TOOLS_GATE_LINT="$GATE_LINT_STATUS" \
+FL_TOOLS_GATE_BUILD="$GATE_BUILD_STATUS" \
+FL_TOOLS_GATE_DIFF="${GATE_DIFF_STATUS:-FAIL}" \
+FL_TOOLS_GATE_GENERATED="${GATE_GENERATED_STATUS:-DIRTY}" \
+FL_TOOLS_GATE_CONTRACT="${GATE_CONTRACT_STATUS:-HARD}" \
+  "$TOOLS_ROOT/scripts/fl-native-gate-report")"
+printf '%s\n' "$GATE_OUTPUT"
+REVIEW_STATUS="$(printf '%s\n' "$GATE_OUTPUT" | sed -n 's/^REVIEW=//p')"
+echo "REGRESSION=$([[ "$REVIEW_STATUS" == FAIL ]] && echo FAIL || echo PASS)"
+if [[ "$REVIEW_STATUS" == FAIL ]]; then exit 1; fi

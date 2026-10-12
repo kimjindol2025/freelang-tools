@@ -11,7 +11,7 @@ fi
 shift || true
 TIMEOUT_SECONDS="${1:-${FREELANG_CLI_TIMEOUT_SECONDS:-8}}"
 TARGET="$(readlink -f -- "$TARGET_INPUT")"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 EVIDENCE_DIR="${FREELANG_CLI_EVIDENCE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/freelang-cli.XXXXXX")}" 
 mkdir -p "$EVIDENCE_DIR"
 
@@ -23,7 +23,6 @@ CHECK_STDOUT_FILE="$EVIDENCE_DIR/check.stdout.log"
 CHECK_STDERR_FILE="$EVIDENCE_DIR/check.stderr.log"
 FINAL_FILE="$EVIDENCE_DIR/final-result.json"
 META_FILE="$EVIDENCE_DIR/process.meta"
-MARKERS_FILE="$EVIDENCE_DIR/markers.txt"
 
 runtime_commit="unknown"
 runtime_root="$(cd -- "$(dirname -- "$RUNNER")" && pwd -P)"
@@ -107,25 +106,17 @@ elif [[ "$run_exit" -ne 0 ]]; then
   printf 'CAUSE=PROCESS_FAILURE\n' >>"$META_FILE"
 fi
 
-grep -F 'FREELANG_FINAL_RESULT=' "$STDOUT_FILE" >"$MARKERS_FILE" || true
-marker_count="$(wc -l <"$MARKERS_FILE")"
-if [[ "$marker_count" -ne 1 ]]; then
-  echo "CLI_ERROR=final-result-count:$marker_count" >&2
-  echo "EVIDENCE_DIR=$EVIDENCE_DIR"
-  exit 2
-fi
-sed 's/^FREELANG_FINAL_RESULT=//' "$MARKERS_FILE" >"$FINAL_FILE"
-
-exit_marker_lines="$EVIDENCE_DIR/exit-markers.txt"
-complete_marker_lines="$EVIDENCE_DIR/complete-markers.txt"
-grep -F 'FREELANG_EXIT_CODE=' "$STDOUT_FILE" >"$exit_marker_lines" || true
-grep -F 'FREELANG_FINAL_COMPLETE=1' "$STDOUT_FILE" >"$complete_marker_lines" || true
-if [[ "$(wc -l <"$exit_marker_lines")" -ne 1 || "$(wc -l <"$complete_marker_lines")" -ne 1 ]]; then
+set +e
+cli_protocol_output="$($TOOLS_ROOT/scripts/fl-native-cli-protocol "$STDOUT_FILE" "$FINAL_FILE" 2>"$EVIDENCE_DIR/cli-protocol.stderr.log")"
+cli_protocol_exit=$?
+set -e
+printf '%s\n' "$cli_protocol_output" >"$EVIDENCE_DIR/cli-protocol.stdout.log"
+if [[ "$cli_protocol_exit" -ne 0 ]]; then
   echo "CLI_ERROR=incomplete-final-protocol" >&2
   echo "EVIDENCE_DIR=$EVIDENCE_DIR"
   exit 2
 fi
-exit_marker="$(sed 's/^FREELANG_EXIT_CODE=//' "$exit_marker_lines")"
+exit_marker="$(sed -n 's/^CLI_EXIT_MARKER=//p' "$EVIDENCE_DIR/cli-protocol.stdout.log")"
 
 set +e
 protocol_output="$($TOOLS_ROOT/scripts/fl-protocol-check "$FINAL_FILE" "$exit_marker" "$run_exit" 2>"$EVIDENCE_DIR/protocol.stderr.log")"

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+PLAN="${1:?plan path required}"; RESULTS="${2:?results path required}"; STATUS="${3:?status required}"; ROOT="${4:?root required}"; RUN="${5:?run mode required}"; REPORT="${6:?report path required}"
+FL_TOOLS_WORKFLOW_PLAN="$PLAN" FL_TOOLS_WORKFLOW_RESULTS="$RESULTS" \
+FL_TOOLS_WORKFLOW_STATUS="$STATUS" FL_TOOLS_WORKFLOW_ROOT="$ROOT" \
+FL_TOOLS_WORKFLOW_RUN="$RUN" FL_TOOLS_WORKFLOW_REPORT="$REPORT" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/workflow-report.fl"

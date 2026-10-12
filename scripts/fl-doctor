@@ -12,42 +12,33 @@ DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 TEST_ROOT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^TEST_ROOT=//p')"
 
-FAIL=0
+RUNNER_STATUS=BLOCKED
 if [[ "$RUNNER" != "none" && -e "$RUNNER" ]]; then
-  echo "RUNNER=PASS"
-else
-  echo "RUNNER=BLOCKED"
-  FAIL=1
+  RUNNER_STATUS=PASS
 fi
 
+GIT_STATUS=NOT_A_REPOSITORY
 if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "GIT=PASS"
-else
-  echo "GIT=NOT_A_REPOSITORY"
+  GIT_STATUS=PASS
 fi
 
+TEST_STATUS=NOT_FOUND
 if [[ -d "$TEST_ROOT" ]]; then
-  echo "TEST_ROOT=PASS"
-else
-  echo "TEST_ROOT=NOT_FOUND"
+  TEST_STATUS=PASS
 fi
 
+MANIFEST_STATUS=UNKNOWN
 if [[ -f "$PROJECT_ROOT/package.json" || -f "$PROJECT_ROOT/freelang.json" || "$DIALECT" == AIA ]]; then
-  echo "MANIFEST=PASS"
-else
-  echo "MANIFEST=UNKNOWN"
+  MANIFEST_STATUS=PASS
 fi
 
+TOOLS_STATUS=BLOCKED
 if command -v fl-tools >/dev/null 2>&1 || [[ -x "$ROOT/scripts/fl-tools" ]]; then
-  echo "TOOLS=PASS"
-else
-  echo "TOOLS=BLOCKED"
-  FAIL=1
+  TOOLS_STATUS=PASS
 fi
 
-if [[ "$FAIL" -eq 0 ]]; then
-  echo "PROJECT_DOCTOR=PASS"
-else
-  echo "PROJECT_DOCTOR=BLOCKED"
-  exit 1
-fi
+set +e
+"$TOOLS_ROOT/scripts/fl-native-doctor" "$RUNNER_STATUS" "$GIT_STATUS" "$TEST_STATUS" "$MANIFEST_STATUS" "$TOOLS_STATUS"
+CODE=$?
+set -e
+exit "$CODE"

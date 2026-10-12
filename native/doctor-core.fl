@@ -1,0 +1,18 @@
+;; FreeLang-native project doctor report.
+
+(let [runner (shell_env "FL_TOOLS_DOCTOR_RUNNER")
+      git (shell_env "FL_TOOLS_DOCTOR_GIT")
+      test-root (shell_env "FL_TOOLS_DOCTOR_TEST_ROOT")
+      manifest (shell_env "FL_TOOLS_DOCTOR_MANIFEST")
+      tools (shell_env "FL_TOOLS_DOCTOR_TOOLS")
+      runner-ok (= runner "PASS")
+      tools-ok (= tools "PASS")
+      overall (and runner-ok tools-ok)]
+  (println (str "RUNNER=" runner))
+  (println (str "GIT=" git))
+  (println (str "TEST_ROOT=" test-root))
+  (println (str "MANIFEST=" manifest))
+  (println (str "TOOLS=" tools))
+  (if overall
+    (println "PROJECT_DOCTOR=PASS")
+    (do (println "PROJECT_DOCTOR=BLOCKED") (throw "project-doctor-blocked"))))

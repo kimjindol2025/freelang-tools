@@ -23,7 +23,7 @@ if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
   exit 2
 fi
 
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 PROBE="$TOOLS_ROOT/native/cli-core.fl"
 if [[ ! -f "$RUNNER" ]]; then
   echo "NATIVE_CORE=BLOCKED"

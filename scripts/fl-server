@@ -13,19 +13,16 @@ status() {
   [[ -x "$BIN_DIR/fl-tools" ]] || ready=0
   [[ -x "$BIN_DIR/fl-test" ]] || ready=0
   case ":${PATH:-}:" in *":$BIN_DIR:"*) path_configured=true ;; esac
-  node - "$ready" "$path_configured" "$INSTALL_ROOT" "$BIN_DIR" "$TOOLS_ROOT" <<'NODE'
-const [ready, pathConfigured, installRoot, binDir, toolsRoot] = process.argv.slice(2);
-const result = {
-  protocol: 'freelang.server/v1',
-  status: ready === '1' && pathConfigured === 'true' ? 'READY' : 'NOT_READY',
-  installRoot, binDir, toolsRoot,
-  commands: { flTools: `${binDir}/fl-tools`, flTest: `${binDir}/fl-test` },
-  pathConfigured: pathConfigured === 'true',
-  next: ready === '1' && pathConfigured === 'true' ? 'fl-tools ai run' : 'fl-tools server install'
-};
-process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-process.exit(result.status === 'READY' ? 0 : 1);
-NODE
+  set +e
+  FL_TOOLS_SERVER_READY="$([[ "$ready" -eq 1 ]] && echo YES || echo NO)" \
+  FL_TOOLS_SERVER_PATH_CONFIGURED="$([[ "$path_configured" == true ]] && echo YES || echo NO)" \
+  FL_TOOLS_SERVER_INSTALL_ROOT="$INSTALL_ROOT" \
+  FL_TOOLS_SERVER_BIN_DIR="$BIN_DIR" \
+  FL_TOOLS_SERVER_TOOLS_ROOT="$TOOLS_ROOT" \
+    node "${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}" run "$TOOLS_ROOT/native/server-status.fl"
+  local code=$?
+  set -e
+  return "$code"
 }
 
 install() {

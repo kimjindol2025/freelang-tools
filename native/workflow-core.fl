@@ -4,4 +4,5 @@
       input (if (and (string? input-path) (file-exists input-path))
               (json-parse (file-read input-path)) {})
       result (workflow-contract input)]
-  (println (json-stringify result)))
+  (println (json-stringify result))
+  (println (str "WORKFLOW_VALID=" (if (= (get result "valid") true) "YES" "NO"))))

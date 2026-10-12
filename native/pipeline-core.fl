@@ -1,0 +1,20 @@
+;; FreeLang-native pipeline aggregation policy.
+
+(defn ok? [code]
+  {:context "Classify one supervised pipeline step exit code"
+   :returns "boolean"
+   :effects []}
+  (= (str-to-num code) 0))
+
+(let [init (shell_env "FL_TOOLS_PIPELINE_INIT")
+      inspect (shell_env "FL_TOOLS_PIPELINE_INSPECT")
+      review (shell_env "FL_TOOLS_PIPELINE_REVIEW")
+      report (shell_env "FL_TOOLS_PIPELINE_REPORT")
+      deploy (shell_env "FL_TOOLS_PIPELINE_DEPLOY")
+      handoff (shell_env "FL_TOOLS_PIPELINE_HANDOFF")
+      all-ok (and (ok? init) (ok? inspect) (ok? review) (ok? report)
+                  (or (= deploy "SKIPPED") (ok? deploy)) (ok? handoff))]
+  (println "PUSH=NOT_PERFORMED")
+  (if all-ok
+    (println "PIPELINE=PASS")
+    (do (println "PIPELINE=FAIL") (throw "pipeline-failed"))))

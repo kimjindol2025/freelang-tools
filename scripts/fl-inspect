@@ -41,11 +41,7 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   GIT_STATE=clean
   [[ -n "$(git -C "$ROOT" status --short)" ]] && GIT_STATE=dirty
 fi
-PROJECT="$PROJECT" ROOT="$ROOT" DIALECT="$DIALECT" RUNNER="$RUNNER" GIT_STATE="$GIT_STATE" \
-  node -e '
-    const fs=require("fs"), e=process.env;
-    fs.writeFileSync(process.argv[1], JSON.stringify({project:e.PROJECT,root:e.ROOT,dialect:e.DIALECT,runner:e.RUNNER,git:e.GIT_STATE})+"\n");
-  ' "$NATIVE_INPUT"
+"$TOOLS_ROOT/scripts/fl-native-inspect-input" "$NATIVE_INPUT" "$PROJECT" "$ROOT" "$DIALECT" "$RUNNER" "$GIT_STATE" >/dev/null
 
 run_section DETECT "$TOOLS_ROOT/scripts/fl-detect" "$ROOT"
 run_section ROUTE "$TOOLS_ROOT/scripts/fl-route" "$ROOT"

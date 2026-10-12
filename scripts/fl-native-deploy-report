@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+DEPLOY_CODE="${1:?deploy code required}"; SMOKE_CODE="${2:?smoke code required}"; HASH="${3:?artifact hash required}"; ROLLBACK="${4:?rollback status required}"; TARGET="${5:?target required}"
+set +e
+FL_TOOLS_DEPLOY_CODE="$DEPLOY_CODE" FL_TOOLS_SMOKE_CODE="$SMOKE_CODE" \
+FL_TOOLS_ARTIFACT_HASH="$HASH" FL_TOOLS_ROLLBACK="$ROLLBACK" FL_TOOLS_DEPLOY_TARGET="$TARGET" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/deploy-report.fl"
+CODE=$?
+set -e
+exit "$CODE"

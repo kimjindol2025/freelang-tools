@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 PUSH=NO
 REMOTE=""
 BRANCH="$(git branch --show-current)"
@@ -32,28 +34,29 @@ if [[ "${#REMOTES[@]}" -eq 0 ]]; then
   exit 1
 fi
 
-if [[ -n "$(git status --short)" ]]; then
-  echo "WORKTREE=DIRTY"
-  echo "SAFE_PUSH=BLOCKED"
-  exit 1
-fi
-echo "WORKTREE=CLEAN"
 LOCAL_HEAD="$(git rev-parse HEAD)"
-echo "LOCAL_HEAD=$LOCAL_HEAD"
+WORKTREE_STATUS=PASS
+[[ -z "$(git status --short)" ]] || WORKTREE_STATUS=FAIL
+REMOTE_STATUS=PASS
+REMOTE_REPORT=""
 
 for remote in "${REMOTES[@]}"; do
   if ! git config --get "remote.$remote.url" >/dev/null; then
-    echo "REMOTE_${remote}=MISSING"
-    exit 1
+    REMOTE_STATUS=FAIL
+    REMOTE_REPORT+="REMOTE_${remote}=MISSING\n"
+    continue
   fi
   REMOTE_HEAD="$(git ls-remote "$remote" "refs/heads/$BRANCH" | awk '{print $1}')"
-  echo "REMOTE_${remote}_HEAD=${REMOTE_HEAD:-NONE}"
+  REMOTE_REPORT+="REMOTE_${remote}_HEAD=${REMOTE_HEAD:-NONE}\n"
 done
 
-if [[ "$PUSH" != YES ]]; then
-  echo "SAFE_PUSH=READY_CHECK_ONLY"
-  exit 0
-fi
+set +e
+PREFLIGHT_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-safe-push "$REMOTE_STATUS" "$WORKTREE_STATUS" "$LOCAL_HEAD" "$BRANCH" "$PUSH" "$REMOTE_REPORT")"
+PREFLIGHT_CODE=$?
+set -e
+printf '%s\n' "$PREFLIGHT_OUTPUT"
+[[ "$PREFLIGHT_CODE" -eq 0 ]] || exit 1
+if [[ "$PUSH" != YES ]]; then exit 0; fi
 
 for remote in "${REMOTES[@]}"; do
   git push "$remote" "$BRANCH"

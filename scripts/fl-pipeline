@@ -36,8 +36,6 @@ if [[ ! -d "$TARGET" ]]; then
 fi
 
 ROOT="$(cd -- "$TARGET" && pwd -P)"
-FAIL=0
-
 run_step() {
   local name="$1"
   shift
@@ -48,11 +46,11 @@ run_step() {
   code=$?
   set -e
   printf '%s\n' "$output"
+  printf -v "STEP_${name}_CODE" '%s' "$code"
   if [[ "$code" -eq 0 ]]; then
     echo "STEP_$name=PASS"
   else
     echo "STEP_$name=FAIL"
-    FAIL=1
   fi
 }
 
@@ -65,14 +63,16 @@ run_step INSPECT "$TOOLS_ROOT/scripts/fl-inspect" "$ROOT"
 run_step REVIEW "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
 run_step REPORT "$TOOLS_ROOT/scripts/fl-report" "$ROOT"
 
-if [[ "$DEPLOY" == YES && "$FAIL" -eq 0 ]]; then
+if [[ "$DEPLOY" == YES && "${STEP_INIT_CODE:-2}" -eq 0 && "${STEP_INSPECT_CODE:-2}" -eq 0 &&
+      "${STEP_REVIEW_CODE:-2}" -eq 0 && "${STEP_REPORT_CODE:-2}" -eq 0 ]]; then
   run_step DEPLOY "$TOOLS_ROOT/scripts/fl-deploy" "$ROOT"
 elif [[ "$DEPLOY" == YES ]]; then
   echo "STEP_DEPLOY=BLOCKED"
   echo "CAUSE=previous pipeline step failed"
-  FAIL=1
+  STEP_DEPLOY_CODE=2
 else
   echo "STEP_DEPLOY=SKIPPED"
+  STEP_DEPLOY_CODE=SKIPPED
 fi
 
 if [[ "$READ_ONLY" == YES ]]; then
@@ -81,11 +81,9 @@ else
   run_step HANDOFF "$TOOLS_ROOT/scripts/fl-handoff" "$ROOT"
 fi
 
-if [[ "$FAIL" -eq 0 ]]; then
-  echo "PUSH=NOT_PERFORMED"
-  echo "PIPELINE=PASS"
-else
-  echo "PUSH=NOT_PERFORMED"
-  echo "PIPELINE=FAIL"
-  exit 1
-fi
+set +e
+"$TOOLS_ROOT/scripts/fl-native-pipeline" "${STEP_INIT_CODE:-2}" "${STEP_INSPECT_CODE:-2}" \
+  "${STEP_REVIEW_CODE:-2}" "${STEP_REPORT_CODE:-2}" "${STEP_DEPLOY_CODE:-SKIPPED}" "${STEP_HANDOFF_CODE:-2}"
+PIPELINE_CODE=$?
+set -e
+exit "$PIPELINE_CODE"

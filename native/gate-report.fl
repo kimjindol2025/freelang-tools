@@ -1,0 +1,31 @@
+;; FreeLang-native review gate decision.
+
+(defn pass? [value]
+  {:context "Recognize a successful review component"
+   :returns "boolean"
+   :effects []}
+  (or (= value "PASS") (= value "PASS_WITH_APPROVAL") (= value "NOT_APPLICABLE")))
+
+(let [check (shell_env "FL_TOOLS_GATE_CHECK")
+      test (shell_env "FL_TOOLS_GATE_TEST")
+      inspect (shell_env "FL_TOOLS_GATE_INSPECT")
+      lint (shell_env "FL_TOOLS_GATE_LINT")
+      build (shell_env "FL_TOOLS_GATE_BUILD")
+      diff (shell_env "FL_TOOLS_GATE_DIFF")
+      generated (shell_env "FL_TOOLS_GATE_GENERATED")
+      contract (shell_env "FL_TOOLS_GATE_CONTRACT")
+      approval (= contract "APPROVAL")
+      valid (and (pass? check) (pass? test) (pass? inspect) (pass? lint)
+                (pass? build) (= diff "PASS") (= generated "CLEAN")
+                (not= contract "HARD"))
+      status (if (not valid) "FAIL" (if approval "PASS_WITH_APPROVAL" "PASS"))
+      report {"schemaVersion" "freelang.review/v1"
+              "source" "freelang-native"
+              "status" status
+              "gates" {"check" check "test" test "inspect" inspect
+                       "lint" lint "build" build "diffCheck" diff
+                       "generated" generated "contract" contract}
+              "approvalRequired" approval
+              "next" (if (= status "FAIL") "fix-review-gates-and-rerun" "safe-to-use")}]
+  (println (json-stringify report))
+  (println (str "REVIEW=" status)))
