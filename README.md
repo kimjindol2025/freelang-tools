@@ -125,6 +125,7 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools evidence --json [경로]` | 검증 결과와 원시 출력을 JSON으로 보존 (`fl-evidence`) |
 | `fl-tools trust [경로]` | check/test/review/evidence/diff/capability를 실제 실행하고 AI용 신뢰 판정 JSON 출력 (`fl-trust`) |
 | `fl-tools tester-audit --run` | 선언된 FreeLang native tester를 직접 실행하고 결과를 registry에 제출 |
+| `fl-tools tester-audit --run --output 파일` | 실행별 시간·exit code·보고 집계를 포함한 `freelang.tester-evidence/v1` 증거를 보존 |
 | `fl-tools tester-audit --input 파일` | 이미 생성된 tester 증거의 누락·재현성·상태를 FreeLang native registry로 판정 (`tester-registry.fl`) |
 | `fl-tools ai trust [경로]` | AI 전용 단일 진입점. 최종 판정은 FreeLang native `trust-core.fl`이 계산 |
 | `fl-tools ai start/work/verify/release [경로]` | AI 표준 작업 protocol `freelang.ai/v1` |

@@ -4,12 +4,14 @@ set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 INPUT=""
+OUTPUT_FILE=""
 RUN_MODE=NO
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --input) INPUT="${2:?--input requires a JSON file}"; shift ;;
+    --output) OUTPUT_FILE="${2:?--output requires a JSON file}"; shift ;;
     --run) RUN_MODE=YES ;;
-    --help|-h) echo "사용법: fl-tools tester-audit --input 파일"; exit 0 ;;
+    --help|-h) echo "사용법: fl-tools tester-audit --run [--output 파일] | --input 파일"; exit 0 ;;
     *) echo "알 수 없는 옵션: $1" >&2; exit 2 ;;
   esac
   shift
@@ -17,15 +19,24 @@ done
 RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 
 if [[ "$RUN_MODE" == YES ]]; then
+  if [[ -n "$INPUT" ]]; then
+    echo "TESTER_AUDIT=BLOCKED" >&2
+    echo "CAUSE=--run cannot be combined with --input" >&2
+    exit 2
+  fi
   if [[ ! -f "$RUNNER" ]]; then
     echo "TESTER_AUDIT=BLOCKED" >&2
     echo "CAUSE=AFJ runner not found" >&2
     exit 2
   fi
-  INPUT_DIR="$(mktemp -d)"
-  INPUT="$INPUT_DIR/results.json"
-  cleanup() { rm -rf "$INPUT_DIR"; }
-  trap cleanup EXIT INT TERM
+  if [[ -n "$OUTPUT_FILE" ]]; then
+    INPUT="$OUTPUT_FILE"
+  else
+    INPUT_DIR="$(mktemp -d)"
+    INPUT="$INPUT_DIR/results.json"
+    cleanup() { rm -rf "$INPUT_DIR"; }
+    trap cleanup EXIT INT TERM
+  fi
   FL_TOOLS_ROOT="$TOOLS_ROOT" \
   FL_TOOLS_TESTER_AUDIT_RUN_OUTPUT="$INPUT" \
     FREELANG_AFJ_RUNNER="$RUNNER" \

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freelang.tools/schemas/tester-evidence.schema.json",
+  "title": "FreeLang Tools Tester Evidence",
+  "type": "object",
+  "required": ["schemaVersion", "source", "runId", "startedAtMs", "finishedAtMs", "durationMs", "runner", "root", "results"],
+  "properties": {
+    "schemaVersion": { "const": "freelang.tester-evidence/v1" },
+    "source": { "const": "freelang-native" },
+    "runId": { "type": "string", "minLength": 1 },
+    "startedAtMs": { "type": "number", "minimum": 0 },
+    "finishedAtMs": { "type": "number", "minimum": 0 },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "runner": { "type": "string", "minLength": 1 },
+    "root": { "type": "string", "minLength": 1 },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "evidence", "command", "authority", "adapter", "reproducible", "native", "exitCode", "startedAtMs", "finishedAtMs", "durationMs", "report"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["PASS", "FAIL", "BLOCKED", "NOT_RUN"] },
+          "evidence": { "type": "string", "minLength": 1 },
+          "command": { "type": "string", "minLength": 1 },
+          "authority": { "const": "freelang-native" },
+          "adapter": { "const": "afj-bootstrap-host" },
+          "reproducible": { "type": "boolean" },
+          "native": { "const": true },
+          "exitCode": { "type": "number" },
+          "startedAtMs": { "type": "number", "minimum": 0 },
+          "finishedAtMs": { "type": "number", "minimum": 0 },
+          "durationMs": { "type": "number", "minimum": 0 },
+          "report": { "type": ["object", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}
