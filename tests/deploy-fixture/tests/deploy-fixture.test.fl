@@ -1,2 +1,8 @@
-(deftest "deploy fixture" (is= 4 (+ 2 2)))
-(run-tests)
+(load "../../../src/test/result.fl")
+(load "../../../src/test/report.fl")
+(load "../../../src/test/cli.fl")
+
+(emit-final-result
+  (result-aggregate
+    [(test-result "deploy fixture" "arithmetic" (if (= 4 (+ 2 2)) "PASS" "FAIL") 1)]
+    1))

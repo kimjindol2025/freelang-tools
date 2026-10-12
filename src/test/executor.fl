@@ -1,8 +1,8 @@
 ;; Native FreeLang executor for a collector plan.
 ;; Each selected body is invoked once. Errors remain ERROR; no error text guessing.
 
-(load "collector.fl")
-(load "result.fl")
+(load "../src/test/collector.fl")
+(load "../src/test/result.fl")
 
 (define assertion-statuses ["PASS" "FAIL" "ERROR" "BLOCKED" "SKIPPED"])
 

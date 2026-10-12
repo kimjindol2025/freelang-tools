@@ -1,4 +1,5 @@
 ;; Phase 3 native reporter tests.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/result.fl")
 (load "../src/test/report.fl")
 
@@ -46,4 +47,4 @@
        (contains? (report-text pass-run) "expected=2")
        (contains? (report-text pass-run) "2 passed"))))
 
-(run-tests)
+(run-deftest-suite)

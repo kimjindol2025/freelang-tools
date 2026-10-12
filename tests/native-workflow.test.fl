@@ -1,4 +1,5 @@
 ;; Native workflow evidence contract tests.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/workflow.fl")
 (define pass-workflow
   {"schemaVersion" "freelang.workflow/v1" "status" "PASS"
@@ -11,4 +12,4 @@
   (get (workflow-contract pass-workflow) "verdict")))
 (deftest "malformed workflow is blocked" (is= "BLOCKED"
   (get (workflow-contract (assoc pass-workflow "results" [{"kind" "broken"}])) "verdict")))
-(run-tests)
+(run-deftest-suite)

@@ -1,4 +1,5 @@
 ;; Release contract tests. No publish/deploy/GitHub operation is performed.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/release.fl")
 
 (define complete-components
@@ -18,4 +19,4 @@
          "PASS" "PASS")
        "status")))
 
-(run-tests)
+(run-deftest-suite)

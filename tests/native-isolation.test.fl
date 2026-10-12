@@ -1,4 +1,5 @@
 ;; Isolation context contract tests. No runtime snapshot claim is made here.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/collector.fl")
 (load "../src/test/isolation.fl")
 
@@ -27,4 +28,4 @@
 (deftest "empty isolation selection is not run" (is= "NOT_RUN"
   (get (isolation-validate empty-contexts {}) "status")))
 
-(run-tests)
+(run-deftest-suite)

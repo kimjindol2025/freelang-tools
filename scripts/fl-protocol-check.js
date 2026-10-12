@@ -39,8 +39,10 @@ for (const key of countKeys) {
 const expectedExit = value.status === "PASS" ? 0 : value.status === "FAIL" ? 1 : value.status === "NOT_RUN" ? 3 : 2;
 if (value.exit_code !== expectedExit || Number(exitMarker) !== expectedExit) fail("exit-code-mismatch");
 if (value.actual_count !== value.pass_count + value.fail_count + value.error_count + value.blocked_count + value.skipped_count + value.invalid_count) fail("count-total-mismatch");
+if (value.executed_count !== value.pass_count + value.fail_count + value.error_count + value.blocked_count + value.invalid_count) fail("executed-total-mismatch");
+if (value.expected_count + value.excess_count !== value.actual_count + value.missing_count) fail("expected-actual-mismatch");
 if (value.missing_count > 0 && value.excess_count > 0) fail("missing-and-excess");
-if (value.status === "PASS" && (value.executed_count < 1 || value.fail_count || value.error_count || value.blocked_count || value.invalid_count || value.missing_count || value.excess_count)) fail("invalid-pass");
+if (value.status === "PASS" && (value.executed_count < 1 || value.pass_count < 1 || value.fail_count || value.error_count || value.blocked_count || value.invalid_count || value.missing_count || value.excess_count)) fail("invalid-pass");
 if (value.status === "FAIL" && (!value.fail_count || value.error_count || value.blocked_count || value.invalid_count || value.missing_count || value.excess_count)) fail("invalid-fail");
 if (value.status === "NOT_RUN" && value.executed_count !== 0) fail("invalid-not-run");
 

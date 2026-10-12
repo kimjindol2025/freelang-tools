@@ -1,4 +1,5 @@
 ;; Native collector plan tests. Bodies are not executed by this module.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/collector.fl")
 
 (define pass-body (fn [] 42))
@@ -25,4 +26,4 @@
          [{"schema" "wrong" "suite" "math" "name" "broken" "order" -1}] "")
        "status")))
 
-(run-tests)
+(run-deftest-suite)

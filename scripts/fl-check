@@ -18,7 +18,11 @@ if [[ "$DIALECT" == "AIRC" ]]; then
     echo "CAUSE=AIRC runner not found: $RUNNER" >&2
     exit 2
   fi
-  mapfile -t SOURCES < <(find "$ROOT" -maxdepth 1 -type f -name '*.fl' -print | sort)
+  SOURCE_LIST_FILE="$(mktemp)"
+  cleanup() { rm -f "$SOURCE_LIST_FILE"; }
+  trap cleanup EXIT INT TERM
+  find "$ROOT" -maxdepth 1 -type f -name '*.fl' -print | sort > "$SOURCE_LIST_FILE"
+  mapfile -t SOURCES < "$SOURCE_LIST_FILE"
   for source in "${SOURCES[@]}"; do
     echo "[fl-check] $source"
     node "$RUNNER" check "$source"

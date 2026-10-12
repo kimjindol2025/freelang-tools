@@ -77,10 +77,20 @@ if [[ -n "$TEST_CONTRACT" ]]; then
     exit 2
   fi
   echo "[fl-test] contract ${TEST_CONTRACT#"$ROOT/"}"
+  contract_timeout="${FREELANG_TEST_TIMEOUT_SECONDS:-}"
+  if [[ -z "$contract_timeout" && -f "$ROOT/.freelang/test-timeout-seconds" ]]; then
+    IFS= read -r contract_timeout < "$ROOT/.freelang/test-timeout-seconds" || true
+  fi
+  contract_timeout="${contract_timeout:-300}"
+  if [[ ! "$contract_timeout" =~ ^[1-9][0-9]*$ ]]; then
+    echo "FREELANG_TEST=BLOCKED"
+    echo "CAUSE=invalid test contract timeout: $contract_timeout" >&2
+    exit 2
+  fi
   contract_code=0
   if command -v timeout >/dev/null 2>&1; then
     set +e
-    (cd "$ROOT" && timeout --foreground "${FREELANG_TEST_TIMEOUT_SECONDS:-300}" "$TEST_CONTRACT")
+    (cd "$ROOT" && timeout --foreground "$contract_timeout" "$TEST_CONTRACT")
     contract_code=$?
     set -e
   else
@@ -95,7 +105,7 @@ if [[ -n "$TEST_CONTRACT" ]]; then
   fi
   if [[ "$contract_code" -eq 124 || "$contract_code" -eq 137 ]]; then
     echo "FREELANG_TEST=ERROR"
-    echo "CAUSE=test contract timeout: ${FREELANG_TEST_TIMEOUT_SECONDS:-300}s" >&2
+    echo "CAUSE=test contract timeout: ${contract_timeout}s" >&2
     exit 2
   fi
   echo "FREELANG_TEST=FAIL"
@@ -125,23 +135,25 @@ fi
 
 for test_file in "${TEST_FILES[@]}"; do
   relative="${test_file#"$ROOT/"}"
-  echo "[fl-test] check $relative"
-  node "$RUNNER" check "$test_file"
-
   rm -f "$OUTPUT_FILE"
   OUTPUT_FILE="$(mktemp)"
-  echo "[fl-test] run $relative"
-  if ! node "$RUNNER" run "$test_file" >"$OUTPUT_FILE" 2>&1; then
+  echo "[fl-test] official CI $relative"
+  run_code=0
+  if FREELANG_AFJ_RUNNER="$RUNNER" "$TOOLS_ROOT/scripts/fl-ci" "$test_file" >"$OUTPUT_FILE" 2>&1; then
+    run_code=0
+  else
+    run_code=$?
+  fi
+  if [[ "$run_code" -ne 0 ]]; then
     cat "$OUTPUT_FILE"
+    if [[ "$run_code" -eq 3 ]]; then
+      echo "FREELANG_TEST=NOT_RUN"
+      exit 3
+    fi
     echo "FREELANG_TEST=FAIL"
-    exit 1
+    exit "$run_code"
   fi
   cat "$OUTPUT_FILE"
-  if ! grep -Eq '^Test Results: [0-9]+/[0-9]+ passed$' "$OUTPUT_FILE" || grep -q 'FAILED' "$OUTPUT_FILE"; then
-    echo "[fl-test] missing passing summary: $relative" >&2
-    echo "FREELANG_TEST=FAIL"
-    exit 1
-  fi
 done
 
 echo "FREELANG_TEST=PASS"

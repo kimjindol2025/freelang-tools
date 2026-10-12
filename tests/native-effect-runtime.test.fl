@@ -1,4 +1,5 @@
 ;; Effect runtime boundary tests. No fake Tape is created.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/effect-runtime.fl")
 
 (define body-that-must-not-run (fn [] (error "must not execute without Tape")))
@@ -10,4 +11,4 @@
 (deftest "blocked result preserves capability diagnostic" (is= "trace_effects"
   (get (get (effect-runtime-run body-that-must-not-run) "diagnostic") "api")))
 
-(run-tests)
+(run-deftest-suite)

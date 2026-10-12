@@ -1,4 +1,5 @@
 ;; Phase 4 Effect Tape capability and policy tests.
+(load "../src/test/deftest-runner.fl")
 (load "../src/test/effect.fl")
 
 (deftest "missing tape capability is blocked" (is= "BLOCKED"
@@ -14,4 +15,4 @@
 (deftest "observed violating effect fails" (is= "FAIL"
   (get (effect-decision "OBSERVE_THEN_FAIL" true false) "status")))
 
-(run-tests)
+(run-deftest-suite)

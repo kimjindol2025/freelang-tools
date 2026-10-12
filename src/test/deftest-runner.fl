@@ -1,0 +1,18 @@
+;; Adapter from the legacy deftest DSL to the official native final-result protocol.
+(load "../src/test/result.fl")
+(load "../src/test/report.fl")
+(load "../src/test/cli.fl")
+
+(defn run-deftest-suite []
+  (let [summary (test-summary)
+        passed (get summary "passed")
+        failed (get summary "failed")
+        total (+ passed failed)
+        status (if (= total 0)
+                 "SKIPPED"
+                 (if (> failed 0) "FAIL" "PASS"))]
+    (run-tests)
+    (emit-final-result
+      (result-aggregate
+        [(test-result "deftest" "suite" status total)]
+        1))))

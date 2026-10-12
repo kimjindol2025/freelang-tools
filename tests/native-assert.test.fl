@@ -1,5 +1,6 @@
 ;; Phase 2 native assertion matcher tests.
 (load "../src/test/assert.fl")
+(load "../src/test/deftest-runner.fl")
 
 (deftest "to_be passes equal scalar values" (is= "PASS"
   (get (to_be 3 3) "status")))
@@ -18,4 +19,4 @@
 (deftest "to_throw rejects a normal return" (is= "FAIL"
   (get (to_throw (fn [] 42)) "status")))
 
-(run-tests)
+(run-deftest-suite)
