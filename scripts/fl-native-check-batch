@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+ROOT="${1:?project root is required}"
+DIALECT="${2:?dialect is required}"
+RUNNER="${3:?AFJ runner is required}"
+
+PLAN_OUTPUT="$("$TOOLS_ROOT/scripts/fl-native-check-plan" "$ROOT" "$DIALECT" "$RUNNER")"
+SOURCES_TEXT="$(printf '%s\n' "$PLAN_OUTPUT" | sed -n '/^SOURCES=/,$p' | sed '1s/^SOURCES=//' | sed '/^$/d')"
+if [[ -z "$SOURCES_TEXT" ]]; then
+  echo "SUPERVISOR_COUNT=0"
+  echo "SUPERVISOR_EXIT=0"
+  exit 0
+fi
+
+FL_TOOLS_CHECK_SUPERVISOR_RUNNER="$RUNNER" \
+FL_TOOLS_CHECK_SUPERVISOR_SOURCES="$SOURCES_TEXT" \
+  node "$RUNNER" run "$TOOLS_ROOT/native/check-supervisor.fl"

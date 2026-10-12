@@ -1,0 +1,42 @@
+;; FreeLang-native batch check supervisor.
+;; The host passes a newline-separated source list; AFJ owns the loop and
+;; every child execution goes through native process_spawn.
+
+(defn result-code [result]
+  {:context "Read the native child exit code"
+   :returns "integer exit code"
+   :effects []}
+  (if (= (get result "_tag") "Ok")
+      (get (get result "value") "code")
+      1))
+
+(defn result-output [result]
+  {:context "Combine native child output for the existing check contract"
+   :returns "child output"
+   :effects []}
+  (if (= (get result "_tag") "Ok")
+      (str (get (get result "value") "stdout")
+           (get (get result "value") "stderr"))
+      (str "native process error: " (get result "code"))))
+
+(defn run-one [runner source]
+  {:context "Check one source through the native process API"
+   :returns "integer exit code"
+   :effects ["native-process" "shell" "io"]}
+  (let [result (process_spawn runner ["check" source])]
+    (println (str "[fl-check] " source))
+    (println (result-output result))
+    (result-code result)))
+
+(capability-list)
+(capability-enable "native-process")
+
+(let [runner (shell_env "FL_TOOLS_CHECK_SUPERVISOR_RUNNER")
+      raw-sources (shell_env "FL_TOOLS_CHECK_SUPERVISOR_SOURCES")
+      sources (filter (fn [source] (not= source ""))
+                      (str-split raw-sources "\n"))
+      codes (map (fn [source] (run-one runner source)) sources)
+      failed (filter (fn [code] (not= code 0)) codes)
+      code (if (= (length failed) 0) 0 1)]
+  (println (str "SUPERVISOR_COUNT=" (length sources)))
+  (println (str "SUPERVISOR_EXIT=" code)))

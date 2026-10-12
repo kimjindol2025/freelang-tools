@@ -1,5 +1,5 @@
 ;; FreeLang-native review policy for generated files and contract drift.
-;; Git is the host adapter; classification is native policy.
+;; Git status is read through AFJ's capability-gated native-git API.
 
 (defn has-fragment? [lines fragment]
   {:context "Classify Git status lines by one policy fragment"
@@ -7,9 +7,14 @@
    :effects []}
   (> (length (filter (fn [line] (str-contains-in line fragment)) lines)) 0))
 
+(capability-list)
+(capability-enable "native-git")
+
 (let [root (shell_env "FL_TOOLS_REVIEW_ROOT")
-      statusText (try (shell-safe "git" ["-C" root "status" "--porcelain"])
-                      (catch error ""))
+      status-result (git_status root)
+      statusText (if (= (get status-result "_tag") "Ok")
+                   (get (get status-result "value") "stdout")
+                   "")
       lines (filter (fn [line] (not= line "")) (str-split statusText "\n"))
       generated (or (has-fragment? lines "_app.fl")
                     (has-fragment? lines "dist/")

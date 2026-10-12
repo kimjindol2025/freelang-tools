@@ -78,12 +78,12 @@ fi
 for test_file in "${TEST_FILES[@]}"; do
   relative="${test_file#"$ROOT/"}"
   echo "[fl-test] check $relative"
-  node "$RUNNER" check "$test_file"
+  FREELANG_AFJ_RUNNER="$RUNNER" "$TOOLS_ROOT/scripts/fl-native-runner" check "$test_file"
 
   rm -f "$OUTPUT_FILE"
   OUTPUT_FILE="$(mktemp)"
   echo "[fl-test] run $relative"
-  if ! node "$RUNNER" run "$test_file" >"$OUTPUT_FILE" 2>&1; then
+  if ! FREELANG_AFJ_RUNNER="$RUNNER" "$TOOLS_ROOT/scripts/fl-native-runner" run "$test_file" "$OUTPUT_FILE"; then
     cat "$OUTPUT_FILE"
     echo "FREELANG_TEST=FAIL"
     exit 1

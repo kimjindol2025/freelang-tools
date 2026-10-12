@@ -1,5 +1,5 @@
 ;; FreeLang-native project detection.
-;; Recursive filesystem inspection is delegated to one argv-safe find adapter.
+;; Recursive filesystem inspection is owned by the AFJ filesystem API.
 
 (defn has-file? [root name]
   {:context "Check one project file without shell interpolation"
@@ -28,6 +28,24 @@
       (map (fn [name] (str test-root "/" name))
            (sort (filter (fn [name] (str-ends-with name ".test.fl"))
                          (dir-list test-root))))
+      [])))
+
+(defn walk-files [root depth]
+  {:context "Recursively list files under an explicit project root"
+   :returns "absolute file paths"
+   :effects ["directory-read" "file-read"]}
+  (if (> depth 3)
+    []
+    (if (dir-exists? root)
+      (mapcat
+        (fn [name]
+          (let [path (str root "/" name)]
+            (if (file-exists path)
+              [path]
+              (if (dir-exists? path)
+                (walk-files path (+ depth 1))
+                []))))
+        (dir-list root))
       [])))
 
 (defn first-existing [candidates]
@@ -79,10 +97,8 @@
 (defn detect [root]
   {:context "Detect project dialect, runner, tests, and source extensions"
    :returns "FreeLang project detection report"
-   :effects ["file-read" "process"]}
-  (let [listing (try (shell-safe "find" [root "-maxdepth" "3" "-type" "f" "-print"])
-                     (catch error ""))
-        files (sort (filter (fn [line] (not= line "")) (str-split listing "\n")))
+   :effects ["file-read" "directory-read"]}
+  (let [files (sort (walk-files root 0))
         ;; The native runner can execute the canonical tool entrypoint even
         ;; when the host process adapter returns no recursive listing.
         native-tools? (has-file? root "native/tools-cli.fl")

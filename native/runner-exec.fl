@@ -1,0 +1,25 @@
+;; FreeLang-native AFJ runner adapter.
+;; The host only starts this AFJ program and reads the output artifact.
+
+(defn output-of [result]
+  {:context "Combine native runner stdout and stderr"
+   :returns "runner output"
+   :effects []}
+  (if (= (get result "_tag") "Ok")
+    (str (get (get result "value") "stdout")
+         (get (get result "value") "stderr"))
+    (str (get result "code"))))
+
+(capability-list)
+(capability-enable "native-process")
+
+(let [runner (shell_env "FL_TOOLS_RUNNER_EXEC_RUNNER")
+      mode (shell_env "FL_TOOLS_RUNNER_EXEC_MODE")
+      target (shell_env "FL_TOOLS_RUNNER_EXEC_TARGET")
+      output-path (shell_env "FL_TOOLS_RUNNER_EXEC_OUTPUT")
+      result (process_spawn runner [mode target])
+      code (if (= (get result "_tag") "Ok")
+              (get (get result "value") "code")
+              1)]
+  (file-write output-path (output-of result))
+  (println (str "RUNNER_EXIT=" code)))

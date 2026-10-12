@@ -1,6 +1,6 @@
 ;; FreeLang-native argv process API.
 
-(defn process-result [program args ok output error]
+(defn process-result [program args ok stdout stderr code signal error]
   {:context "Create one normalized argv process result"
    :returns "process contract"
    :effects []}
@@ -10,21 +10,38 @@
    "status" (if ok "PASS" "FAIL")
    "program" program
    "argv" args
-   "stdout" (if ok output "")
-   "stderr" (if ok "" (str error))
-   "code" (if ok 0 1)
-   "error" (if ok nil (str error))})
+   "stdout" stdout
+   "stderr" stderr
+   "code" code
+   "signal" signal
+   "error" error})
 
-(defn run-argv [program args]
-  {:context "Run a program through argv-safe shell adapter without shell interpolation"
+(defn normalize-result [program args result]
+  {:context "Normalize one native argv process result"
    :returns "process contract"
    :effects ["process"]}
-  (try (process-result program args true (shell-safe program args) nil)
-       (catch error (process-result program args false "" error))))
+  (if (= (get result "_tag") "Ok")
+    (let [value (get result "value")]
+      (process-result program args true
+                      (get value "stdout")
+                      (get value "stderr")
+                      (get value "code")
+                      (get value "signal")
+                      nil))
+    (process-result program args false "" ""
+                    1 nil
+                    (get result "code"))))
+
+;; This entrypoint is the explicit trusted boundary for the process contract.
+;; AFJ currently preserves capability mutations made at top level, not inside a
+;; user function invocation.
+(capability-list)
+(capability-enable "native-process")
 
 (let [program (shell_env "FL_TOOLS_PROCESS_PROGRAM")
       args-input (shell_env "FL_TOOLS_PROCESS_ARGS")
       args (if (and (string? args-input) (not= args-input ""))
              (json-parse args-input)
-             [])]
-  (println (json-stringify (run-argv program args))))
+             [])
+      result (process_spawn program args)]
+  (println (json-stringify (normalize-result program args result))))

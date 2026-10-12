@@ -1,7 +1,7 @@
 ;; Runtime Effect Tape adapter boundary.
 ;; No public Tape API means the body is not executed and the result is BLOCKED.
 
-(load "../src/test/effect.fl")
+(load "./effect.fl")
 
 (defn effect-runtime-run [body]
   (let [capability (effect-capability)]

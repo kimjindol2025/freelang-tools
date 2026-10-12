@@ -1,7 +1,7 @@
 ;; Adapter from the legacy deftest DSL to the official native final-result protocol.
-(load "../src/test/result.fl")
-(load "../src/test/report.fl")
-(load "../src/test/cli.fl")
+(load "./result.fl")
+(load "./report.fl")
+(load "./cli.fl")
 
 (defn run-deftest-suite []
   (let [summary (test-summary)

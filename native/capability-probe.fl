@@ -16,17 +16,29 @@
    "status" (verdict ok)
    "boundary" boundary})
 
+(capability-list)
+(capability-enable "native-process")
+(capability-enable "native-git")
+
 (let [json-value (json-parse "{\"ok\":true}")
-      shell-value (shell-capture "true")
+      process-value (process_spawn "true" [])
+      root (shell_cwd)
+      git-value (git_status root)
+      directory-value (dir-list root)
+      schema-value (and (map? json-value)
+                        (= (get json-value "ok") true))
       checks [(check "file-read" "file.read" (file-exists "/tmp") "native")
               (check "file-write" "file.write" (boolean? (file-exists "/tmp")) "native")
               (check "json" "json.parse-stringify" (map? json-value) "native")
               (check "environment" "env.read" (string? (shell_env "PATH")) "native")
               (check "clock" "time.now" (number? (now-ms)) "native")
-              (check "process-capture" "process.capture" (= (get shell-value :code) 0) "native")
-              (check "git" "git.read" false "adapter-required")
-              (check "directory-walk" "fs.walk" false "adapter-required")
-              (check "schema-validation" "json.schema" false "adapter-required")]
+              (check "process-capture" "process.capture"
+                    (and (= (get process-value "_tag") "Ok")
+                         (= (get (get process-value "value") "code") 0))
+                    "native")
+              (check "git" "git.read" (= (get git-value "_tag") "Ok") "native")
+              (check "directory-walk" "fs.walk" (> (length directory-value) 0) "native")
+              (check "json-contract" "json.contract" schema-value "native")]
       blocked (filter (fn [item] (= (get item "status") "BLOCKED")) checks)
       overall (if (= (length blocked) 0) "PASS" "PARTIAL")]
   (println (json-stringify

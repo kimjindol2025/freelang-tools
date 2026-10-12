@@ -1,0 +1,31 @@
+;; FreeLang-native self-host process supervisor.
+;; Only the AFJ bootstrap invocation remains outside this file.
+
+(defn output-of [result]
+  {:context "Combine native process stdout and stderr for self-host evidence"
+   :returns "captured process output"
+   :effects []}
+  (if (= (get result "_tag") "Ok")
+    (str (get (get result "value") "stdout")
+         (get (get result "value") "stderr"))
+    (str (get result "code"))))
+
+(capability-list)
+(capability-enable "native-process")
+
+(let [runner (shell_env "FL_TOOLS_SELFHOST_RUNNER")
+      probe (shell_env "FL_TOOLS_SELFHOST_PROBE")
+      check-path (shell_env "FL_TOOLS_SELFHOST_CHECK_OUTPUT")
+      run-path (shell_env "FL_TOOLS_SELFHOST_RUN_OUTPUT")
+      check-result (process_spawn runner ["check" probe])
+      run-result (process_spawn runner ["run" probe])
+      check-code (if (= (get check-result "_tag") "Ok")
+                   (get (get check-result "value") "code")
+                   1)
+      run-code (if (= (get run-result "_tag") "Ok")
+                 (get (get run-result "value") "code")
+                 1)]
+  (file-write check-path (output-of check-result))
+  (file-write run-path (output-of run-result))
+  (println (str "SELFHOST_CHECK_CODE=" check-code))
+  (println (str "SELFHOST_RUN_CODE=" run-code)))

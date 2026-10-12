@@ -1,33 +1,41 @@
 ;; FreeLang-native Git read contract.
-;; The only host boundary is the argv-safe shell adapter.
+;; Git is executed through AFJ's capability-gated native-git API.
 
-(defn git-result [status value error]
+(defn result-ok? [result]
+  {:context "Check a native Git Result"
+   :returns "boolean"
+   :effects []}
+  (= (get result "_tag") "Ok"))
+
+(defn result-value [result]
+  {:context "Read the value of a native Git Result"
+   :returns "Git value"
+   :effects []}
+  (if (result-ok? result) (get result "value") nil))
+
+(defn result-error [result]
+  {:context "Read the error of a native Git Result"
+   :returns "Git error"
+   :effects []}
+  (if (result-ok? result) nil (get result "code")))
+
+(defn git-result [result]
   {:context "Create a stable Git standard-library result"
    :returns "git result map"
-   :effects ["process"]}
-  {"ok" (= status 0)
-   "status" (if (= status 0) "PASS" "FAIL")
-   "value" value
-   "error" error})
+   :effects []}
+  {"ok" (result-ok? result)
+   "status" (if (result-ok? result) "PASS" "FAIL")
+   "value" (result-value result)
+   "error" (result-error result)})
 
-(defn git-read [root args]
-  {:context "Run a read-only Git command with argv separation"
-   :returns "git result map"
-   :effects ["process" "git-read"]}
-  (let [captured (try
-                   (shell-safe "git" (concat ["-C" root] args))
-                   (catch error {"stdout" "" "stderr" (str error) "code" 1}))]
-    (if (string? captured)
-      (git-result 0 (str-trim captured) nil)
-      (git-result (get captured "code")
-                  (str-trim (get captured "stdout"))
-                  (str-trim (get captured "stderr"))))))
+(capability-list)
+(capability-enable "native-git")
 
 (let [root (shell_env "FL_TOOLS_GIT_ROOT")
-      status (git-read root ["status" "--porcelain"])
-      head (git-read root ["rev-parse" "HEAD"])
-      branch (git-read root ["branch" "--show-current"])
-      diff (git-read root ["diff" "--"])
+      status (git-result (git_status root))
+      head (git-result (git_head root))
+      branch (git-result (git_branch root))
+      diff (git-result (git_diff_name_only root))
       result {"schemaVersion" "freelang.git/v1"
               "source" "freelang-native"
               "root" root

@@ -8,11 +8,22 @@ cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT INT TERM
 
 set +e
-node "$RUNNER" check "$TOOLS_ROOT/native/selfhost-probe.fl" >"$TMP_DIR/check.out" 2>&1
-CHECK_CODE=$?
-node "$RUNNER" run "$TOOLS_ROOT/native/selfhost-probe.fl" >"$TMP_DIR/run.out" 2>&1
-RUN_CODE=$?
+EXEC_OUTPUT="$(
+  FL_TOOLS_SELFHOST_RUNNER="$RUNNER" \
+  FL_TOOLS_SELFHOST_PROBE="$TOOLS_ROOT/native/selfhost-probe.fl" \
+  FL_TOOLS_SELFHOST_CHECK_OUTPUT="$TMP_DIR/check.out" \
+  FL_TOOLS_SELFHOST_RUN_OUTPUT="$TMP_DIR/run.out" \
+    node "$RUNNER" run "$TOOLS_ROOT/native/selfhost-exec.fl"
+)"
+EXEC_CODE=$?
 set -e
+
+CHECK_CODE="$(printf '%s\n' "$EXEC_OUTPUT" | sed -n 's/^SELFHOST_CHECK_CODE=//p' | tail -1)"
+RUN_CODE="$(printf '%s\n' "$EXEC_OUTPUT" | sed -n 's/^SELFHOST_RUN_CODE=//p' | tail -1)"
+if [[ "$EXEC_CODE" -ne 0 || -z "$CHECK_CODE" || -z "$RUN_CODE" ]]; then
+  CHECK_CODE=1
+  RUN_CODE=1
+fi
 
 FL_TOOLS_SELFHOST_CHECK_OUTPUT="$TMP_DIR/check.out" \
 FL_TOOLS_SELFHOST_RUN_OUTPUT="$TMP_DIR/run.out" \
