@@ -33,6 +33,9 @@ fi
 
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
+TMP_DIR="$(mktemp -d)"
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT INT TERM
 
 STATUS_OUTPUT=""
 STATUS_CODE=0
@@ -64,6 +67,10 @@ fi
 DIFF_CHECK=PASS
 git -C "$ROOT" diff --check >/dev/null 2>&1 || DIFF_CHECK=FAIL
 
+printf '%s' "$DETECT_OUTPUT" > "$TMP_DIR/detect.out"
+printf '%s' "$STATUS_OUTPUT" > "$TMP_DIR/status.out"
+printf '%s' "$REVIEW_OUTPUT" > "$TMP_DIR/review.out"
+
 PROJECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^PROJECT=//p')"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
@@ -80,9 +87,9 @@ EVIDENCE_JSON="$(
   FL_TOOLS_EVIDENCE_STATUS_CODE="$STATUS_CODE" \
   FL_TOOLS_EVIDENCE_REVIEW_CODE="$REVIEW_CODE" \
   FL_TOOLS_EVIDENCE_DIFF="$DIFF_CHECK" \
-  FL_TOOLS_EVIDENCE_RAW_DETECT="$DETECT_OUTPUT" \
-  FL_TOOLS_EVIDENCE_RAW_STATUS="$STATUS_OUTPUT" \
-  FL_TOOLS_EVIDENCE_RAW_REVIEW="$REVIEW_OUTPUT" \
+  FL_TOOLS_EVIDENCE_RAW_DETECT_FILE="$TMP_DIR/detect.out" \
+  FL_TOOLS_EVIDENCE_RAW_STATUS_FILE="$TMP_DIR/status.out" \
+  FL_TOOLS_EVIDENCE_RAW_REVIEW_FILE="$TMP_DIR/review.out" \
     "$TOOLS_ROOT/scripts/fl-evidence-report"
  )"
 EVIDENCE_REPORT_CODE=$?

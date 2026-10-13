@@ -3,10 +3,10 @@
   "$id": "https://freelang.tools/schemas/ai-protocol.schema.json",
   "title": "FreeLang AI Protocol",
   "type": "object",
-  "required": ["protocol", "action", "status", "project", "verdict", "decision", "canProceed", "execution", "next"],
+  "required": ["protocol", "action", "status", "project", "verdict", "decision", "canProceed", "execution", "next", "toolAudit"],
   "properties": {
     "protocol": { "const": "freelang.ai/v1" },
-    "action": { "enum": ["ready", "start", "work", "verify", "release"] },
+    "action": { "enum": ["ready", "start", "work", "run", "verify", "release"] },
     "status": { "enum": ["READY", "NOT_READY", "BLOCKED"] },
     "project": { "type": "object" },
     "verdict": { "enum": ["TRUSTED", "TRUSTED_WITH_APPROVAL", "UNTRUSTED", "BLOCKED"] },
@@ -18,13 +18,23 @@
     },
     "canProceed": { "type": "boolean" },
     "approvalRequired": { "type": "boolean" },
-    "execution": { "const": "not-run" },
+    "execution": { "enum": ["not-run", "quick", "deep"] },
     "next": { "type": "string" },
     "limitations": { "type": "array", "items": { "type": "string" } },
     "evidence": { "type": "object" },
     "trustExitCode": { "type": "integer" },
     "summary": { "type": "object" },
-    "trust": { "type": "object" }
+    "trust": { "type": "object" },
+    "toolAudit": {
+      "type": "object",
+      "required": ["status", "required", "evidence"],
+      "properties": {
+        "status": { "enum": ["NOT_RUN", "PASS", "FAIL", "BLOCKED"] },
+        "required": { "type": "boolean" },
+        "evidence": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false
 }

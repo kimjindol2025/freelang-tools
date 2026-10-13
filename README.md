@@ -88,6 +88,9 @@ fl-test
 Native FreeLang 테스트 프레임워크의 구현 기획은
 [`docs/NATIVE-TEST-FRAMEWORK-PLAN.md`](docs/NATIVE-TEST-FRAMEWORK-PLAN.md)에 있다.
 
+현재 작업을 이어받을 때는 [`docs/CODEX-HANDOFF.md`](docs/CODEX-HANDOFF.md)를
+먼저 읽고, 일반 사용법은 [`docs/TOOL-USAGE.md`](docs/TOOL-USAGE.md)를 본다.
+
 `fl-tools`는 아래 명령을 하나의 공통 진입점으로 제공한다. 괄호 안의 파일은
 각 명령이 실제로 호출하는 내부 도구다.
 
@@ -132,6 +135,11 @@ Native FreeLang 테스트 프레임워크의 구현 기획은
 | `fl-tools workflow-test [--workflows] [--all-tests] [경로]` | 기본 빠른 테스트 프로필 또는 명시한 전체 npm/Jest/Vitest/CI 테스트 실행·증거화 |
 | `fl-tools native-workflow --input 파일` | 외부 테스트 결과를 `freelang.workflow/v1` FreeLang 계약으로 검증 |
 | 계약 기준 문서 | [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md) |
+
+`fl-tools ai run`은 빠른 프로젝트 trust만 실행하며 `toolAudit=NOT_RUN`이다.
+`fl-tools ai run --deep`와 `fl-tools ai release`는 프로젝트 trust와 별도로
+31개 FreeLang native tester audit를 실행한다. audit가 `PASS`가 아니면 AI
+protocol은 `BLOCKED`와 `next=rerun-native-tester-audit`를 반환한다.
 | `fl-tools native-trust --input 파일` | FreeLang native 신뢰 판정 core 직접 실행 (`fl-native-trust`) |
 | `fl-tools capabilities [경로]` | FreeLang native capability와 adapter 부족분을 JSON으로 출력 (`fl-capabilities`) |
 | `fl-tools native-core --input 파일` | adapter 입력을 FreeLang native route/ready/verdict로 판정 (`fl-native-core`) |

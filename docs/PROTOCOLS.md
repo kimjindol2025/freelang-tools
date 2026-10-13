@@ -33,6 +33,12 @@ ready(preflight) → ai(v1) → 작업 → trust(v1) → workflow(v1) → handof
 `verdict`는 `TRUSTED`, `TRUSTED_WITH_APPROVAL`, `UNTRUSTED`, `BLOCKED` 중 하나다.
 `canProceed`가 최종 작업 허용 플래그이며, `false`이면 `next`를 따르고 멈춘다.
 
+`fl-tools ai run --deep`와 `fl-tools ai release`는 프로젝트 trust와 별도로
+`toolAudit`를 요구한다. `toolAudit.status`가 `PASS`가 아니면 최종
+`canProceed=false`, `status=BLOCKED`, `next=rerun-native-tester-audit`로
+판정한다. 빠른 `ai run`/`ai verify` 경로에서는 `required=false`와
+`status=NOT_RUN`이며, 릴리즈 전에는 deep 경로를 반드시 실행해야 한다.
+
 ### Preflight 계약
 
 `freelang.ready/v1`의 `READY_WITH_CHANGES`는 dirty worktree를 뜻한다.

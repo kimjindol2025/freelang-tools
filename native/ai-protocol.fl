@@ -33,6 +33,8 @@
       code (str-to-num (shell_env "FL_TOOLS_AI_CODE"))
       deep (= (shell_env "FL_TOOLS_AI_DEEP") "YES")
       persist (= (shell_env "FL_TOOLS_AI_PERSIST") "YES")
+      tool-audit-status (value-or (shell_env "FL_TOOLS_AI_TOOL_AUDIT_STATUS") "NOT_RUN")
+      tool-audit-file (value-or (shell_env "FL_TOOLS_AI_TOOL_AUDIT_FILE") "")
       input (if (and (string? input-path) (file-exists input-path))
               (json-parse (file-read input-path))
               {})
@@ -41,11 +43,14 @@
       verdict (if ready-input
                 (if (= (get input "status") "BLOCKED") "BLOCKED" "TRUSTED")
                 (value-or (get input "verdict") "BLOCKED"))
-      can-proceed (if ready-input
-                   (not= (get input "status") "BLOCKED")
-                   (if (= action "release")
-                     (= verdict "TRUSTED")
-                     (or (= verdict "TRUSTED") (= verdict "TRUSTED_WITH_APPROVAL"))))
+      project-can-proceed (if ready-input
+                           (not= (get input "status") "BLOCKED")
+                           (if (= action "release")
+                             (= verdict "TRUSTED")
+                             (or (= verdict "TRUSTED") (= verdict "TRUSTED_WITH_APPROVAL"))))
+      tool-audit-required (or deep (= action "release"))
+      tool-audit-ok (or (not tool-audit-required) (= tool-audit-status "PASS"))
+      can-proceed (and project-can-proceed tool-audit-ok)
       gates (if (map? (get input "gates")) (get input "gates") {})
       summary (if ready-input
                 {"PASS" (if (= (get input "status") "BLOCKED") 0 4)
@@ -65,21 +70,28 @@
                         (value-or (get input "dialect") "UNKNOWN"))
       runner (value-or (get project-input "runner")
                        (value-or (get input "runner") "none"))
-      status (if (= verdict "BLOCKED") "BLOCKED"
-               (if can-proceed "READY" "NOT_READY"))
-      next (if ready-input
-             (if can-proceed "work" "resolve-readiness-reason-and-rerun")
-             (value-or (get input "next")
-                       (if can-proceed "work" "fix-blocked-gates-and-rerun")))
+      status (if (not tool-audit-ok) "BLOCKED"
+               (if (= verdict "BLOCKED") "BLOCKED"
+               (if can-proceed "READY" "NOT_READY")))
+      next (if (not tool-audit-ok)
+             "rerun-native-tester-audit"
+             (if ready-input
+               (if can-proceed "work" "resolve-readiness-reason-and-rerun")
+               (value-or (get input "next")
+                         (if can-proceed "work" "fix-blocked-gates-and-rerun"))))
       input-limitations (if (array? (get input "limitations"))
                           (get input "limitations") [])
       limitations (concat
                     (concat input-limitations
                             (if ready-input ["full trust verification not run"] []))
-                    (if (and (or (= action "verify") (= action "run"))
-                             (not deep))
-                      ["quick verification only; run fl-tools ai run --deep before release"]
-                      []))
+                    (concat
+                      (if (and (or (= action "verify") (= action "run"))
+                               (not deep))
+                        ["quick verification only; run fl-tools ai run --deep before release"]
+                        [])
+                      (if (and tool-audit-required (not tool-audit-ok))
+                        ["native tester audit is not PASS"]
+                        [])))
       result {"protocol" "freelang.ai/v1"
               "action" (if (or (= action "trust") (= action "review") (= action "start"))
                          (if (= action "start") "ready" "verify")
@@ -92,6 +104,9 @@
               "summary" summary
               "approvalRequired" (= (get input "approvalRequired") true)
               "execution" (if (= action "run") (if deep "deep" "quick") "not-run")
+              "toolAudit" {"status" tool-audit-status
+                           "required" tool-audit-required
+                           "evidence" tool-audit-file}
               "evidence" {"latest" ".freelang/evidence/latest.json"
                            "handoff" ".freelang/handoff.json"}
               "limitations" limitations
@@ -101,9 +116,10 @@
                         {"mode" "preflight" "fullVerification" "not-run"}
                         input)
               "trustExitCode" code}
-      exit-code (if (= verdict "TRUSTED") 0
-                  (if (= verdict "TRUSTED_WITH_APPROVAL") 0
-                    (if (= verdict "BLOCKED") 2 1)))
+      exit-code (if (not tool-audit-ok) 2
+                  (if (= verdict "TRUSTED") 0
+                    (if (= verdict "TRUSTED_WITH_APPROVAL") 0
+                      (if (= verdict "BLOCKED") 2 1))))
       report {"status" status "verdict" verdict "next" next}
       handoff {"schemaVersion" "freelang.handoff/v1"
                "generatedAt" (now_iso)

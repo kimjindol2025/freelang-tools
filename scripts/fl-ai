@@ -25,6 +25,30 @@ TMP_DIR="$(mktemp -d)"
 cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT INT TERM
 
+TOOL_AUDIT_STATUS=NOT_RUN
+TOOL_AUDIT_FILE=""
+if [[ "$DEEP" == YES || "$ACTION" == release ]]; then
+  mkdir -p -- "$TARGET/.freelang/evidence"
+  TOOL_AUDIT_FILE="$TARGET/.freelang/evidence/tester-audit-latest.json"
+  set +e
+  "$TOOLS_ROOT/scripts/fl-native-tester-audit" --run --output "$TOOL_AUDIT_FILE" \
+    >"$TMP_DIR/tester-audit.out" 2>&1
+  TOOL_AUDIT_CODE=$?
+  set -e
+  TOOL_AUDIT_VERDICT="$(sed -n 's/.*"verdict":"\([^"]*\)".*/\1/p' "$TMP_DIR/tester-audit.out" | tail -1)"
+  case "$TOOL_AUDIT_VERDICT" in
+    PASS)
+      [[ "$TOOL_AUDIT_CODE" -eq 0 ]] && TOOL_AUDIT_STATUS=PASS || TOOL_AUDIT_STATUS=FAIL
+      ;;
+    UNRESOLVED|BLOCKED)
+      TOOL_AUDIT_STATUS=BLOCKED
+      ;;
+    *)
+      [[ "$TOOL_AUDIT_CODE" -eq 2 ]] && TOOL_AUDIT_STATUS=BLOCKED || TOOL_AUDIT_STATUS=FAIL
+      ;;
+  esac
+fi
+
 CODE=0
 INPUT="$TMP_DIR/input.json"
 PERSIST=NO
@@ -71,7 +95,7 @@ else
 fi
 
 set +e
-"$TOOLS_ROOT/scripts/fl-ai-protocol" "$INPUT" "$ACTION" "$TARGET" "$CODE" "$DEEP" "$PERSIST"
+"$TOOLS_ROOT/scripts/fl-ai-protocol" "$INPUT" "$ACTION" "$TARGET" "$CODE" "$DEEP" "$PERSIST" "$TOOL_AUDIT_STATUS" "$TOOL_AUDIT_FILE"
 PROTOCOL_CODE=$?
 set -e
 exit "$PROTOCOL_CODE"

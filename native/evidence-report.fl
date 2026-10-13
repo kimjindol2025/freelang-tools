@@ -22,6 +22,15 @@
   (if (str-contains-in output "REVIEW=PASS_WITH_APPROVAL") "PASS_WITH_APPROVAL"
     (if (str-contains-in output "REVIEW=PASS") "PASS" "FAIL")))
 
+(defn raw-output [env-name file-env-name]
+  {:context "Read captured host output from a bounded file channel"
+   :returns "raw command output"
+   :effects ["file-read"]}
+  (let [path (shell_env file-env-name)]
+    (if (and (string? path) (file-exists path))
+      (file-read path)
+      (shell_env env-name))))
+
 (let [project (shell_env "FL_TOOLS_EVIDENCE_PROJECT")
       root (shell_env "FL_TOOLS_EVIDENCE_ROOT")
       dialect (shell_env "FL_TOOLS_EVIDENCE_DIALECT")
@@ -33,9 +42,9 @@
       status-code (str-to-num (shell_env "FL_TOOLS_EVIDENCE_STATUS_CODE"))
       review-code (str-to-num (shell_env "FL_TOOLS_EVIDENCE_REVIEW_CODE"))
       diff-check (shell_env "FL_TOOLS_EVIDENCE_DIFF")
-      detect-output (shell_env "FL_TOOLS_EVIDENCE_RAW_DETECT")
-      status-output (shell_env "FL_TOOLS_EVIDENCE_RAW_STATUS")
-      review-output (shell_env "FL_TOOLS_EVIDENCE_RAW_REVIEW")
+      detect-output (raw-output "FL_TOOLS_EVIDENCE_RAW_DETECT" "FL_TOOLS_EVIDENCE_RAW_DETECT_FILE")
+      status-output (raw-output "FL_TOOLS_EVIDENCE_RAW_STATUS" "FL_TOOLS_EVIDENCE_RAW_STATUS_FILE")
+      review-output (raw-output "FL_TOOLS_EVIDENCE_RAW_REVIEW" "FL_TOOLS_EVIDENCE_RAW_REVIEW_FILE")
       test-status (test-status-from status-output)
       review-status (review-status-from review-output)
       review-ok (pass-review? review-status)
