@@ -30,7 +30,36 @@ case "$DIALECT" in
   SCRIPT)
     SCRIPT_RUNNER="${FREELANG_SCRIPT_RUNNER:-$DETECTED_RUNNER}"
     if [[ -f "$SCRIPT_RUNNER" ]]; then
-      node "$SCRIPT_RUNNER" test "$TEST_ROOT" --allow-listed "$@"
+      SCRIPT_TIMEOUT_MS="${FREELANG_SCRIPT_TEST_TIMEOUT_MS:-15000}"
+      if [[ ! "$SCRIPT_TIMEOUT_MS" =~ ^[1-9][0-9]*$ ]]; then
+        echo "FREELANG_TEST=BLOCKED"
+        echo "CAUSE=FREELANG_SCRIPT_TEST_TIMEOUT_MS must be a positive integer" >&2
+        exit 2
+      fi
+      SCRIPT_TIMEOUT_SECONDS="$(( (SCRIPT_TIMEOUT_MS + 999) / 1000 ))"
+
+      # FreeLangScript projects may keep their executable tests in FreeLang
+      # source files.  Run these before the legacy Node test discovery so a
+      # project is not rejected merely because it has zero *.test.mjs files.
+      mapfile -d '' SCRIPT_NATIVE_TESTS < <(
+        find "$TEST_ROOT" -type f \( -name '*.test.fls' -o -name '*.test.fl' \) -print0 | sort -z
+      )
+      if [[ "${#SCRIPT_NATIVE_TESTS[@]}" -gt 0 ]]; then
+        for test_file in "${SCRIPT_NATIVE_TESTS[@]}"; do
+          relative="${test_file#"$ROOT/"}"
+          echo "[fl-test] check $relative"
+          # The Script profile accepts both extensions; `.test.fl` is kept
+          # for projects that use the shared FreeLang test naming convention.
+          node "$SCRIPT_RUNNER" check "$test_file"
+          echo "[fl-test] run $relative"
+          timeout "${SCRIPT_TIMEOUT_SECONDS}s" node "$SCRIPT_RUNNER" run "$test_file"
+        done
+        echo "FREELANG_SCRIPT_TESTS=${#SCRIPT_NATIVE_TESTS[@]}"
+        echo "FREELANG_TEST=PASS"
+        exit 0
+      fi
+
+      node "$SCRIPT_RUNNER" test "$TEST_ROOT" --allow-listed "--timeout=$SCRIPT_TIMEOUT_MS" "$@"
       echo "FREELANG_TEST=PASS"
       exit 0
     fi
