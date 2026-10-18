@@ -3,9 +3,8 @@ set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 URL="${1:-}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-if [[ -z "$URL" || ! -f "$RUNNER" ]]; then
+if [[ -z "$URL" ]]; then
   echo "HTTP_NATIVE=BLOCKED" >&2
   exit 2
 fi
-FL_TOOLS_HTTP_URL="$URL" node "$RUNNER" run "$TOOLS_ROOT/native/http-core.fl"
+FL_TOOLS_HTTP_URL="$URL" "$TOOLS_ROOT/scripts/http-core-native"

@@ -2,7 +2,6 @@
 set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 ROOT="${1:?root required}"; RUN="${2:?run mode required}"; REASON="${3:?reason required}"; OUT="${4:?output path required}"
 FL_TOOLS_WORKFLOW_BLOCKED_ROOT="$ROOT" FL_TOOLS_WORKFLOW_BLOCKED_RUN="$RUN" FL_TOOLS_WORKFLOW_BLOCKED_REASON="$REASON" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/workflow-blocked.fl" >"$OUT"
+  "$TOOLS_ROOT/scripts/workflow-blocked-native" >"$OUT"

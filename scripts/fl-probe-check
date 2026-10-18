@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -u
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+FILE="${1:?fl file required}"
+SC="${TOOLS_ROOT}/scripts/script-check-native"
+AR="${TOOLS_ROOT}/scripts/arity-check-native"
+if [[ ! -x "$SC" || ! -x "$AR" ]]; then
+  echo "CHECK=BLOCKED" >&2
+  echo "CAUSE=native probe binaries missing" >&2
+  exit 2
+fi
+"$SC" "$FILE" || exit $?
+"$AR" "$FILE" || exit $?

@@ -4,7 +4,6 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 ROOT="${1:?root required}"
 ALL_TESTS="${2:-NO}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-[[ -d "$ROOT" && -f "$RUNNER" ]] || exit 2
+[[ -d "$ROOT" && -x "$TOOLS_ROOT/scripts/workflow-plan-native" ]] || exit 2
 FL_TOOLS_WORKFLOW_ROOT="$ROOT" FL_TOOLS_WORKFLOW_ALL_TESTS="$ALL_TESTS" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/workflow-plan.fl"
+  "$TOOLS_ROOT/scripts/workflow-plan-native"

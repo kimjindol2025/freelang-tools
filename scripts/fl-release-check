@@ -5,12 +5,6 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 TARGET="${1:-.}"
 ROOT="$(cd -- "$TARGET" && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-if [[ ! -f "$RUNNER" ]]; then
-  echo "RELEASE_READY=NO"
-  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
-  exit 2
-fi
 
 NOTES=BLOCKED
 if [[ -f "$ROOT/CHANGELOG.md" || -d "$ROOT/releases" ]]; then NOTES=PASS; fi
@@ -45,7 +39,7 @@ FL_TOOLS_RELEASE_CLEAN="$CLEAN" \
 FL_TOOLS_RELEASE_TAGS="$TAGS" \
 FL_TOOLS_RELEASE_FIELDS="$FIELDS" \
 FL_TOOLS_RELEASE_CONTRACTS="$CONTRACTS" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/release-core.fl"
+  "$TOOLS_ROOT/scripts/release-core-native"
 CODE=$?
 set -e
 exit "$CODE"

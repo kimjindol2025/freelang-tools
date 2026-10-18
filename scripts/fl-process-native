@@ -4,11 +4,17 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 PROGRAM="${1:-}"
 ARGS_JSON="${2:-[]}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-if [[ -z "$PROGRAM" || ! -f "$RUNNER" ]]; then
+if [[ -z "$PROGRAM" ]]; then
   echo "PROCESS_NATIVE=BLOCKED" >&2
   exit 2
 fi
-FL_TOOLS_PROCESS_PROGRAM="$PROGRAM" \
-FL_TOOLS_PROCESS_ARGS="$ARGS_JSON" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/process-core.fl"
+OUTPUT="$(
+  FL_TOOLS_PROCESS_PROGRAM="$PROGRAM" \
+  FL_TOOLS_PROCESS_ARGS="$ARGS_JSON" \
+    "$TOOLS_ROOT/scripts/process-core-native"
+)"
+printf '%s\n' "$OUTPUT"
+if grep -q '"status":"PASS"' <<<"$OUTPUT"; then
+  exit 0
+fi
+exit 1

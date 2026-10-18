@@ -1,7 +1,5 @@
 ;; Phase 3 native reporter tests.
 (load "../src/test/deftest-runner.fl")
-(load "../src/test/result.fl")
-(load "../src/test/report.fl")
 
 (define pass-run
   (result-aggregate

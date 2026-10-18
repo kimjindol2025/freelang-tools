@@ -4,14 +4,13 @@ set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 INPUT="${1:-}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 
-if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
+if [[ -z "$INPUT" || ! -f "$INPUT" || ! -x "$TOOLS_ROOT/scripts/backend-contract-native" ]]; then
   echo "BACKEND_CONTRACT=BLOCKED" >&2
   echo "CAUSE=input-and-AFJ-runner-are-required" >&2
   exit 2
 fi
 
-OUTPUT="$(FL_TOOLS_BACKEND_INPUT="$INPUT" node "$RUNNER" run "$TOOLS_ROOT/native/backend-contract.fl")"
+OUTPUT="$(FL_TOOLS_BACKEND_INPUT="$INPUT" "$TOOLS_ROOT/scripts/backend-contract-native")"
 printf '%s\n' "$OUTPUT"
 grep -q '^BACKEND_CONTRACT=PASS$' <<<"$OUTPUT"

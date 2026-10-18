@@ -2,7 +2,6 @@
 set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap.js}"
 CONFIG="${1:?config path required}"
 [[ -f "$CONFIG" ]] || exit 0
-FL_TOOLS_WORKFLOW_CONFIG="$CONFIG" node "$RUNNER" run "$TOOLS_ROOT/native/workflow-config.fl"
+FL_TOOLS_WORKFLOW_CONFIG="$CONFIG" "$TOOLS_ROOT/scripts/workflow-config-native"

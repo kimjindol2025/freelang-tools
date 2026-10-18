@@ -1,0 +1,149 @@
+;; FreeLang-native SCRIPT check. Line and column are counted from the
+;; source bytes. Filename is not used to choose an error class.
+
+(defn at [src i]
+  {:context "One source character or empty at end"
+   :returns "string of length 0 or 1"
+   :effects []}
+  (if (>= i (length src)) "" (str-slice src i (+ i 1))))
+
+(defn digit? [ch]
+  {:context "Whether one character is a decimal digit"
+   :returns "boolean"
+   :effects []}
+  (or (= ch "0") (= ch "1") (= ch "2") (= ch "3") (= ch "4")
+      (= ch "5") (= ch "6") (= ch "7") (= ch "8") (= ch "9")))
+
+(defn base-name [path]
+  {:context "Last path segment"
+   :returns "file name"
+   :effects []}
+  (let [parts (str-split path "/")]
+    (get parts (- (length parts) 1))))
+
+(defn err-all [s]
+  {:context "Write the full diagnostic to stderr in one open so redirect files are not truncated"
+   :returns "nil"
+   :effects ["file-write"]}
+  (file-write "/dev/stderr" s))
+
+(defn stack-text [stack i]
+  {:context "Format remaining unmatched open parens"
+   :returns "text"
+   :effects []}
+  (if (>= i (length stack))
+    ""
+    (str "  [" (+ i 1) "] '(' at line " (get stack i) "\n"
+         (stack-text stack (+ i 1)))))
+
+(defn first-line-no [stack]
+  {:context "Line number of the first unmatched open paren"
+   :returns "line number string"
+   :effects []}
+  (if (= (length stack) 0)
+    "1"
+    (get (str-split (get stack 0) ":") 0)))
+
+(defn skip-line [src i n line col]
+  {:context "Advance to the next newline for a comment"
+   :returns "index line col as vector"
+   :effects []}
+  (if (>= i n)
+    [i line col]
+    (if (= (at src i) "\n")
+      [(+ i 1) (+ line 1) 1]
+      (skip-line src (+ i 1) n line (+ col 1)))))
+
+(defn skip-string [src i n line col]
+  {:context "Advance past a double-quoted string"
+   :returns "index line col as vector"
+   :effects []}
+  (if (>= i n)
+    [i line col]
+    (let [ch (at src i)]
+      (if (= ch "\\")
+        (skip-string src (+ i 2) n line (+ col 2))
+        (if (= ch "\"")
+          [(+ i 1) line (+ col 1)]
+          (if (= ch "\n")
+            (skip-string src (+ i 1) n (+ line 1) 1)
+            (skip-string src (+ i 1) n line (+ col 1))))))))
+
+(defn emit-unclosed [path stack line col]
+  {:context "Unclosed parenthesis diagnostic with computed positions"
+   :returns "never"
+   :effects []}
+  (let [base (base-name path)
+        depth (length stack)
+        lno (first-line-no stack)]
+    (err-all (str
+      "AI-DIAG " base ":L" lno " [RuntimeError] [E_PARSE_UNEXPECTED_TOKEN] [" line ":" col "] Unexpected token: EOF\n"
+      "  힌트: 미닫힘 괄호 스택 (깊이: " depth "):\n"
+      (stack-text stack 0)
+      "\n"
+      "필요한 닫힘 괄호 시퀀스: " (str-join "" (map (fn [x] ")") stack)) "\n"
+      "\n"
+      "다음 토큰을 예상: ')'\n"
+      "  GUIDE: 함수명, import, 권한 또는 스코프를 확인하세요.\n"))
+    (fl-cgc-halt)))
+
+(defn emit-extra [path line col]
+  {:context "Extra closing parenthesis diagnostic with computed position"
+   :returns "never"
+   :effects []}
+  (let [base (base-name path)]
+    (err-all (str
+      "AI-DIAG " base ":L" line " [RuntimeError] [E_PARSE_UNEXPECTED_TOKEN] [" line ":" col "] Expected block or S-expression, got RParen\n"
+      "  GUIDE: 함수명, import, 권한 또는 스코프를 확인하세요.\n"))
+    (fl-cgc-halt)))
+
+(defn emit-numop [path line col]
+  {:context "Number in operator position"
+   :returns "never"
+   :effects []}
+  (let [base (base-name path)]
+    (err-all (str
+      "AI-DIAG " base ":L" line " [RuntimeError] [E_PARSE_UNEXPECTED_TOKEN] [" line ":" col "] Expected operator (symbol or keyword) in S-expression, got Number\n"
+      "  힌트: S-expression의 첫 요소는 함수명이어야 합니다: (함수명 인자...)\n"
+      "  GUIDE: 함수명, import, 권한 또는 스코프를 확인하세요.\n"))
+    (fl-cgc-halt)))
+
+(defn scan [src path i n line col stack expect-op]
+  {:context "Walk source counting parens and operator position"
+   :returns "nil on success"
+   :effects []}
+  (if (>= i n)
+    (if (> (length stack) 0)
+      (emit-unclosed path stack line col)
+      nil)
+    (let [ch (at src i)]
+      (if (= ch "\n")
+        (scan src path (+ i 1) n (+ line 1) 1 stack expect-op)
+        (if (= ch ";")
+          (let [nx (skip-line src (+ i 1) n line (+ col 1))]
+            (scan src path (get nx 0) n (get nx 1) (get nx 2) stack expect-op))
+          (if (= ch "\"")
+            (let [nx (skip-string src (+ i 1) n line (+ col 1))]
+              (scan src path (get nx 0) n (get nx 1) (get nx 2) stack false))
+            (if (or (= ch " ") (= ch "\t") (= ch "\r"))
+              (scan src path (+ i 1) n line (+ col 1) stack expect-op)
+              (if (= ch "(")
+                (scan src path (+ i 1) n line (+ col 1)
+                      (push stack (str line ":" col)) true)
+                (if (= ch ")")
+                  (if (= (length stack) 0)
+                    (emit-extra path line col)
+                    (scan src path (+ i 1) n line (+ col 1)
+                          (str-slice stack 0 (- (length stack) 1)) false))
+                  (if (and expect-op (digit? ch))
+                    (emit-numop path line col)
+                    (scan src path (+ i 1) n line (+ col 1) stack false)))))))))))
+
+(let [path (get-arg 0)]
+  (if (or (nil? path) (= path ""))
+    (throw "file required")
+    (if (not (file-exists path))
+      (throw (str "file not found: " path))
+      (let [src (file-read path)]
+        (scan src path 0 (length src) 1 1 [] false)
+        (println (str "check: OK " path))))))

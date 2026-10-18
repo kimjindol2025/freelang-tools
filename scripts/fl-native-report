@@ -2,10 +2,9 @@
 set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 FL_TOOLS_REPORT_PROJECT="${1:?project required}" FL_TOOLS_REPORT_ROOT="${2:?root required}" \
 FL_TOOLS_REPORT_DIALECT="${3:?dialect required}" FL_TOOLS_REPORT_RUNNER="${4:?runner required}" \
 FL_TOOLS_REPORT_BRANCH="${5:?branch required}" FL_TOOLS_REPORT_GIT="${6:?git state required}" \
 FL_TOOLS_REPORT_STATUS_OUTPUT="${7:?status output required}" FL_TOOLS_REPORT_REVIEW_OUTPUT="${8:?review output required}" \
 FL_TOOLS_REPORT_STATUS_CODE="${9:?status code required}" FL_TOOLS_REPORT_REVIEW_CODE="${10:?review code required}" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/report-core.fl"
+  "$TOOLS_ROOT/scripts/report-core-native"

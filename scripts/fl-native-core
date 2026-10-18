@@ -23,16 +23,7 @@ if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
   exit 2
 fi
 
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-PROBE="$TOOLS_ROOT/native/cli-core.fl"
-if [[ ! -f "$RUNNER" ]]; then
-  echo "NATIVE_CORE=BLOCKED"
-  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
-  exit 2
-fi
-
-FL_TOOLS_CORE_INPUT="$INPUT" node "$RUNNER" check "$PROBE" >/dev/null
-OUTPUT="$(FL_TOOLS_CORE_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
+OUTPUT="$(FL_TOOLS_CORE_INPUT="$INPUT" "$TOOLS_ROOT/scripts/cli-core-native")"
 printf '%s\n' "$OUTPUT"
 if ! grep -q '^CLI_CORE_VERDICT=PASS$' <<<"$OUTPUT"; then
   exit 1

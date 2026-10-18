@@ -10,15 +10,14 @@ ROOT="$(cd -- "$TARGET_INPUT" && pwd -P)"
 DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 DETECTED_RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
-RUNNER="${FREELANG_AFJ_RUNNER:-$DETECTED_RUNNER}"
 
 if [[ "$DIALECT" == "AIRC" ]]; then
-  if [[ "$RUNNER" == "none" || ! -f "$RUNNER" ]]; then
+  if [[ "$DETECTED_RUNNER" == "none" || ! -f "$DETECTED_RUNNER" ]]; then
     echo "FREELANG_CHECK=BLOCKED"
-    echo "CAUSE=AIRC runner not found: $RUNNER" >&2
+    echo "CAUSE=AIRC runner not found: $DETECTED_RUNNER" >&2
     exit 2
   fi
-  "$TOOLS_ROOT/scripts/fl-airc-check-batch" "$ROOT" "$DIALECT" "$RUNNER"
+  "$TOOLS_ROOT/scripts/fl-airc-check-batch" "$ROOT" "$DIALECT" "$DETECTED_RUNNER"
   echo "FREELANG_CHECK=PASS"
   exit 0
 fi
@@ -41,13 +40,7 @@ if [[ "$DIALECT" != "AFJ" ]]; then
   exit 0
 fi
 
-if [[ ! -f "$RUNNER" ]]; then
-  echo "FREELANG_CHECK=BLOCKED"
-  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
-  exit 2
-fi
-
-"$TOOLS_ROOT/scripts/fl-native-check-batch" "$ROOT" "$DIALECT" "$RUNNER"
+"$TOOLS_ROOT/scripts/fl-native-check-batch" "$ROOT" "$DIALECT"
 
 "$TOOLS_ROOT/scripts/fl-test" "$ROOT" "$@"
 echo "FREELANG_CHECK=PASS"

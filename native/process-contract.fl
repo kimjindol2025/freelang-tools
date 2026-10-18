@@ -21,13 +21,21 @@
    :returns "process contract"
    :effects ["process"]}
   (if (= (get result "_tag") "Ok")
-    (let [value (get result "value")]
-      (process-result program args true
-                      (get value "stdout")
-                      (get value "stderr")
-                      (get value "code")
-                      (get value "signal")
-                      nil))
+    (let [value (get result "value")
+          code (get value "code")]
+      (if (= code 0)
+        (process-result program args true
+                        (get value "stdout")
+                        (get value "stderr")
+                        code
+                        (get value "signal")
+                        nil)
+        (process-result program args false
+                        (get value "stdout")
+                        (get value "stderr")
+                        code
+                        (get value "signal")
+                        (if (= code 127) "E_PROCESS_NOT_FOUND" "E_PROCESS_EXIT"))))
     (process-result program args false "" ""
                     1 nil
                     (get result "code"))))

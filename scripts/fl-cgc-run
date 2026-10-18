@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+V11_RUNTIME="${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}"
+FILE="${1:?fl file required}"
+shift || true
+CGC="${TOOLS_ROOT}/scripts/cgc-native"
+if [[ ! -f "$CGC" ]]; then
+  echo "RUN=BLOCKED" >&2
+  exit 2
+fi
+if [[ ! -f "$FILE" ]]; then
+  printf '\n\033[31m오류\033[0m  파일을 찾을 수 없습니다: %s\n' "$FILE" >&2
+  exit 1
+fi
+if [[ ! -d "$V11_RUNTIME" ]]; then
+  echo "RUN=BLOCKED" >&2
+  echo "CAUSE=runtime-missing" >&2
+  exit 2
+fi
+WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/fl-cgc-run.XXXXXX")"
+cleanup() { rm -rf -- "$WORKDIR"; }
+trap cleanup EXIT INT TERM
+set +e
+"$CGC" "$FILE" "$WORKDIR/out.c" --print-last >"$WORKDIR/cgc.log" 2>&1
+CEC=$?
+set -e
+if grep -q '\[CGC-ERR\]' "$WORKDIR/cgc.log"; then
+  grep '\[CGC-ERR\]' "$WORKDIR/cgc.log" >&2
+  exit 1
+fi
+if [[ "$CEC" -ne 0 ]]; then
+  cat "$WORKDIR/cgc.log" >&2
+  exit 1
+fi
+set +e
+gcc -I "$V11_RUNTIME" -o "$WORKDIR/a.out" "$WORKDIR/out.c" \
+  "$V11_RUNTIME/core.c" "$V11_RUNTIME/collection.c" "$V11_RUNTIME/io.c" \
+  "$V11_RUNTIME/math.c" "$V11_RUNTIME/error.c" "$V11_RUNTIME/process.c" \
+  "$V11_RUNTIME/json.c" "$V11_RUNTIME/cgc-bridge.c" -lm >"$WORKDIR/gcc.log" 2>&1
+GEC=$?
+set -e
+if [[ "$GEC" -ne 0 ]]; then
+  cat "$WORKDIR/gcc.log" >&2
+  echo "[CGC-ERR] gcc failed" >&2
+  exit 1
+fi
+set +e
+# Relative spawn paths in tests (e.g. scripts/fl-workflow-test) resolve
+# against the tools repo root, not the gcc temp dir.
+(cd "$TOOLS_ROOT" && FL_SOURCE_FILE="$FILE" "$WORKDIR/a.out" "$@")
+exit $?

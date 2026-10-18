@@ -28,7 +28,9 @@
       result (if (file-exists result-path) (json-parse (file-read result-path)) nil)
       files (if (file-exists evidence-dir)
               (sort (filter
-                      (fn [name] (file_is_file (str evidence-dir "/" name)))
+                      (fn [name]
+                        (and (file_is_file (str evidence-dir "/" name))
+                             (not (= name "evidence-manifest.json"))))
                       (dir-list evidence-dir)))
               [])
       manifest {"schema" "freelang-tools/evidence-manifest/v1"
@@ -54,6 +56,6 @@
                 "run_cleanup" (meta-value metadata "RUN_CLEANUP")
                 "run_residual" (number-or-nil (meta-value metadata "RUN_RESIDUAL"))}
       output-path (str evidence-dir "/evidence-manifest.json")]
-  (if (and (string? evidence-dir) (file-exists evidence-dir))
-    (file-write output-path (str (json-stringify manifest) "\n"))
-    nil))
+  (println (if (and (string? evidence-dir) (file-exists evidence-dir))
+              (file-write output-path (str (json-stringify manifest) "\n"))
+              nil)))

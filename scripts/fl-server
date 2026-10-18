@@ -19,7 +19,7 @@ status() {
   FL_TOOLS_SERVER_INSTALL_ROOT="$INSTALL_ROOT" \
   FL_TOOLS_SERVER_BIN_DIR="$BIN_DIR" \
   FL_TOOLS_SERVER_TOOLS_ROOT="$TOOLS_ROOT" \
-    node "${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}" run "$TOOLS_ROOT/native/server-status.fl"
+    "$TOOLS_ROOT/scripts/server-status-native"
   local code=$?
   set -e
   return "$code"

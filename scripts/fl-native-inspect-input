@@ -2,8 +2,7 @@
 set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 OUT="${1:?output path required}"; PROJECT="${2:?project required}"; ROOT="${3:?root required}"; DIALECT="${4:?dialect required}"; RUNNER_PATH="${5:?runner required}"; GIT="${6:?git state required}"
 FL_TOOLS_INSPECT_INPUT="$OUT" FL_TOOLS_INSPECT_PROJECT="$PROJECT" FL_TOOLS_INSPECT_ROOT="$ROOT" \
 FL_TOOLS_INSPECT_DIALECT="$DIALECT" FL_TOOLS_INSPECT_RUNNER="$RUNNER_PATH" FL_TOOLS_INSPECT_GIT="$GIT" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/inspect-input.fl"
+  "$TOOLS_ROOT/scripts/inspect-input-native"

@@ -83,14 +83,7 @@
       (if (= dialect "FRONT") (if (has-file? root "fl-front-build.js") (str root "/fl-front-build.js")
                                   (if (has-file? root "web/fl-front-build.js") (str root "/web/fl-front-build.js") "none")
         (if (= dialect "SCRIPT") (if (has-file? root "bin/fl-script-unified.js") (str root "/bin/fl-script-unified.js") "none")
-          (if (= dialect "AFJ") (if (has-file? root "bootstrap.js") (str root "/bootstrap.js")
-                                      (first-existing [
-                                        (str root "/bootstrap-native.js")
-                                        (str root "/bootstrap.js")
-                                        "/home/kim/platform/freelang-afj/bootstrap-native.js"
-                                        "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"
-                                        "/home/kim/platform/freelang-afj/bootstrap.js"
-                                        "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"]))
+          (if (= dialect "AFJ") "none"
             (if (= dialect "FX") (if (has-file? root "fl-test.sh") (str root "/fl-test.sh") "none")
               (if (= dialect "NODE") (str root "/package.json") "none")))))))))
 
@@ -126,11 +119,7 @@
                                                    "/home/kim/kim/platform/freelang-v11-fx/bootstrap.js"
                                                    "/home/kim/kim/platform/freelang-v11/bootstrap.js"
                                                    "/home/kim/freelang-v11/bootstrap.js"])
-                         (if (= detectedDialect "AFJ") (first-existing [
-                                                   (str root "/bootstrap-native.js")
-                                                   (str root "/bootstrap.js")
-                                                   "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"
-                                                   "/home/kim/kim/platform/freelang-afj/bootstrap-native.js"])
+                         (if (= detectedDialect "AFJ") "none"
                          (if (= detectedDialect "AIA") (if (has-file? root "tools/verify-aia-cold-boot.sh") (str root "/tools/verify-aia-cold-boot.sh") "none")
                            (if (= detectedDialect "FRONT") (if (has-file? root "fl-front-build.js") (str root "/fl-front-build.js")
                                                        (if (has-file? root "web/fl-front-build.js") (str root "/web/fl-front-build.js") "none")
@@ -159,5 +148,7 @@
   (println (str "FAMILY=" (get value "family")))
   (println (str "EXTENSIONS=" (str-join " " (get value "extensions"))))
   (println (str "RUNNER=" (get value "runner")))
+  (if (= (get value "runner") "none")
+    (println "CAUSE=AFJ-error-output-differs-from-bootstrap"))
   (println (str "TEST_ROOT=" (get value "testRoot")))
   (println (str "TEST_FILES=" (get value "testFiles"))))

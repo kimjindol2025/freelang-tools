@@ -30,12 +30,12 @@
       (try (json-parse (str-slice line (length prefix)))
            (catch error nil)))))
 
-(defn run-tester [id test-file runner]
+(defn run-tester [id test-file cgc-run]
   {:context "Run one declared FreeLang native test and capture evidence"
    :returns "tester evidence result"
    :effects ["process" "time"]}
   (let [started-at-ms (now-ms)
-        result (process_spawn "node" [runner "run" test-file])
+        result (process_spawn cgc-run [test-file])
         finished-at-ms (now-ms)
         output (output-of result)
         code (process-code result)
@@ -53,7 +53,7 @@
     {"id" id
      "status" status
      "evidence" test-file
-     "command" (str "node " runner " run " test-file)
+     "command" (str cgc-run " " test-file)
      "authority" "freelang-native"
      "adapter" "afj-bootstrap-host"
      "reproducible" complete
@@ -68,45 +68,45 @@
 (capability-enable "native-process")
 
 (let [run-start-ms (now-ms)
-      runner (shell_env "FREELANG_AFJ_RUNNER")
       root (shell_env "FL_TOOLS_ROOT")
+      cgc-run (str root "/scripts/fl-cgc-run")
       http-url (shell_env "FL_TOOLS_HTTP_TEST_URL")
       output-path (shell_env "FL_TOOLS_TESTER_AUDIT_RUN_OUTPUT")
       http-test-file (if (and (string? http-url) (not= http-url ""))
                        (str root "/tests/native-http-live.test.fl")
                        (str root "/tests/native-http.test.fl"))
       ]
-  (let [results [(run-tester "system-json" (str root "/tests/native-system-json.test.fl") runner)
-               (run-tester "process-native" (str root "/tests/native-process.test.fl") runner)
-               (run-tester "http-native" http-test-file runner)
-               (run-tester "git-native" (str root "/tests/native-git.test.fl") runner)
-               (run-tester "determinism" (str root "/tests/native-determinism.test.fl") runner)
-               (run-tester "native-workflow" (str root "/tests/native-workflow-contract.test.fl") runner)
-               (run-tester "native-core" (str root "/tests/native-cli-core.test.fl") runner)
-               (run-tester "native-trust" (str root "/tests/native-trust-core.test.fl") runner)
-               (run-tester "capabilities" (str root "/tests/native-capability-live.test.fl") runner)
-               (run-tester "backend-contract" (str root "/tests/native-backend-contract-live.test.fl") runner)
-               (run-tester "test-cli-contract" (str root "/tests/native-report.test.fl") runner)
-               (run-tester "test-cli-isolation" (str root "/tests/native-isolation.test.fl") runner)
-               (run-tester "test-effect-capability" (str root "/tests/native-effect.test.fl") runner)
-               (run-tester "test-trust" (str root "/tests/native-trust-decision.test.fl") runner)
-               (run-tester "test-deploy-fixture" (str root "/tests/deploy-fixture/tests/deploy-fixture.test.fl") runner)
-               (run-tester "detect" (str root "/tests/native-detect.test.fl") runner)
-               (run-tester "evidence" (str root "/tests/native-evidence.test.fl") runner)
-               (run-tester "release-check" (str root "/tests/native-release.test.fl") runner)
-               (run-tester "safety" (str root "/tests/native-safety.test.fl") runner)
-               (run-tester "review" (str root "/tests/native-review-policy.test.fl") runner)
-               (run-tester "start" (str root "/tests/native-start.test.fl") runner)
-               (run-tester "ready" (str root "/tests/native-ready.test.fl") runner)
-               (run-tester "doctor" (str root "/tests/native-doctor.test.fl") runner)
-               (run-tester "pipeline" (str root "/tests/native-pipeline.test.fl") runner)
-               (run-tester "safe-push" (str root "/tests/native-safe-push.test.fl") runner)
-               (run-tester "status" (str root "/tests/native-status.test.fl") runner)
-               (run-tester "route" (str root "/tests/native-route.test.fl") runner)
-               (run-tester "check" (str root "/tests/native-check.test.fl") runner)
-               (run-tester "test" (str root "/tests/native-test.test.fl") runner)
-               (run-tester "trust" (str root "/tests/native-trust-decision.test.fl") runner)
-               (run-tester "workflow-test" (str root "/tests/native-workflow-adapter.test.fl") runner)]]
+  (let [results [(run-tester "system-json" (str root "/tests/native-system-json.test.fl") cgc-run)
+               (run-tester "process-native" (str root "/tests/native-process.test.fl") cgc-run)
+               (run-tester "http-native" http-test-file cgc-run)
+               (run-tester "git-native" (str root "/tests/native-git.test.fl") cgc-run)
+               (run-tester "determinism" (str root "/tests/native-determinism.test.fl") cgc-run)
+               (run-tester "native-workflow" (str root "/tests/native-workflow-contract.test.fl") cgc-run)
+               (run-tester "native-core" (str root "/tests/native-cli-core.test.fl") cgc-run)
+               (run-tester "native-trust" (str root "/tests/native-trust-core.test.fl") cgc-run)
+               (run-tester "capabilities" (str root "/tests/native-capability-live.test.fl") cgc-run)
+               (run-tester "backend-contract" (str root "/tests/native-backend-contract-live.test.fl") cgc-run)
+               (run-tester "test-cli-contract" (str root "/tests/native-report.test.fl") cgc-run)
+               (run-tester "test-cli-isolation" (str root "/tests/native-isolation.test.fl") cgc-run)
+               (run-tester "test-effect-capability" (str root "/tests/native-effect.test.fl") cgc-run)
+               (run-tester "test-trust" (str root "/tests/native-trust-decision.test.fl") cgc-run)
+               (run-tester "test-deploy-fixture" (str root "/tests/deploy-fixture/tests/deploy-fixture.test.fl") cgc-run)
+               (run-tester "detect" (str root "/tests/native-detect.test.fl") cgc-run)
+               (run-tester "evidence" (str root "/tests/native-evidence.test.fl") cgc-run)
+               (run-tester "release-check" (str root "/tests/native-release.test.fl") cgc-run)
+               (run-tester "safety" (str root "/tests/native-safety.test.fl") cgc-run)
+               (run-tester "review" (str root "/tests/native-review-policy.test.fl") cgc-run)
+               (run-tester "start" (str root "/tests/native-start.test.fl") cgc-run)
+               (run-tester "ready" (str root "/tests/native-ready.test.fl") cgc-run)
+               (run-tester "doctor" (str root "/tests/native-doctor.test.fl") cgc-run)
+               (run-tester "pipeline" (str root "/tests/native-pipeline.test.fl") cgc-run)
+               (run-tester "safe-push" (str root "/tests/native-safe-push.test.fl") cgc-run)
+               (run-tester "status" (str root "/tests/native-status.test.fl") cgc-run)
+               (run-tester "route" (str root "/tests/native-route.test.fl") cgc-run)
+               (run-tester "check" (str root "/tests/native-check.test.fl") cgc-run)
+               (run-tester "test" (str root "/tests/native-test.test.fl") cgc-run)
+               (run-tester "trust" (str root "/tests/native-trust-decision.test.fl") cgc-run)
+               (run-tester "workflow-test" (str root "/tests/native-workflow-adapter.test.fl") cgc-run)]]
     (let [run-finished-ms (now-ms)]
       (file-write output-path (str (json-stringify {"schemaVersion" "freelang.tester-evidence/v1"
                                                 "source" "freelang-native"
@@ -114,7 +114,7 @@
                                                 "startedAtMs" run-start-ms
                                                 "finishedAtMs" run-finished-ms
                                                 "durationMs" (- run-finished-ms run-start-ms)
-                                                "runner" runner
+                                                "runner" cgc-run
                                                 "root" root
                                                 "results" results}) "\n"))
       (println (json-stringify {"schemaVersion" "freelang.tester-runner/v1"

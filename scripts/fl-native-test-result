@@ -2,11 +2,10 @@
 set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 OUTPUT_PATH="${1:?output path required}"
-[[ -f "$RUNNER" && -f "$OUTPUT_PATH" ]] || { echo "TEST_RESULT=FAIL"; exit 2; }
+[[ -f "$OUTPUT_PATH" ]] || { echo "TEST_RESULT=FAIL"; exit 2; }
 set +e
-FL_TOOLS_TEST_OUTPUT="$OUTPUT_PATH" node "$RUNNER" run "$TOOLS_ROOT/native/test-result.fl"
+FL_TOOLS_TEST_OUTPUT="$OUTPUT_PATH" "$TOOLS_ROOT/scripts/test-result-native"
 CODE=$?
 set -e
 exit "$CODE"

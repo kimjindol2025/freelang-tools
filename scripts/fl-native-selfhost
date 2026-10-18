@@ -2,31 +2,52 @@
 set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+PROBE_FL="$TOOLS_ROOT/native/selfhost-probe.fl"
+PROBE_BIN="$TOOLS_ROOT/scripts/selfhost-probe-native"
+CORE_BIN="$TOOLS_ROOT/scripts/selfhost-core-native"
+CGC="${FREELANG_V11_CGC:-$TOOLS_ROOT/scripts/selfhost-cgc}"
+
 TMP_DIR="$(mktemp -d)"
 cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT INT TERM
 
-set +e
-EXEC_OUTPUT="$(
-  FL_TOOLS_SELFHOST_RUNNER="$RUNNER" \
-  FL_TOOLS_SELFHOST_PROBE="$TOOLS_ROOT/native/selfhost-probe.fl" \
-  FL_TOOLS_SELFHOST_CHECK_OUTPUT="$TMP_DIR/check.out" \
-  FL_TOOLS_SELFHOST_RUN_OUTPUT="$TMP_DIR/run.out" \
-    node "$RUNNER" run "$TOOLS_ROOT/native/selfhost-exec.fl"
-)"
-EXEC_CODE=$?
-set -e
+CHECK_OUT="$TMP_DIR/check.out"
+RUN_OUT="$TMP_DIR/run.out"
+: >"$CHECK_OUT"
+: >"$RUN_OUT"
+CHECK_CODE=1
+RUN_CODE=1
 
-CHECK_CODE="$(printf '%s\n' "$EXEC_OUTPUT" | sed -n 's/^SELFHOST_CHECK_CODE=//p' | tail -1)"
-RUN_CODE="$(printf '%s\n' "$EXEC_OUTPUT" | sed -n 's/^SELFHOST_RUN_CODE=//p' | tail -1)"
-if [[ "$EXEC_CODE" -ne 0 || -z "$CHECK_CODE" || -z "$RUN_CODE" ]]; then
-  CHECK_CODE=1
-  RUN_CODE=1
+if [[ -f "$PROBE_FL" && -x "$CGC" ]]; then
+  set +e
+  "$CGC" "$PROBE_FL" "$TMP_DIR/probe.c" >"$CHECK_OUT" 2>"$TMP_DIR/check.err"
+  CHECK_CODE=$?
+  set -e
+  cat "$TMP_DIR/check.err" >>"$CHECK_OUT"
 fi
 
-FL_TOOLS_SELFHOST_CHECK_OUTPUT="$TMP_DIR/check.out" \
-FL_TOOLS_SELFHOST_RUN_OUTPUT="$TMP_DIR/run.out" \
+if [[ -x "$PROBE_BIN" ]]; then
+  set +e
+  "$PROBE_BIN" >"$RUN_OUT" 2>"$TMP_DIR/run.err"
+  RUN_CODE=$?
+  set -e
+  cat "$TMP_DIR/run.err" >>"$RUN_OUT"
+fi
+
+if [[ ! -x "$CORE_BIN" ]]; then
+  printf '%s\n' "SELFHOST_CHECK=FAIL"
+  printf '%s\n' "SELFHOST_RUN=FAIL"
+  printf '%s\n' "SELFHOST_SMOKE=FAIL"
+  printf '%s\n' "CAUSE=native selfhost core is missing" >&2
+  exit 1
+fi
+
+set +e
+FL_TOOLS_SELFHOST_CHECK_OUTPUT="$CHECK_OUT" \
+FL_TOOLS_SELFHOST_RUN_OUTPUT="$RUN_OUT" \
 FL_TOOLS_SELFHOST_CHECK_CODE="$CHECK_CODE" \
 FL_TOOLS_SELFHOST_RUN_CODE="$RUN_CODE" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/selfhost-core.fl"
+  "$CORE_BIN"
+CORE_CODE=$?
+set -e
+exit "$CORE_CODE"

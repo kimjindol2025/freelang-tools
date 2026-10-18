@@ -3,7 +3,6 @@ set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 RUNNER_VALUE="${1:?runner value required}"; GIT_VALUE="${2:?git value required}"; TEST_VALUE="${3:?test root value required}"; MANIFEST_VALUE="${4:?manifest value required}"; TOOLS_VALUE="${5:?tools value required}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 FL_TOOLS_DOCTOR_RUNNER="$RUNNER_VALUE" FL_TOOLS_DOCTOR_GIT="$GIT_VALUE" \
 FL_TOOLS_DOCTOR_TEST_ROOT="$TEST_VALUE" FL_TOOLS_DOCTOR_MANIFEST="$MANIFEST_VALUE" \
-FL_TOOLS_DOCTOR_TOOLS="$TOOLS_VALUE" node "$RUNNER" run "$TOOLS_ROOT/native/doctor-core.fl"
+FL_TOOLS_DOCTOR_TOOLS="$TOOLS_VALUE" "$TOOLS_ROOT/scripts/doctor-core-native"

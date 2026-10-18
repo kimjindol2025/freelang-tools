@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-exec node "$RUNNER" run "$TOOLS_ROOT/native/ready-core.fl"
+exec "$TOOLS_ROOT/scripts/ready-core-native"

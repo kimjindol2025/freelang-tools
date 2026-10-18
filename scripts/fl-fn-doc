@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Native fn-doc. Reads native/stdlib-signatures.json and optional source :context/:returns.
+Bridge: JSON catalog lookup is not in the FreeLang runtime yet."""
+import json, os, re, sys
+
+TOOLS_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CATALOG = os.path.join(TOOLS_ROOT, "native", "stdlib-signatures.json")
+
+def _unescape(s):
+    if not isinstance(s, str) or "\\u" not in s:
+        return s
+    try:
+        return s.encode("utf-8").decode("unicode_escape")
+    except Exception:
+        return s
+
+def load_catalog():
+    with open(CATALOG, encoding="utf-8") as f:
+        rows = json.load(f)
+    for row in rows:
+        for k in list(row):
+            row[k] = _unescape(row[k])
+    return rows
+
+def user_fns(paths):
+    found = []
+    defn_re = re.compile(
+        r"\(defn\s+([A-Za-z0-9_!?*/+-]+)[^)]*?\{:([^}]*)\}",
+        re.S,
+    )
+    for path in paths:
+        if not os.path.isfile(path):
+            continue
+        text = open(path, encoding="utf-8", errors="replace").read()
+        for m in defn_re.finditer(text):
+            name = m.group(1)
+            meta = m.group(2)
+            ctx = re.search(r':context\s+"([^"]*)"', meta)
+            ret = re.search(r':returns\s+"([^"]*)"', meta)
+            found.append({
+                "module": "user",
+                "name": name,
+                "params": "",
+                "returns": ret.group(1) if ret else "",
+                "context": ctx.group(1) if ctx else "",
+            })
+    return found
+
+def main():
+    args = sys.argv[1:]
+    source_paths = []
+    query = None
+    i = 0
+    while i < len(args):
+        if args[i] == "--source":
+            i += 1
+            if i >= len(args):
+                print("Usage: fl-fn-doc [--source file.fl ...] <name>", file=sys.stderr)
+                sys.exit(1)
+            source_paths.append(args[i])
+            i += 1
+            continue
+        if query is None:
+            query = args[i]
+        i += 1
+    if not query:
+        print("Usage: fl-fn-doc [--source file.fl ...] <name>", file=sys.stderr)
+        sys.exit(1)
+    entries = load_catalog()
+    extra = user_fns(source_paths) if source_paths else []
+    entries = extra + entries
+    q = query.lower()
+    exact = [e for e in entries if e["name"] == query]
+    partial = [e for e in entries if q in e["name"].lower() and e["name"] != query]
+    if not exact and not partial:
+        print(json.dumps({"query": query, "found": False, "suggestions": []}, separators=(",", ":")))
+        sys.exit(1)
+    def row(e):
+        r = {"name": e["name"], "module": e.get("module", ""), "params": e.get("params", ""), "returns": e.get("returns", "")}
+        if e.get("context"):
+            r["context"] = e["context"]
+        return r
+    print(json.dumps({
+        "query": query,
+        "found": True,
+        "exact": [row(e) for e in exact],
+        "partial": [row(e) for e in partial[:20]],
+        "partial_truncated": max(0, len(partial) - 20),
+    }, ensure_ascii=False, separators=(",", ":")))
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

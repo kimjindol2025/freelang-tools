@@ -11,9 +11,8 @@ DEEP="${5:-NO}"
 PERSIST="${6:-NO}"
 TOOL_AUDIT_STATUS="${7:-NOT_RUN}"
 TOOL_AUDIT_FILE="${8:-}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 
-if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
+if [[ -z "$INPUT" || ! -f "$INPUT" || ! -x "$TOOLS_ROOT/scripts/ai-protocol-native" ]]; then
   exit 2
 fi
 
@@ -25,7 +24,7 @@ OUTPUT="$(FL_TOOLS_AI_INPUT="$INPUT" \
   FL_TOOLS_AI_PERSIST="$PERSIST" \
   FL_TOOLS_AI_TOOL_AUDIT_STATUS="$TOOL_AUDIT_STATUS" \
   FL_TOOLS_AI_TOOL_AUDIT_FILE="$TOOL_AUDIT_FILE" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/ai-protocol.fl")"
+  "$TOOLS_ROOT/scripts/ai-protocol-native")"
 exit_code="$(sed -n 's/^AI_EXIT_CODE=//p' <<<"$OUTPUT")"
 if [[ -z "$exit_code" ]]; then
   exit 2

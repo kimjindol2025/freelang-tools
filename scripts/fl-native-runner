@@ -5,44 +5,21 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 MODE="${1:?mode is required}"
 TARGET="${2:?target is required}"
-RUNNER="${FREELANG_AFJ_RUNNER:-}"
-if [[ -z "$RUNNER" || ! -f "$RUNNER" ]]; then
-  echo "RUNNER_NATIVE=BLOCKED" >&2
-  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
-  exit 2
+if [[ "$MODE" == check ]]; then
+  exec "$TOOLS_ROOT/scripts/fl-cgc-check" "$TARGET"
 fi
-
-OUTPUT_PATH="${3:-}"
-TEMP_OUTPUT=NO
-if [[ -z "$OUTPUT_PATH" ]]; then
-  OUTPUT_PATH="$(mktemp)"
-  TEMP_OUTPUT=YES
+if [[ "$MODE" == run ]]; then
+  OUTPUT_PATH="${3:-}"
+  if [[ -n "$OUTPUT_PATH" ]]; then
+    set +e
+    "$TOOLS_ROOT/scripts/fl-cgc-run" "$TARGET" >"$OUTPUT_PATH"
+    code=$?
+    set -e
+    cat "$OUTPUT_PATH"
+    exit "$code"
+  fi
+  exec "$TOOLS_ROOT/scripts/fl-cgc-run" "$TARGET"
 fi
-cleanup() {
-  if [[ "$TEMP_OUTPUT" == YES ]]; then rm -f "$OUTPUT_PATH"; fi
-}
-trap cleanup EXIT INT TERM
-
-set +e
-META="$(
-  FL_TOOLS_RUNNER_EXEC_RUNNER="$RUNNER" \
-  FL_TOOLS_RUNNER_EXEC_MODE="$MODE" \
-  FL_TOOLS_RUNNER_EXEC_TARGET="$TARGET" \
-  FL_TOOLS_RUNNER_EXEC_OUTPUT="$OUTPUT_PATH" \
-    node "$RUNNER" run "$TOOLS_ROOT/native/runner-exec.fl"
-)"
-EXEC_CODE=$?
-set -e
-
-RUNNER_CODE="$(printf '%s\n' "$META" | sed -n 's/^RUNNER_EXIT=//p' | tail -1)"
-if [[ "$EXEC_CODE" -ne 0 || ! "$RUNNER_CODE" =~ ^[0-9]+$ ]]; then
-  echo "$META" >&2
-  echo "RUNNER_NATIVE=ERROR" >&2
-  exit 2
-fi
-
-cat "$OUTPUT_PATH"
-if [[ "$RUNNER_CODE" -eq 0 ]]; then
-  exit 0
-fi
-exit 1
+echo "RUNNER_NATIVE=BLOCKED" >&2
+echo "CAUSE=unsupported-mode: $MODE" >&2
+exit 2

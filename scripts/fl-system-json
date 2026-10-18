@@ -6,8 +6,7 @@ ACTION="${1:-}"
 ROOT_PATH="${2:-}"
 PATH_VALUE="${3:-$ROOT_PATH}"
 PAYLOAD="${4:-}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-if [[ -z "$ACTION" || -z "$ROOT_PATH" || ! -f "$RUNNER" ]]; then
+if [[ -z "$ACTION" || -z "$ROOT_PATH" || ! -x "$TOOLS_ROOT/scripts/system-json-native" ]]; then
   echo "SYSTEM_JSON=BLOCKED" >&2
   exit 2
 fi
@@ -15,4 +14,4 @@ FL_TOOLS_SYSTEM_JSON_ACTION="$ACTION" \
 FL_TOOLS_SYSTEM_JSON_ROOT="$ROOT_PATH" \
 FL_TOOLS_SYSTEM_JSON_PATH="$PATH_VALUE" \
 FL_TOOLS_SYSTEM_JSON_PAYLOAD="$PAYLOAD" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/system-json.fl"
+  "$TOOLS_ROOT/scripts/system-json-native"

@@ -1,0 +1,213 @@
+;; Native arity check. Counts every parameter name in [ ], not only $name.
+;; Line and column are counted from the source. Filename does not choose a class.
+
+(defn at [src i]
+  {:context "One source character or empty at end"
+   :returns "string of length 0 or 1"
+   :effects []}
+  (if (>= i (length src)) "" (str-slice src i (+ i 1))))
+
+(defn err-all [s]
+  {:context "Write the full diagnostic to stderr in one open"
+   :returns "nil"
+   :effects ["file-write"]}
+  (file-write "/dev/stderr" s))
+
+(defn ident-char? [ch]
+  {:context "Identifier character"
+   :returns "boolean"
+   :effects []}
+  (or (= ch "_") (= ch "!") (= ch "?") (= ch "*") (= ch "/") (= ch "+") (= ch "-")
+      (= ch "$")
+      (or (= ch "0") (= ch "1") (= ch "2") (= ch "3") (= ch "4")
+          (= ch "5") (= ch "6") (= ch "7") (= ch "8") (= ch "9")
+          (or (= ch "a") (= ch "b") (= ch "c") (= ch "d") (= ch "e") (= ch "f")
+              (= ch "g") (= ch "h") (= ch "i") (= ch "j") (= ch "k") (= ch "l")
+              (= ch "m") (= ch "n") (= ch "o") (= ch "p") (= ch "q") (= ch "r")
+              (= ch "s") (= ch "t") (= ch "u") (= ch "v") (= ch "w") (= ch "x")
+              (= ch "y") (= ch "z")
+              (or (= ch "A") (= ch "B") (= ch "C") (= ch "D") (= ch "E") (= ch "F")
+                  (= ch "G") (= ch "H") (= ch "I") (= ch "J") (= ch "K") (= ch "L")
+                  (= ch "M") (= ch "N") (= ch "O") (= ch "P") (= ch "Q") (= ch "R")
+                  (= ch "S") (= ch "T") (= ch "U") (= ch "V") (= ch "W") (= ch "X")
+                  (= ch "Y") (= ch "Z"))))))
+
+(defn skip-ws [src i n]
+  {:context "Skip whitespace"
+   :returns "index"
+   :effects []}
+  (if (>= i n) i
+    (let [ch (at src i)]
+      (if (or (= ch " ") (= ch "\t") (= ch "\n") (= ch "\r"))
+        (skip-ws src (+ i 1) n)
+        i))))
+
+(defn skip-comment [src i n]
+  {:context "Skip from ; to newline"
+   :returns "index"
+   :effects []}
+  (if (>= i n) i
+    (if (= (at src i) "\n") (+ i 1) (skip-comment src (+ i 1) n))))
+
+(defn skip-string [src i n]
+  {:context "Skip a double-quoted string"
+   :returns "index"
+   :effects []}
+  (if (>= i n) i
+    (let [ch (at src i)]
+      (if (= ch "\\") (skip-string src (+ i 2) n)
+        (if (= ch "\"") (+ i 1) (skip-string src (+ i 1) n))))))
+
+(defn read-ident-from [src start j n]
+  {:context "Continue reading an identifier"
+   :returns "[end name]"
+   :effects []}
+  (if (>= j n) [j (str-slice src start j)]
+    (if (ident-char? (at src j))
+      (read-ident-from src start (+ j 1) n)
+      [j (str-slice src start j)])))
+
+(defn read-ident [src i n]
+  {:context "Read an identifier starting at i"
+   :returns "[end name]"
+   :effects []}
+  (if (not (ident-char? (at src i)))
+    [i ""]
+    (read-ident-from src i (+ i 1) n)))
+
+(defn skip-form [src i n]
+  {:context "Skip one form (atom, string, or balanced paren/bracket)"
+   :returns "index"
+   :effects []}
+  (let [j (skip-ws src i n)]
+    (if (>= j n) j
+      (let [ch (at src j)]
+        (if (= ch ";") (skip-form src (skip-comment src j n) n)
+          (if (= ch "\"") (skip-string src (+ j 1) n)
+            (if (= ch "(") (skip-until src (+ j 1) n ")" 1)
+              (if (= ch "[") (skip-until src (+ j 1) n "]" 1)
+                (if (ident-char? ch)
+                  (get (read-ident src j n) 0)
+                  (+ j 1))))))))))
+
+(defn skip-until [src i n closer depth]
+  {:context "Skip nested parens or brackets"
+   :returns "index after closer"
+   :effects []}
+  (if (>= i n) i
+    (let [ch (at src i)]
+      (if (= ch "\"") (skip-until src (skip-string src (+ i 1) n) n closer depth)
+        (if (= ch ";") (skip-until src (skip-comment src i n) n closer depth)
+          (if (or (= ch "(") (= ch "["))
+            (skip-until src (+ i 1) n closer (+ depth 1))
+            (if (or (= ch ")") (= ch "]"))
+              (if (= depth 1)
+                (+ i 1)
+                (skip-until src (+ i 1) n closer (- depth 1)))
+              (skip-until src (+ i 1) n closer depth))))))))
+
+(defn count-params [src i n]
+  {:context "Count names inside a [param vector] starting at ["
+   :returns "[index after ] count]"
+   :effects []}
+  (if (not (= (at src i) "["))
+    [i 0]
+    (count-params-inner src (+ i 1) n 0)))
+
+(defn count-params-inner [src i n cnt]
+  {:context "Walk param vector"
+   :returns "[index count]"
+   :effects []}
+  (let [j (skip-ws src i n)]
+    (if (>= j n) [j cnt]
+      (let [ch (at src j)]
+        (if (= ch "]") [(+ j 1) cnt]
+          (if (= ch ";") (count-params-inner src (skip-comment src j n) n cnt)
+            (if (= ch "\"") (count-params-inner src (skip-string src (+ j 1) n) n (+ cnt 1))
+              (if (ident-char? ch)
+                (count-params-inner src (get (read-ident src j n) 0) n (+ cnt 1))
+                (count-params-inner src (+ j 1) n cnt)))))))))
+
+(defn count-args [src i n]
+  {:context "Count top-level arguments until the matching )"
+   :returns "[index after ) count]"
+   :effects []}
+  (count-args-inner src i n 0))
+
+(defn count-args-inner [src i n cnt]
+  {:context "Walk call arguments"
+   :returns "[index count]"
+   :effects []}
+  (let [j (skip-ws src i n)]
+    (if (>= j n) [j cnt]
+      (let [ch (at src j)]
+        (if (= ch ")") [(+ j 1) cnt]
+          (if (= ch ";") (count-args-inner src (skip-comment src j n) n cnt)
+            (count-args-inner src (skip-form src j n) n (+ cnt 1))))))))
+
+(defn lookup-def [defs name k]
+  {:context "Find nparam for name"
+   :returns "integer or -1"
+   :effects []}
+  (if (>= k (length defs)) -1
+    (let [d (get defs k)]
+      (if (= (get d "name") name) (get d "n")
+        (lookup-def defs name (+ k 1))))))
+
+(defn emit-arity [path line name narg nparam]
+  {:context "Arity mismatch diagnostic"
+   :returns "never"
+   :effects ["file-write"]}
+  (let [need (if (= nparam 0) "()" (str nparam))]
+    (err-all (str
+      "\n[type-check]  " (get (str-split path "/") (- (length (str-split path "/")) 1))
+      " — 1건\n"
+      "  ✖  line " line ": arity — (" name ") — 인자 " narg "개 전달, " nparam "개 필요 " need "\n\n"))
+    (fl-cgc-halt)))
+
+(defn line-of [src i]
+  {:context "1-based line number of index i"
+   :returns "integer"
+   :effects []}
+  (length (str-split (str-slice src 0 i) "\n")))
+
+(defn walk [src i n defs prev]
+  {:context "Walk source collecting defn arity and checking calls"
+   :returns "nil"
+   :effects ["file-write"]}
+  (if (>= i n) nil
+    (let [ch (at src i)]
+      (if (= ch ";") (walk src (skip-comment src i n) n defs prev)
+        (if (= ch "\"") (walk src (skip-string src (+ i 1) n) n defs "")
+          (if (= ch "(")
+            (let [j (skip-ws src (+ i 1) n)
+                  id (read-ident src j n)
+                  name (get id 1)
+                  k (get id 0)]
+              (if (= name "defn")
+                (let [k2 (skip-ws src k n)
+                      id2 (read-ident src k2 n)
+                      dname (get id2 1)
+                      k3 (skip-ws src (get id2 0) n)
+                      pc (count-params src k3 n)
+                      defs2 (if (= dname "") defs
+                              (push defs {"name" dname "n" (get pc 1)}))]
+                  (walk src (get pc 0) n defs2 "defn"))
+                (let [need (lookup-def defs name 0)]
+                  (if (and (not (= name "")) (not (= need -1)) (not (= prev "defn")))
+                    (let [ac (count-args src k n)
+                          narg (get ac 1)]
+                      (if (not (= narg need))
+                        (emit-arity (get-arg 0) (line-of src i) name narg need)
+                        (walk src (get ac 0) n defs name)))
+                    (walk src k n defs name)))))
+            (walk src (+ i 1) n defs prev)))))))
+
+(let [path (get-arg 0)]
+  (if (or (nil? path) (= path ""))
+    (throw "file required")
+    (if (not (file-exists path))
+      (throw (str "file not found: " path))
+      (let [src (file-read path)]
+        (walk src 0 (length src) [] "")
+        (println (str "arity: OK " path))))))

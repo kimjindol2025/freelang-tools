@@ -3,7 +3,6 @@ set -Eeuo pipefail
 
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 STATE_FILE="${FREELANG_SAFETY_STATE:-/home/kim/kim/projects/skill-atlas/safety-state.json}"
 ACTION="${1:-show}"
 MODE="${2:-}"
@@ -25,4 +24,4 @@ fi
 FL_TOOLS_SAFETY_STATE="$STATE_FILE" \
 FL_TOOLS_SAFETY_ACTION="$ACTION" \
 FL_TOOLS_SAFETY_MODE="$MODE" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/safety-core.fl"
+  "$TOOLS_ROOT/scripts/safety-core-native"

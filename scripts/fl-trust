@@ -13,7 +13,7 @@ fi
 
 if [[ ! -d "$TARGET" ]]; then
   FL_TOOLS_TRUST_BLOCKED_TARGET="$TARGET" \
-    node "${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}" run "$TOOLS_ROOT/native/trust-blocked.fl"
+    "$TOOLS_ROOT/scripts/trust-blocked-native"
   exit 2
 fi
 

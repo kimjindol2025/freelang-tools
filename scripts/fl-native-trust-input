@@ -3,5 +3,4 @@ set -Eeuo pipefail
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 INPUT_PATH="${1:?input path required}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-FL_TOOLS_TRUST_INPUT_OUT="$INPUT_PATH" node "$RUNNER" run "$TOOLS_ROOT/native/trust-input.fl"
+FL_TOOLS_TRUST_INPUT_OUT="$INPUT_PATH" "$TOOLS_ROOT/scripts/trust-input-native"

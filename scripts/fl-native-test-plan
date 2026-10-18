@@ -4,7 +4,6 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 ROOT_PATH="${1:?root required}"
 TEST_ROOT_PATH="${2:?test root required}"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
 FL_TOOLS_TEST_PLAN_ROOT="$ROOT_PATH" \
 FL_TOOLS_TEST_PLAN_TEST_ROOT="$TEST_ROOT_PATH" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/test-plan.fl"
+  "$TOOLS_ROOT/scripts/test-plan-native"

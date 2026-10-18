@@ -11,7 +11,7 @@ fi
 shift || true
 TIMEOUT_SECONDS="${1:-${FREELANG_CLI_TIMEOUT_SECONDS:-8}}"
 TARGET="$(readlink -f -- "$TARGET_INPUT")"
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+RUNNER="${FREELANG_CGC_RUN:-$TOOLS_ROOT/scripts/fl-cgc-run}"
 EVIDENCE_DIR="${FREELANG_CLI_EVIDENCE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/freelang-cli.XXXXXX")}" 
 mkdir -p "$EVIDENCE_DIR"
 
@@ -32,7 +32,7 @@ fi
 {
   printf 'TOOL_HEAD=%s\n' "$(git -C "$TOOLS_ROOT" rev-parse HEAD)"
   printf 'RUNTIME=%s\nRUNTIME_COMMIT=%s\nTARGET=%s\nTIMEOUT_SECONDS=%s\n' "$RUNNER" "$runtime_commit" "$TARGET" "$TIMEOUT_SECONDS"
-  printf 'RUN_COMMAND=setsid --wait timeout --foreground --kill-after=1s %ss node %q run %q\n' "$TIMEOUT_SECONDS" "$RUNNER" "$TARGET"
+  printf 'RUN_COMMAND=setsid --wait timeout --foreground --kill-after=1s %ss %q %q\n' "$TIMEOUT_SECONDS" "$RUNNER" "$TARGET"
 } >"$META_FILE"
 
 run_guarded() {
@@ -66,7 +66,7 @@ run_guarded() {
   return "$guard_exit"
 }
 
-if [[ ! -f "$TARGET" || ! -f "$RUNNER" ]]; then
+if [[ ! -f "$TARGET" ]]; then
   echo "CLI_ERROR=missing-target-or-runner" >&2
   printf 'PROCESS_EXIT=2\nCAUSE=missing-target-or-runner\n' >>"$META_FILE"
   echo "EVIDENCE_DIR=$EVIDENCE_DIR"
@@ -74,7 +74,7 @@ if [[ ! -f "$TARGET" || ! -f "$RUNNER" ]]; then
 fi
 
 set +e
-run_guarded "$TIMEOUT_SECONDS" node "$RUNNER" check "$TARGET" >"$CHECK_STDOUT_FILE" 2>"$CHECK_STDERR_FILE"
+run_guarded "$TIMEOUT_SECONDS" "$TOOLS_ROOT/scripts/fl-cgc-check" "$TARGET" >"$CHECK_STDOUT_FILE" 2>"$CHECK_STDERR_FILE"
 check_exit=$?
 set -e
 printf 'CHECK_EXIT=%s\nCHECK_GUARD_PID=%s\nCHECK_GUARD_PGID=%s\nCHECK_CLEANUP=%s\nCHECK_RESIDUAL=%s\n' \
@@ -93,7 +93,7 @@ if [[ "$check_exit" -ne 0 ]]; then
 fi
 
 set +e
-run_guarded "$TIMEOUT_SECONDS" node "$RUNNER" run "$TARGET" >"$STDOUT_FILE" 2>"$STDERR_FILE"
+run_guarded "$TIMEOUT_SECONDS" "$RUNNER" "$TARGET" >"$STDOUT_FILE" 2>"$STDERR_FILE"
 run_exit=$?
 set -e
 printf 'RUN_EXIT=%s\nRUN_GUARD_PID=%s\nRUN_GUARD_PGID=%s\nRUN_CLEANUP=%s\nRUN_RESIDUAL=%s\n' \

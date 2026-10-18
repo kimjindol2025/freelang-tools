@@ -1,6 +1,5 @@
 ;; Native FreeLang tests for the test result contract.
 (load "../src/test/deftest-runner.fl")
-(load "../src/test/result.fl")
 
 (deftest "test result preserves pass status" (is= "PASS"
   (get (test-result "native" "case" "PASS" 1) "status")))

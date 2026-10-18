@@ -16,8 +16,35 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-
+RUNNER="${FREELANG_TESTER_RUNNER:-$TOOLS_ROOT/scripts/tester-runner-native}"
+REGISTRY="${FREELANG_TESTER_REGISTRY:-$TOOLS_ROOT/scripts/tester-registry-native}"
+PROBE="${FL_TOOLS_TESTER_PROBE:-$TOOLS_ROOT/native/tester-registry.fl}"
+if [[ ! -f "$PROBE" ]]; then
+  echo "TESTER_AUDIT=BLOCKED" >&2
+  echo "CAUSE=probe not found" >&2
+  exit 2
+fi
+STALE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tester-reg-stale.XXXXXX")"
+"$TOOLS_ROOT/scripts/cgc-native" "$PROBE" "$STALE_DIR/tr.c" >/dev/null 2>&1 || true
+if [[ -f "$STALE_DIR/tr.c" ]]; then
+  gcc -Wno-unused -I "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}" \
+    -o "$STALE_DIR/tester-registry-native" "$STALE_DIR/tr.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/core.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/collection.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/io.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/math.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/error.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/process.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/json.c" \
+    "${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}/cgc-bridge.c" -lm >/dev/null 2>&1 || true
+fi
+if [[ ! -f "$STALE_DIR/tester-registry-native" ]] || ! cmp -s "$REGISTRY" "$STALE_DIR/tester-registry-native"; then
+  rm -rf "$STALE_DIR"
+  echo "TESTER_AUDIT=BLOCKED" >&2
+  echo "CAUSE=tester-registry-native-stale" >&2
+  exit 2
+fi
+rm -rf "$STALE_DIR"
 if [[ "$RUN_MODE" == YES ]]; then
   if [[ -n "$INPUT" ]]; then
     echo "TESTER_AUDIT=BLOCKED" >&2
@@ -26,7 +53,7 @@ if [[ "$RUN_MODE" == YES ]]; then
   fi
   if [[ ! -f "$RUNNER" ]]; then
     echo "TESTER_AUDIT=BLOCKED" >&2
-    echo "CAUSE=AFJ runner not found" >&2
+    echo "CAUSE=native runner not found" >&2
     exit 2
   fi
   if [[ -n "$OUTPUT_FILE" ]]; then
@@ -39,19 +66,25 @@ if [[ "$RUN_MODE" == YES ]]; then
   fi
   FL_TOOLS_ROOT="$TOOLS_ROOT" \
   FL_TOOLS_TESTER_AUDIT_RUN_OUTPUT="$INPUT" \
-    FREELANG_AFJ_RUNNER="$RUNNER" \
-    node "$RUNNER" run "$TOOLS_ROOT/native/tester-runner.fl" >/dev/null
+    "$RUNNER" >/dev/null
 fi
 
-if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$RUNNER" ]]; then
+if [[ -z "$INPUT" || ! -f "$INPUT" || ! -f "$REGISTRY" ]]; then
   echo "TESTER_AUDIT=BLOCKED" >&2
-  echo "CAUSE=input or AFJ runner not found" >&2
+  echo "CAUSE=input or native runner not found" >&2
   exit 2
 fi
 
-PROBE="$TOOLS_ROOT/native/tester-registry.fl"
-node "$RUNNER" check "$PROBE" >/dev/null
-OUTPUT="$(FL_TOOLS_TESTER_AUDIT_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
+set +e
+"$TOOLS_ROOT/scripts/fl-probe-check" "$PROBE" >/dev/null
+PCHK=$?
+set -e
+if [[ "$PCHK" -ne 0 ]]; then
+  echo "TESTER_AUDIT=BLOCKED" >&2
+  echo "CAUSE=probe check failed" >&2
+  exit 2
+fi
+OUTPUT="$(FL_TOOLS_TESTER_AUDIT_INPUT="$INPUT" "$REGISTRY")"
 printf '%s\n' "$OUTPUT"
 VERDICT="$(sed -n 's/.*"verdict":"\([^"]*\)".*/\1/p' <<<"$OUTPUT")"
 case "$VERDICT" in

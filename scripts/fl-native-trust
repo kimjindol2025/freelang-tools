@@ -19,16 +19,7 @@ if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
   exit 2
 fi
 
-RUNNER="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
-PROBE="$TOOLS_ROOT/native/trust-core.fl"
-if [[ ! -f "$RUNNER" ]]; then
-  echo "NATIVE_TRUST=BLOCKED" >&2
-  echo "CAUSE=AFJ runner not found: $RUNNER" >&2
-  exit 2
-fi
-
-FL_TOOLS_TRUST_INPUT="$INPUT" node "$RUNNER" check "$PROBE" >/dev/null
-OUTPUT="$(FL_TOOLS_TRUST_INPUT="$INPUT" node "$RUNNER" run "$PROBE")"
+OUTPUT="$(FL_TOOLS_TRUST_INPUT="$INPUT" "$TOOLS_ROOT/scripts/trust-core-native")"
 printf '%s\n' "$OUTPUT"
 STATUS="$(sed -n 's/.*"verdict":"\([^"]*\)".*/\1/p' <<<"$OUTPUT")"
 [[ "$STATUS" == TRUSTED || "$STATUS" == TRUSTED_WITH_APPROVAL || "$STATUS" == UNTRUSTED || "$STATUS" == BLOCKED ]]

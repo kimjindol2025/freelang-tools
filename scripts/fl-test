@@ -11,7 +11,7 @@ TEST_ROOT="${FREELANG_TEST_ROOT:-$ROOT/tests}"
 DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 DETECTED_RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
-RUNNER="${FREELANG_AFJ_RUNNER:-$DETECTED_RUNNER}"
+RUNNER="${FREELANG_CGC_RUN:-$TOOLS_ROOT/scripts/fl-cgc-run}"
 
 case "$DIALECT" in
   FRONT)
@@ -29,6 +29,14 @@ case "$DIALECT" in
     ;;
   SCRIPT)
     SCRIPT_RUNNER="${FREELANG_SCRIPT_RUNNER:-$DETECTED_RUNNER}"
+    mapfile -d '' SCRIPT_PRESENT < <(
+      find "$TEST_ROOT" -type f \( -name '*.test.fls' -o -name '*.test.fl' \) -print0 2>/dev/null | sort -z
+    )
+    if [[ ! -f "$SCRIPT_RUNNER" && "${#SCRIPT_PRESENT[@]}" -gt 0 ]]; then
+      echo "FREELANG_TEST=BLOCKED"
+      echo "CAUSE=SCRIPT runner not found" >&2
+      exit 2
+    fi
     if [[ -f "$SCRIPT_RUNNER" ]]; then
       SCRIPT_TIMEOUT_MS="${FREELANG_SCRIPT_TEST_TIMEOUT_MS:-15000}"
       if [[ ! "$SCRIPT_TIMEOUT_MS" =~ ^[1-9][0-9]*$ ]]; then
@@ -50,7 +58,7 @@ case "$DIALECT" in
           echo "[fl-test] check $relative"
           # The Script profile accepts both extensions; `.test.fl` is kept
           # for projects that use the shared FreeLang test naming convention.
-          node "$SCRIPT_RUNNER" check "$test_file"
+          "$TOOLS_ROOT/scripts/script-check-native" "$test_file"
           echo "[fl-test] run $relative"
           timeout "${SCRIPT_TIMEOUT_SECONDS}s" node "$SCRIPT_RUNNER" run "$test_file"
         done
@@ -58,10 +66,9 @@ case "$DIALECT" in
         echo "FREELANG_TEST=PASS"
         exit 0
       fi
-
-      node "$SCRIPT_RUNNER" test "$TEST_ROOT" --allow-listed "--timeout=$SCRIPT_TIMEOUT_MS" "$@"
-      echo "FREELANG_TEST=PASS"
-      exit 0
+      echo "FREELANG_TEST=BLOCKED"
+      echo "CAUSE=SCRIPT runner present but zero tests executed" >&2
+      exit 2
     fi
     ;;
   AIA)
@@ -100,6 +107,13 @@ PLAN_OUTPUT="$($TOOLS_ROOT/scripts/fl-native-test-plan "$ROOT" "$TEST_ROOT")"
 mapfile -t TEST_FILES < <(printf '%s\n' "$PLAN_OUTPUT" | sed -n '/^TEST_FILES=/,$p' | sed '1s/^TEST_FILES=//' | sed '/^$/d')
 
 if [[ "${#TEST_FILES[@]}" -eq 0 ]]; then
+  leftover="$(find "$TEST_ROOT" -type f \( -name '*.test.fl' -o -name '*.test.fls' \) 2>/dev/null | wc -l)"
+  leftover="${leftover// /}"
+  if [[ "$leftover" != "0" ]]; then
+    echo "FREELANG_TEST=BLOCKED"
+    echo "CAUSE=tests-present-but-none-planned" >&2
+    exit 2
+  fi
   echo "FREELANG_TEST=NO_TESTS"
   exit 0
 fi
@@ -107,12 +121,12 @@ fi
 for test_file in "${TEST_FILES[@]}"; do
   relative="${test_file#"$ROOT/"}"
   echo "[fl-test] check $relative"
-  FREELANG_AFJ_RUNNER="$RUNNER" "$TOOLS_ROOT/scripts/fl-native-runner" check "$test_file"
+  "$TOOLS_ROOT/scripts/fl-native-runner" check "$test_file"
 
   rm -f "$OUTPUT_FILE"
   OUTPUT_FILE="$(mktemp)"
   echo "[fl-test] run $relative"
-  if ! FREELANG_AFJ_RUNNER="$RUNNER" "$TOOLS_ROOT/scripts/fl-native-runner" run "$test_file" "$OUTPUT_FILE"; then
+  if ! "$TOOLS_ROOT/scripts/fl-native-runner" run "$test_file" "$OUTPUT_FILE"; then
     cat "$OUTPUT_FILE"
     echo "FREELANG_TEST=FAIL"
     exit 1

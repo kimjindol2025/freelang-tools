@@ -5,9 +5,9 @@ SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
 ROOT="${1:?project root is required}"
 DIALECT="${2:?dialect is required}"
-RUNNER="${3:?AFJ runner is required}"
+RUNNER="${3:-}"
 
-PLAN_OUTPUT="$("$TOOLS_ROOT/scripts/fl-native-check-plan" "$ROOT" "$DIALECT" "$RUNNER")"
+PLAN_OUTPUT="$("$TOOLS_ROOT/scripts/fl-native-check-plan" "$ROOT" "$DIALECT" "${RUNNER:-none}")"
 SOURCES_TEXT="$(printf '%s\n' "$PLAN_OUTPUT" | sed -n '/^SOURCES=/,$p' | sed '1s/^SOURCES=//' | sed '/^$/d')"
 if [[ -z "$SOURCES_TEXT" ]]; then
   echo "SUPERVISOR_COUNT=0"
@@ -15,6 +15,16 @@ if [[ -z "$SOURCES_TEXT" ]]; then
   exit 0
 fi
 
-FL_TOOLS_CHECK_SUPERVISOR_RUNNER="$RUNNER" \
-FL_TOOLS_CHECK_SUPERVISOR_SOURCES="$SOURCES_TEXT" \
-  node "$RUNNER" run "$TOOLS_ROOT/native/check-supervisor.fl"
+failed=0
+count=0
+while IFS= read -r source; do
+  [[ -n "$source" ]] || continue
+  count=$((count + 1))
+  echo "[fl-check] $source"
+  if ! "$TOOLS_ROOT/scripts/fl-cgc-check" "$source"; then
+    failed=1
+  fi
+done <<< "$SOURCES_TEXT"
+echo "SUPERVISOR_COUNT=$count"
+echo "SUPERVISOR_EXIT=$failed"
+exit "$failed"

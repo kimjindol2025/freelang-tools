@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # effect module remains the owner of the BLOCKED product decision.
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
-RUNTIME="${FREELANG_AFJ_RUNNER:-/home/kim/kim/platform/freelang-afj/bootstrap-native.js}"
+RUNTIME="${FREELANG_CGC_RUN:-$TOOLS_ROOT/scripts/fl-cgc-run}"
 PROBE="$TOOLS_ROOT/tests/capability/effect-tape-probe.fl"
 STAMP="${TMPDIR:-/tmp}/freelang-effect-capability.$$"
 CHECK_OUT="${STAMP}.check.log"
@@ -15,18 +15,18 @@ API_DOC_OUT="${STAMP}.api-doc.log"
 cleanup() { rm -f -- "$CHECK_OUT" "$RUN_OUT" "$API_DOC_OUT"; }
 trap cleanup EXIT INT TERM
 
-if [[ ! -f "$RUNTIME" || ! -f "$PROBE" ]]; then
+if [[ ! -f "$PROBE" ]]; then
   echo "EFFECT_TAPE_PROBE=BLOCKED"
   echo "CAUSE=runtime-or-probe-missing" >&2
   exit 2
 fi
 
 set +e
-node "$RUNTIME" check "$PROBE" >"$CHECK_OUT" 2>&1
+"$TOOLS_ROOT/scripts/fl-cgc-check" "$PROBE" >"$CHECK_OUT" 2>&1
 CHECK_CODE=$?
-node "$RUNTIME" fn-doc trace_effects >"$API_DOC_OUT" 2>&1
+"$TOOLS_ROOT/scripts/fl-fn-doc" trace_effects >"$API_DOC_OUT" 2>&1
 API_DOC_CODE=$?
-node "$RUNTIME" run "$PROBE" >"$RUN_OUT" 2>&1
+"$TOOLS_ROOT/scripts/fl-cgc-run" "$PROBE" >"$RUN_OUT" 2>&1
 RUN_CODE=$?
 set -e
 
@@ -60,7 +60,7 @@ FL_TOOLS_EFFECT_API_CODE="$API_DOC_CODE" \
 FL_TOOLS_EFFECT_RUN_CODE="$RUN_CODE" \
 FL_TOOLS_EFFECT_API_OUTPUT="$API_DOC_OUT" \
 FL_TOOLS_EFFECT_RUN_OUTPUT="$RUN_OUT" \
-  node "$RUNTIME" run "$TOOLS_ROOT/native/effect-capability.fl"
+  "$TOOLS_ROOT/scripts/effect-capability-native"
 DECISION_CODE=$?
 set -e
 exit "$DECISION_CODE"
