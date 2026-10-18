@@ -134,6 +134,7 @@
       state-dir (str root "/.freelang")]
   (if (and persist (string? root) (not (str-starts-with root "unknown")))
     (do
+      (file-mkdir state-dir)
       (file-mkdir (str state-dir "/evidence"))
       (json-write (str state-dir "/evidence/latest.json") result)
       (json-write (str state-dir "/last-result.json") result)
