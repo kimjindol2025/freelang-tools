@@ -1,6 +1,5 @@
 ;; Native CI orchestration tests. Inputs are artifacts; no test is rerun.
 (load "../src/test/deftest-runner.fl")
-(load "../src/test/result.fl")
 (load "../src/test/ci.fl")
 
 (define pass-results [(test-result "math" "pass" "PASS" 1)])

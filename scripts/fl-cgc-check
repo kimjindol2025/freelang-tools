@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+TOOLS_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd -P)"
+V11_RUNTIME="${FREELANG_V11_RUNTIME:-$HOME/work/fl-8/freelang-v11/runtime}"
+FILE="${1:?fl file required}"
+CGC="${TOOLS_ROOT}/scripts/cgc-native"
+if [[ ! -f "$CGC" ]]; then
+  echo "CHECK=BLOCKED"
+  exit 2
+fi
+if [[ ! -d "$V11_RUNTIME" ]]; then
+  echo "CHECK=BLOCKED"
+  echo "CAUSE=runtime-missing"
+  exit 2
+fi
+if [[ ! -f "$FILE" ]]; then
+  echo "CHECK=FAIL"
+  exit 1
+fi
+WORKDIR="$(mktemp -d /tmp/fl-cgc-check.XXXXXX)"
+cleanup() { rm -rf -- "$WORKDIR"; }
+trap cleanup EXIT INT TERM
+set +e
+"$CGC" "$FILE" "$WORKDIR/out.c" --print-last >"$WORKDIR/cgc.log" 2>&1
+CEC=$?
+set -e
+if grep -q '\[CGC-ERR\]' "$WORKDIR/cgc.log"; then
+  grep '\[CGC-ERR\]' "$WORKDIR/cgc.log" >&2
+  echo "CHECK=FAIL"
+  exit 1
+fi
+if [[ "$CEC" -ne 0 ]]; then
+  cat "$WORKDIR/cgc.log" >&2
+  echo "CHECK=FAIL"
+  exit 1
+fi
+echo "CHECK=OK"

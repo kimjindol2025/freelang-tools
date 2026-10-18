@@ -13,16 +13,15 @@ fi
 ROOT="$(cd -- "$TARGET" && pwd -P)"
 DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
-RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 
 if [[ "$DIALECT" != AIRC ]]; then
   echo "AIRC=BLOCKED"
   echo "CAUSE=project is not detected as AIRC: $ROOT" >&2
   exit 2
 fi
-if [[ "$RUNNER" == none || ! -f "$RUNNER" ]]; then
+if [[ ! -x "$TOOLS_ROOT/scripts/cgc-native" ]]; then
   echo "AIRC=BLOCKED"
-  echo "CAUSE=AIRC runner not found: $RUNNER" >&2
+  echo "CAUSE=cgc-native not found" >&2
   exit 2
 fi
 if [[ ! -f "$ROOT/airc.fl" ]]; then
@@ -34,6 +33,6 @@ fi
 COMMAND="${1:-status}"
 shift || true
 echo "AIRC_PROJECT=$ROOT"
-echo "AIRC_RUNNER=$RUNNER"
+echo "AIRC_RUNTIME=cgc-native"
 echo "AIRC_COMMAND=$COMMAND"
-exec node "$RUNNER" run "$ROOT/airc.fl" "$COMMAND" "$@"
+exec "$TOOLS_ROOT/scripts/fl-cgc-run" "$ROOT/airc.fl" "$COMMAND" "$@"

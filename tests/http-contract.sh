@@ -7,7 +7,20 @@ SERVER_PID=""
 cleanup() { [[ -n "$SERVER_PID" ]] && kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$TEMP_ROOT"; }
 trap cleanup EXIT INT TERM
 
-node -e 'const fs=require("fs"),http=require("http"); const server=http.createServer((req,res)=>{res.writeHead(200,{"content-type":"application/json","x-freelang":"native"}); res.end(JSON.stringify({ok:true,route:req.url}));}); server.listen(0,"127.0.0.1",()=>fs.writeFileSync(process.argv[1],String(server.address().port)));' "$PORT_FILE" >"$TEMP_ROOT/server.log" 2>&1 &
+python3 -c 'import http.server, json, pathlib, sys
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = json.dumps({"ok": True, "route": self.path}, separators=(",", ":")).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("x-freelang", "native")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *_args): pass
+server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+pathlib.Path(sys.argv[1]).write_text(str(server.server_port))
+server.serve_forever()' "$PORT_FILE" >"$TEMP_ROOT/server.log" 2>&1 &
 SERVER_PID=$!
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   [[ -s "$PORT_FILE" ]] && break
@@ -19,8 +32,6 @@ PORT="$(<"$PORT_FILE")"
 curl -fsS "http://127.0.0.1:$PORT/health" >/dev/null
 
 OUTPUT="$($ROOT/scripts/fl-http-native "http://127.0.0.1:$PORT/health")"
-OUTPUT="$OUTPUT" node -e '
-const value=JSON.parse(process.env.OUTPUT);
-if (value.schemaVersion !== "freelang.http/v1" || value.ok !== true || value.status !== 200 || !value.data || value.data.ok !== true) process.exit(1);
-console.log("http-loopback=PASS");
-'
+source "$ROOT/tests/native-json-check.sh"
+assert_native_json http "$OUTPUT"
+echo "http-loopback=PASS"

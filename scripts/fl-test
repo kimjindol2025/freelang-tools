@@ -10,34 +10,20 @@ TEST_ROOT="${FREELANG_TEST_ROOT:-$ROOT/tests}"
 
 DETECT_OUTPUT="$($TOOLS_ROOT/scripts/fl-detect "$ROOT")"
 DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
-DETECTED_RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 RUNNER="${FREELANG_CGC_RUN:-$TOOLS_ROOT/scripts/fl-cgc-run}"
 
 case "$DIALECT" in
-  FRONT)
-    FRONT_BUILD="$ROOT/fl-front-build.js"
-    FRONT_DIR="$ROOT"
-    if [[ ! -f "$FRONT_BUILD" && -f "$ROOT/web/fl-front-build.js" ]]; then
-      FRONT_BUILD="$ROOT/web/fl-front-build.js"
-      FRONT_DIR="$ROOT/web"
-    fi
-    if [[ -f "$FRONT_BUILD" ]]; then
-      (cd "$FRONT_DIR" && FL_GIT_REPO="${FL_GIT_REPO:-$ROOT}" node fl-front-build.js)
-      echo "FREELANG_TEST=PASS"
-      exit 0
-    fi
-    ;;
   SCRIPT)
-    SCRIPT_RUNNER="${FREELANG_SCRIPT_RUNNER:-$DETECTED_RUNNER}"
+    CGC_NATIVE="$TOOLS_ROOT/scripts/cgc-native"
     mapfile -d '' SCRIPT_PRESENT < <(
       find "$TEST_ROOT" -type f \( -name '*.test.fls' -o -name '*.test.fl' \) -print0 2>/dev/null | sort -z
     )
-    if [[ ! -f "$SCRIPT_RUNNER" && "${#SCRIPT_PRESENT[@]}" -gt 0 ]]; then
+    if [[ ! -x "$CGC_NATIVE" && "${#SCRIPT_PRESENT[@]}" -gt 0 ]]; then
       echo "FREELANG_TEST=BLOCKED"
-      echo "CAUSE=SCRIPT runner not found" >&2
+      echo "CAUSE=cgc-native not found" >&2
       exit 2
     fi
-    if [[ -f "$SCRIPT_RUNNER" ]]; then
+    if [[ -x "$CGC_NATIVE" ]]; then
       SCRIPT_TIMEOUT_MS="${FREELANG_SCRIPT_TEST_TIMEOUT_MS:-15000}"
       if [[ ! "$SCRIPT_TIMEOUT_MS" =~ ^[1-9][0-9]*$ ]]; then
         echo "FREELANG_TEST=BLOCKED"
@@ -60,7 +46,7 @@ case "$DIALECT" in
           # for projects that use the shared FreeLang test naming convention.
           "$TOOLS_ROOT/scripts/script-check-native" "$test_file"
           echo "[fl-test] run $relative"
-          timeout "${SCRIPT_TIMEOUT_SECONDS}s" node "$SCRIPT_RUNNER" run "$test_file"
+          timeout "${SCRIPT_TIMEOUT_SECONDS}s" "$TOOLS_ROOT/scripts/fl-cgc-run" "$test_file"
         done
         echo "FREELANG_SCRIPT_TESTS=${#SCRIPT_NATIVE_TESTS[@]}"
         echo "FREELANG_TEST=PASS"
@@ -118,10 +104,22 @@ if [[ "${#TEST_FILES[@]}" -eq 0 ]]; then
   exit 0
 fi
 
+CONTINUE_ON_FAILURE="${FL_TEST_CONTINUE:-0}"
+PASSED_TESTS=0
+FAILED_TESTS=0
+NOT_RUN_TESTS=0
+
 for test_file in "${TEST_FILES[@]}"; do
   relative="${test_file#"$ROOT/"}"
   echo "[fl-test] check $relative"
-  "$TOOLS_ROOT/scripts/fl-native-runner" check "$test_file"
+  if ! "$TOOLS_ROOT/scripts/fl-native-runner" check "$test_file"; then
+    if [[ "$CONTINUE_ON_FAILURE" != "1" ]]; then
+      exit 1
+    fi
+    echo "FL_TEST_FILE_NOT_RUN=$relative"
+    NOT_RUN_TESTS=$((NOT_RUN_TESTS + 1))
+    continue
+  fi
 
   rm -f "$OUTPUT_FILE"
   OUTPUT_FILE="$(mktemp)"
@@ -129,14 +127,33 @@ for test_file in "${TEST_FILES[@]}"; do
   if ! "$TOOLS_ROOT/scripts/fl-native-runner" run "$test_file" "$OUTPUT_FILE"; then
     cat "$OUTPUT_FILE"
     echo "FREELANG_TEST=FAIL"
-    exit 1
+    if [[ "$CONTINUE_ON_FAILURE" != "1" ]]; then
+      exit 1
+    fi
+    echo "FL_TEST_FILE_FAIL=$relative"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    continue
   fi
   cat "$OUTPUT_FILE"
   if ! "$TOOLS_ROOT/scripts/fl-native-test-result" "$OUTPUT_FILE"; then
     echo "[fl-test] missing passing summary: $relative" >&2
     echo "FREELANG_TEST=FAIL"
+    if [[ "$CONTINUE_ON_FAILURE" != "1" ]]; then
+      exit 1
+    fi
+    echo "FL_TEST_FILE_FAIL=$relative"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    continue
+  fi
+  PASSED_TESTS=$((PASSED_TESTS + 1))
+done
+
+if [[ "$CONTINUE_ON_FAILURE" == "1" ]]; then
+  echo "FL_TEST_SUMMARY total=${#TEST_FILES[@]} passed=$PASSED_TESTS failed=$FAILED_TESTS not_run=$NOT_RUN_TESTS"
+  if [[ "$FAILED_TESTS" -gt 0 || "$NOT_RUN_TESTS" -gt 0 ]]; then
+    echo "FREELANG_TEST=FAIL"
     exit 1
   fi
-done
+fi
 
 echo "FREELANG_TEST=PASS"

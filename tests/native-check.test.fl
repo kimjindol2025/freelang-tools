@@ -6,11 +6,11 @@
   {:context "Run one real FreeLang source through the canonical check runner"
    :returns "child exit code"
    :effects ["process"]}
-  (let [runner (shell_env "FREELANG_AFJ_RUNNER")
+  (let [runner "scripts/fl-native-runner"
         ;; fl-test deliberately does not inject FL_TOOLS_ROOT; the canonical
         ;; runner inherits the repository working directory instead.
         source "native/check-supervisor.fl"
-        result (process_spawn "node" [runner "check" source])]
+        result (process_spawn runner ["check" source])]
     (result-code result)))
 
 (deftest "check accepts successful child" (is= 0

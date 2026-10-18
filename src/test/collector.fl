@@ -28,15 +28,13 @@
 (defn collector-duplicate-count [entries]
   (if (not (array? entries))
     0
-    (reduce (fn [total entry]
-              (+ total
-                 (length (filter (fn [other]
-                                   (= (collector-key entry) (collector-key other)))
-                                 (rest (drop-while (fn [item]
-                                                     (not (= item entry)))
-                                                   entries))))))
-            0
-            entries)))
+    (length
+      (filter (fn [entry]
+                (> (length (filter (fn [other]
+                                     (= (collector-key entry) (collector-key other)))
+                                   entries))
+                   1))
+              entries))))
 
 (defn collector-selected [entries filter-text]
   (let [ordered (sort-by (fn [entry] (get entry "order")) entries)]

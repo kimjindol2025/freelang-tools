@@ -1,0 +1,81 @@
+;; Native JSON assertions for the shell contract tests.
+(load "../src/test/deftest-runner.fl")
+
+(defn map-ok? [value]
+  (and (map? value) (= (get value "ok") true)))
+
+(defn backend-valid? [value]
+  (let [categories (get value "categories")
+        valid-categories (filter (fn [item]
+                                  (let [result (get item "result")]
+                                    (and (map? result) (= (get result "ok") true)
+                                           (json_has result "status"))))
+                                categories)]
+    (and (= (get value "schemaVersion") "freelang.backend-contract/v1")
+         (= (get value "status") "PASS")
+         (= (get value "passCount") 7)
+         (= (get value "blockedCount") 0)
+         (= (length categories) 7)
+         (= (length valid-categories) 7))))
+
+(defn git-valid? [value]
+  (let [status (get value "status")
+        head (get value "head")
+        branch (get value "branch")
+        diff (get value "diff")
+        expected (shell_env "EXPECTED_HEAD")]
+    (and (= (get value "schemaVersion") "freelang.git/v1")
+         (= (get value "source") "freelang-native")
+         (= (get value "readOnly") true)
+         (map-ok? status) (map-ok? head) (map-ok? branch) (map-ok? diff)
+         (or (= expected "")
+             (= (str-trim (get (get head "value") "stdout")) expected)))))
+
+(defn trust-valid? [value]
+  (let [gates (get value "gates")
+        required ["check" "test" "review" "evidence" "diffCheck"
+                  "workflow" "selfHost" "capabilityCoverage"]]
+    (and (= (get value "schemaVersion") "freelang.trust/v1")
+         (= (get value "verdict") "TRUSTED")
+         (every? (fn [key] (json_has gates key)) required)
+         (array? (get (get value "evidence") "commands"))
+         (array? (get value "limitations"))
+         (= (get (get value "decision") "source") "freelang-native")
+         (= (get (get value "decision") "command") "trust-core"))))
+
+(defn ai-ready-valid? [value]
+  (and (= (get value "protocol") "freelang.ai/v1")
+       (= (get value "action") "ready") (= (get value "status") "READY")
+       (= (get value "canProceed") true) (= (get value "next") "work")
+       (= (get value "execution") "not-run")))
+
+(defn contract-valid? [mode value]
+  (if (= mode "backend") (backend-valid? value)
+    (if (= mode "git") (git-valid? value)
+      (if (= mode "process-pass")
+        (and (= (get value "ok") true) (= (get value "code") 0)
+             (= (first (get value "argv")) "safe value"))
+        (if (= mode "process-fail")
+          (and (= (get value "ok") false) (= (get value "status") "FAIL")
+               (not= (get value "code") 0))
+          (if (= mode "http")
+            (let [data (get value "data")]
+              (and (= (get value "schemaVersion") "freelang.http/v1")
+                   (= (get value "ok") true) (= (get value "status") 200)
+                   (map? data) (= (get data "ok") true)))
+            (if (= mode "system-json")
+              (and (= (get value "schemaVersion") "freelang.system-json/v1")
+                   (= (get value "operation") (shell_env "CONTRACT_OPERATION"))
+                   (= (get value "ok") true))
+              (if (= mode "system-json-denied")
+                (and (= (get value "ok") false)
+                     (= (get value "error") "path-outside-allowed-root"))
+                (if (= mode "trust") (trust-valid? value)
+                  (if (= mode "ai-ready") (ai-ready-valid? value) false))))))))))
+
+(let [mode (shell_env "CONTRACT_MODE")
+      raw (shell_env "CONTRACT_JSON")
+      value (json-parse raw)]
+  (deftest "native contract JSON assertions" (is= true (contract-valid? mode value))))
+
+(run-deftest-suite)

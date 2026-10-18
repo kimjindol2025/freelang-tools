@@ -5,14 +5,18 @@
       testRoot (shell_env "FL_TOOLS_TEST_PLAN_TEST_ROOT")
       live-url (shell_env "FL_TOOLS_HTTP_TEST_URL")
       include-live (= (shell_env "FL_TOOLS_INCLUDE_LIVE_TESTS") "YES")
-      names (if (and (string? testRoot) (file-exists testRoot))
-              (sort (filter (fn [name]
-                              (and (str-ends-with name ".test.fl")
-                                   (or (not (str-ends-with name "-live.test.fl"))
-                                       include-live
-                                       (and (string? live-url) (not= live-url "")))))
-                            (dir-list testRoot)))
-              [])
+      fixture-name "deploy-fixture/tests/deploy-fixture.test.fl"
+      fixture-path (str testRoot "/" fixture-name)
+      top-level-names (if (and (string? testRoot) (file-exists testRoot))
+                        (filter (fn [name]
+                                  (and (str-ends-with name ".test.fl")
+                                       (or (not (str-ends-with name "-live.test.fl"))
+                                           include-live
+                                           (and (string? live-url) (not= live-url "")))))
+                                (dir-list testRoot))
+                        [])
+      names (sort (concat top-level-names
+                          (if (file-exists fixture-path) [fixture-name] [])))
       listing (str-join "\n" (map (fn [name] (str testRoot "/" name)) names))]
   (println "PLAN_SCHEMA=freelang.test-plan/v1")
   (println "PLAN_ACTION=test")

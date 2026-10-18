@@ -2,7 +2,9 @@
 (load "../../../src/test/report.fl")
 (load "../../../src/test/cli.fl")
 
-(emit-final-result
-  (result-aggregate
-    [(test-result "deploy fixture" "arithmetic" (if (= 4 (+ 2 2)) "PASS" "FAIL") 1)]
-    1))
+(let [aggregate
+       (result-aggregate
+         [(test-result "deploy fixture" "arithmetic" (if (= 4 (+ 2 2)) "PASS" "FAIL") 1)]
+         1)]
+  (println (report-text aggregate))
+  (emit-final-result aggregate))

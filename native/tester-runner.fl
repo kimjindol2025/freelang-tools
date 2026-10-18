@@ -106,7 +106,18 @@
                (run-tester "check" (str root "/tests/native-check.test.fl") cgc-run)
                (run-tester "test" (str root "/tests/native-test.test.fl") cgc-run)
                (run-tester "trust" (str root "/tests/native-trust-decision.test.fl") cgc-run)
-               (run-tester "workflow-test" (str root "/tests/native-workflow-adapter.test.fl") cgc-run)]]
+               (run-tester "workflow-test" (str root "/tests/native-workflow-adapter.test.fl") cgc-run)
+               (run-tester "native-assert" (str root "/tests/native-assert.test.fl") cgc-run)
+               (run-tester "backend-contract-base" (str root "/tests/native-backend-contract.test.fl") cgc-run)
+               (run-tester "capability" (str root "/tests/native-capability.test.fl") cgc-run)
+               (run-tester "native-ci" (str root "/tests/native-ci.test.fl") cgc-run)
+               (run-tester "native-collector" (str root "/tests/native-collector.test.fl") cgc-run)
+               (run-tester "effect-runtime" (str root "/tests/native-effect-runtime.test.fl") cgc-run)
+               (run-tester "native-executor" (str root "/tests/native-executor.test.fl") cgc-run)
+               (run-tester "native-result" (str root "/tests/native-result.test.fl") cgc-run)
+               (run-tester "test-result" (str root "/tests/native-test-result.test.fl") cgc-run)
+               (run-tester "native-workflow-module" (str root "/tests/native-workflow.test.fl") cgc-run)
+               (run-tester "tools" (str root "/tests/tools.test.fl") cgc-run)]]
     (let [run-finished-ms (now-ms)]
       (file-write output-path (str (json-stringify {"schemaVersion" "freelang.tester-evidence/v1"
                                                 "source" "freelang-native"

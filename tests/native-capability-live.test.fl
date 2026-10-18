@@ -8,9 +8,9 @@
   {:context "Run the FreeLang capability probe through the canonical runner"
    :returns "child output"
    :effects ["process"]}
-  (let [runner (shell_env "FREELANG_AFJ_RUNNER")
+  (let [runner "scripts/fl-native-runner"
         ;; fl-test does not inject a repository root; the runner inherits cwd.
-        result (process_spawn "node" [runner "run" "native/capability-probe.fl"]) ]
+        result (process_spawn runner ["run" "native/capability-probe.fl"]) ]
     (if (= (get result "_tag") "Ok")
       (str (get (get result "value") "stdout")
            (get (get result "value") "stderr"))

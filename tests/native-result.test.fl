@@ -1,6 +1,5 @@
 ;; Phase 1 native result schema tests.
 (load "../src/test/deftest-runner.fl")
-(load "../src/test/result.fl")
 
 (deftest "pass aggregate" (is= "PASS"
   (get (result-aggregate

@@ -3,10 +3,13 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 PASS="$($ROOT/scripts/fl-process-native printf '["safe value"]')"
-OUTPUT="$PASS" node -e 'const v=JSON.parse(process.env.OUTPUT); if (!v.ok || v.code !== 0 || v.argv[0] !== "safe value") process.exit(1); console.log("process-pass=PASS");'
+source "$ROOT/tests/native-json-check.sh"
+assert_native_json process-pass "$PASS"
+echo "process-pass=PASS"
 
-FAIL="$($ROOT/scripts/fl-process-native definitely-not-a-command '[]')"
-OUTPUT="$FAIL" node -e 'const v=JSON.parse(process.env.OUTPUT); if (v.ok || v.status !== "FAIL" || v.code === 0) process.exit(1); console.log("process-fail=PASS");'
+FAIL="$($ROOT/scripts/fl-process-native definitely-not-a-command '[]' || true)"
+assert_native_json process-fail "$FAIL"
+echo "process-fail=PASS"
 
 MARKER="/tmp/freelang-process-injection-$$"
 rm -f "$MARKER"

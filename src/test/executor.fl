@@ -2,7 +2,6 @@
 ;; Each selected body is invoked once. Errors remain ERROR; no error text guessing.
 
 (load "./collector.fl")
-(load "./result.fl")
 
 (define assertion-statuses ["PASS" "FAIL" "ERROR" "BLOCKED" "SKIPPED"])
 

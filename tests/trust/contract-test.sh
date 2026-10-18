@@ -3,28 +3,16 @@ set -Eeuo pipefail
 
 SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/../.." && pwd -P)"
+export FL_TOOLS_DISPATCH_ROOT="$ROOT"
 SELF_JSON="$(mktemp)"
 cleanup() { rm -f "$SELF_JSON"; }
 trap cleanup EXIT INT TERM
+source "$ROOT/tests/native-json-check.sh"
 
 "$ROOT/scripts/fl-tools" trust "$ROOT" > "$SELF_JSON"
-node - "$SELF_JSON" <<'NODE'
-const fs = require('fs');
-const value = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-if (value.schemaVersion !== 'freelang.trust/v1' || value.verdict !== 'TRUSTED') process.exit(1);
-for (const gate of ['check', 'test', 'review', 'evidence', 'diffCheck', 'workflow', 'selfHost', 'capabilityCoverage']) {
-  if (!(gate in value.gates)) process.exit(1);
-}
-if (!Array.isArray(value.evidence.commands) || !Array.isArray(value.limitations) ||
-    value.decision?.source !== 'freelang-native' || value.decision?.command !== 'trust-core') process.exit(1);
-console.log('TRUST_CONTRACT=PASS');
-NODE
+assert_native_json trust "$(<"$SELF_JSON")"
+echo 'TRUST_CONTRACT=PASS'
 
 AI_JSON="$("$ROOT/scripts/fl-tools" ai ready "$ROOT")"
-node - "$AI_JSON" <<'NODE'
-const value = JSON.parse(process.argv[2]);
-if (value.protocol !== 'freelang.ai/v1' || value.action !== 'ready' ||
-    value.status !== 'READY' || value.canProceed !== true ||
-    value.next !== 'work' || value.execution !== 'not-run') process.exit(1);
-console.log('AI_PROTOCOL=PASS');
-NODE
+assert_native_json ai-ready "$AI_JSON"
+echo 'AI_PROTOCOL=PASS'
