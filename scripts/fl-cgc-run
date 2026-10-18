@@ -38,7 +38,9 @@ set +e
 gcc -I "$V11_RUNTIME" -o "$WORKDIR/a.out" "$WORKDIR/out.c" \
   "$V11_RUNTIME/core.c" "$V11_RUNTIME/collection.c" "$V11_RUNTIME/io.c" \
   "$V11_RUNTIME/math.c" "$V11_RUNTIME/error.c" "$V11_RUNTIME/process.c" \
-  "$V11_RUNTIME/json.c" "$V11_RUNTIME/cgc-bridge.c" -lm >"$WORKDIR/gcc.log" 2>&1
+  "$V11_RUNTIME/json.c" "$V11_RUNTIME/db.c" "$V11_RUNTIME/http_server.c" \
+  "$V11_RUNTIME/cgc-bridge.c" \
+  -lm -lsqlite3 >"$WORKDIR/gcc.log" 2>&1
 GEC=$?
 set -e
 if [[ "$GEC" -ne 0 ]]; then

@@ -1,0 +1,36 @@
+;; Native HTTP/1.1 loopback server and request contract.
+(load "../src/test/deftest-runner.fl")
+(capability-list)
+(capability-enable "native-process")
+
+(defn test-http-echo [$request]
+  (let [[$body (server-req-json $request)]]
+    (if (nil? $body)
+      (server-status 400 (json-stringify {"error" "invalid JSON"}))
+      (server-json {"echo" $body}))))
+
+(if (= (shell_env "FL_HTTP_SERVER_MODE") "YES")
+  (do
+    (server-body-limit 32)
+    (server-rate-limit 4 60000)
+    (server-get "/health" (fn [$request] (server-json {"ok" true})))
+    (server-post "/echo" (fn [$request] (test-http-echo $request)))
+    (define served (server-start 0))
+    (deftest "limited HTTP server handled configured request count" (is= 6 served)))
+  (do
+    (deftest "server request header lookup is case-insensitive" (is= "Bearer test"
+      (server-req-header {"headers" {"authorization" "Bearer test"}} "Authorization")))
+    (deftest "server request JSON returns parsed maps" (is= "ok"
+      (get (server-req-json {"body" "{\"status\":\"ok\"}"}) "status")))
+    (deftest "server request JSON maps invalid input to nil" (is= true
+      (nil? (server-req-json {"body" "{"}))))
+    (deftest "server JSON response uses status 200" (is= 200
+      (get (fl_resp_json {"ok" true}) "status")))
+    (deftest "server status response preserves status" (is= 400
+      (get (fl_resp_status 400 "{}") "status")))
+    (deftest "server route accepts a function handler" (is= true
+      (server-get "/unit" (fn [$request] (server-json {"ok" true})))))
+    (deftest "loopback HTTP status and body contract" (is= 0
+      (get (get (process_spawn "/bin/bash" ["tests/http-server-contract.sh"]) "value") "code")))))
+
+(run-deftest-suite)

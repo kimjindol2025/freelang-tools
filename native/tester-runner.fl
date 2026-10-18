@@ -86,6 +86,8 @@
                (run-tester "native-trust" (str root "/tests/native-trust-core.test.fl") cgc-run)
                (run-tester "capabilities" (str root "/tests/native-capability-live.test.fl") cgc-run)
                (run-tester "backend-contract" (str root "/tests/native-backend-contract-live.test.fl") cgc-run)
+               (run-tester "database-runtime" (str root "/tests/native-db-runtime.test.fl") cgc-run)
+               (run-tester "http-server-runtime" (str root "/tests/native-http-server.test.fl") cgc-run)
                (run-tester "test-cli-contract" (str root "/tests/native-report.test.fl") cgc-run)
                (run-tester "test-cli-isolation" (str root "/tests/native-isolation.test.fl") cgc-run)
                (run-tester "test-effect-capability" (str root "/tests/native-effect.test.fl") cgc-run)

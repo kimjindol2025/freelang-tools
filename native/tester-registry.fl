@@ -23,6 +23,8 @@
         (entry "determinism" "determinism")
         (entry "capabilities" "capability")
         (entry "backend-contract" "backend")
+        (entry "database-runtime" "runtime")
+        (entry "http-server-runtime" "http-server")
         (entry "system-json" "system-json")
         (entry "process-native" "process")
         (entry "http-native" "http")

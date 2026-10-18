@@ -1,0 +1,33 @@
+;; SQLite runtime contract: bound parameters, row maps, changed-row counts, and errors.
+(load "../src/test/deftest-runner.fl")
+
+(define db (db-open "/tmp/fl-native-db-runtime.test.sqlite"))
+(db-exec db "DROP TABLE IF EXISTS records" [])
+(db-exec db "CREATE TABLE records (id INTEGER PRIMARY KEY, label TEXT NOT NULL)" [])
+(db-exec db "CREATE TABLE IF NOT EXISTS records_aux (id INTEGER PRIMARY KEY)" [])
+
+(deftest "db-exec binds values and returns changed rows" (is= 1
+  (db-exec db "INSERT INTO records (id, label) VALUES (?, ?)" [1 "O'Reilly"])))
+(deftest "db-exec reports zero changed rows for DDL" (is= 0
+  (db-exec db "CREATE TABLE IF NOT EXISTS records_aux (id INTEGER PRIMARY KEY)" [])))
+(deftest "db-query returns row maps with typed values" (is= "O'Reilly"
+  (get (first (db-query db "SELECT id, label FROM records WHERE id = ?" [1])) "label")))
+(deftest "db-query binds injection-shaped text as a value" (is= 0
+  (length (db-query db "SELECT id FROM records WHERE label = ?" ["' OR 1=1 --"]))))
+(deftest "db-exec updates and returns changed rows" (is= 1
+  (db-exec db "UPDATE records SET label = ? WHERE id = ?" ["updated" 1])))
+(deftest "db-exec deletes and returns changed rows" (is= 1
+  (db-exec db "DELETE FROM records WHERE id = ?" [1])))
+(deftest "db-exec accepts the backend sqlite configuration map" (is= 1
+  (db-exec {"type" "sqlite" "path" "/tmp/fl-native-db-runtime.test.sqlite"}
+    "INSERT INTO records (id, label) VALUES (?, ?)" [2 "backend-map"])))
+(deftest "db-query accepts the backend sqlite configuration map" (is= "backend-map"
+  (get (first (db-query {"type" "sqlite" "path" "/tmp/fl-native-db-runtime.test.sqlite"}
+    "SELECT label FROM records WHERE id = ?" [2])) "label")))
+(deftest "db-query reports a missing table" (is= true
+  (try
+    (do (db-query db "SELECT * FROM missing_records" []) false)
+    (catch $error true))))
+(deftest "db-close closes the connection" (is= true (db-close db)))
+
+(run-deftest-suite)
