@@ -63,8 +63,17 @@ else
   else
     run_gate test "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
   fi
-  run_gate review "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
-  run_gate evidence "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
+  run_gate review env \
+    FREELANG_TRUST_REUSE_GATE_OUTPUTS=YES \
+    FREELANG_TRUST_CHECK_OUTPUT_FILE="$TMP_DIR/check.out" \
+    FREELANG_TRUST_CHECK_CODE="$(cat "$TMP_DIR/check.code")" \
+    FREELANG_TRUST_TEST_OUTPUT_FILE="$TMP_DIR/test.out" \
+    FREELANG_TRUST_TEST_CODE="$(cat "$TMP_DIR/test.code")" \
+    "$TOOLS_ROOT/scripts/fl-review" "$ROOT"
+  run_gate evidence env \
+    FREELANG_EVIDENCE_REVIEW_OUTPUT_FILE="$TMP_DIR/review.out" \
+    FREELANG_EVIDENCE_REVIEW_CODE="$(cat "$TMP_DIR/review.code")" \
+    "$TOOLS_ROOT/scripts/fl-evidence" --json "$ROOT"
   run_gate capabilities "$TOOLS_ROOT/scripts/fl-capabilities" "$ROOT"
   if [[ "$DIALECT" == AFJ ]]; then
     run_gate selfhost "$TOOLS_ROOT/scripts/fl-native-selfhost"

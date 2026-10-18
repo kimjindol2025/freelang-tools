@@ -4,6 +4,8 @@
 
 (deftest "AFJ routes to FreeLang AFJ" (is= "FreeLang/AFJ"
   (route-for "AFJ")))
+(deftest "native tools has its own route" (is= "FreeLang/Native-Tools"
+  (route-for "TOOLS")))
 (deftest "Script routes to FreeLangScript" (is= "FreeLangScript"
   (route-for "SCRIPT")))
 (deftest "unknown dialect is explicit" (is= "UNKNOWN"

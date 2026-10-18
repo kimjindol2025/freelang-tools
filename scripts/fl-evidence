@@ -46,10 +46,16 @@ set -e
 
 REVIEW_OUTPUT=""
 REVIEW_CODE=0
-set +e
-REVIEW_OUTPUT="$($TOOLS_ROOT/scripts/fl-review "$ROOT" 2>&1)"
-REVIEW_CODE=$?
-set -e
+if [[ -r "${FREELANG_EVIDENCE_REVIEW_OUTPUT_FILE:-}" && \
+      "${FREELANG_EVIDENCE_REVIEW_CODE:-invalid}" =~ ^[0-9]+$ ]]; then
+  REVIEW_OUTPUT="$(cat "$FREELANG_EVIDENCE_REVIEW_OUTPUT_FILE")"
+  REVIEW_CODE="$FREELANG_EVIDENCE_REVIEW_CODE"
+else
+  set +e
+  REVIEW_OUTPUT="$($TOOLS_ROOT/scripts/fl-review "$ROOT" 2>&1)"
+  REVIEW_CODE=$?
+  set -e
+fi
 
 GIT_STATUS_OUTPUT=""
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

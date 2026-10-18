@@ -12,6 +12,7 @@ DIALECT="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^DIALECT=//p')"
 RUNNER="$(printf '%s\n' "$DETECT_OUTPUT" | sed -n 's/^RUNNER=//p')"
 
 case "$DIALECT" in
+  TOOLS) RUNTIME="FreeLang Tools" ;;
   AIRC) RUNTIME="FreeLang v11" ;;
   AIA) RUNTIME=native ;;
   FRONT|AFJ|FX|SCRIPT) RUNTIME=FreeLang ;;
@@ -20,6 +21,7 @@ esac
 
 ENTRYPOINT=none
 for candidate in \
+  scripts/fl-tools \
   airc.fl \
   tools/verify-aia-cold-boot.sh \
   src/main.fl main.fl server.fl web/server.fl \

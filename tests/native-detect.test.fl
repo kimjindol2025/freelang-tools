@@ -4,6 +4,10 @@
 
 (deftest "AFJ family is stable" (is= "AFJ" (family-for "AFJ" "/tmp")))
 (deftest "Script family is stable" (is= "SCRIPT" (family-for "SCRIPT" "/tmp")))
+(deftest "native tools family is stable" (is= "FREELANG_TOOLS"
+  (family-for "TOOLS" "/tmp")))
+(deftest "native tools runner is canonical" (is= "/tmp/scripts/fl-tools"
+  (runner-for "TOOLS" "/tmp")))
 (deftest "suffix detection finds FreeLang source" (is= true
   (has-suffix? ["/tmp/app.fl" "/tmp/readme.md"] ".fl")))
 (deftest "suffix detection rejects absent source" (is= false

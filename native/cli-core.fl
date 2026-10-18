@@ -6,6 +6,7 @@
    :returns "runtime route string"
    :effects []}
   (case dialect
+    "TOOLS" "FreeLang/Native-Tools"
     "AFJ" "FreeLang/AFJ"
     "AIRC" "FreeLang/v11-AIRC"
     "SCRIPT" "FreeLangScript"

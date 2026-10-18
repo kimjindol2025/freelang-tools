@@ -22,6 +22,12 @@ if [[ "$DIALECT" == "AIRC" ]]; then
   exit 0
 fi
 
+if [[ "$DIALECT" == "TOOLS" ]]; then
+  "$TOOLS_ROOT/scripts/fl-native-check-batch" "$ROOT" "$DIALECT"
+  echo "FREELANG_CHECK=PASS"
+  exit 0
+fi
+
 if [[ "$DIALECT" == "NODE" ]]; then
   if [[ "${FREELANG_CHECK_QUICK:-NO}" == YES ]]; then
     echo "FREELANG_CHECK=PASS"

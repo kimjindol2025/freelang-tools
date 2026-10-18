@@ -139,23 +139,32 @@
       root (or (shell_env "FL_TOOLS_DISPATCH_ROOT") "/home/kim/kim/projects/freelang-tools")
       args argv
       command (if (> (length args) 0) (get args 0) "help")
+      json-output (or (= command "trust")
+                      (= command "ready")
+                      (and (= command "ai") (> (length args) 1)
+                           (or (= (get args 1) "ready") (= (get args 1) "trust")))
+                      (and (= command "evidence")
+                           (contains? args "--json")))
       adapter (script-for root command)]
   (if (or (= command "help") (= command "-h") (= command "--help"))
     (print-help)
     (do
-      (println (json-stringify
-                 {"schemaVersion" "freelang.tools-cli/v1"
-                  "source" "freelang-native"
-                  "route" (route-command command)
-                  "adapter" adapter
-                  "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))
-      (println (str "CLI_ADAPTER=" adapter))
+      (if (not json-output)
+        (do
+          (println (json-stringify
+                     {"schemaVersion" "freelang.tools-cli/v1"
+                      "source" "freelang-native"
+                      "route" (route-command command)
+                      "adapter" adapter
+                      "argv" (if (> (length args) 1) (slice args 1 (length args)) [])}))
+          (println (str "CLI_ADAPTER=" adapter)))
+        nil)
       (if (not (= adapter "none"))
         (let [result (run-adapter adapter (if (> (length args) 1) (slice args 1 (length args)) []))
               code (get result "code")
               stdout (get result "stdout")
               stderr (get result "stderr")]
           (if (not (= stdout "")) (println stdout) nil)
-          (if (not (= stderr "")) (println stderr) nil)
+          (if (and (not json-output) (not (= stderr ""))) (println stderr) nil)
           (if (= code 0) nil (throw (str "FL_TOOLS_ADAPTER_EXIT=" code))))
         nil))))

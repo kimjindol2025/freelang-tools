@@ -63,12 +63,13 @@
    :returns "family string"
    :effects ["file-read"]}
   (if (= dialect "AIRC") "AIRC"
+    (if (= dialect "TOOLS") "FREELANG_TOOLS"
     (if (= dialect "AIA") "AIA"
       (if (= dialect "FRONT") (if (or (has-file? root "server.fl") (has-file? root "web/server.fl")) "FRONT/AFJ" "FRONT")
         (if (= dialect "SCRIPT") "SCRIPT"
           (if (= dialect "AFJ") "AFJ"
             (if (= dialect "FX") "FX"
-              (if (= dialect "NODE") "NODE" "UNKNOWN"))))))))
+              (if (= dialect "NODE") "NODE" "UNKNOWN")))))))))
 
 (defn runner-for [dialect root]
   {:context "Select the canonical runner for the detected dialect"
@@ -79,13 +80,14 @@
                                        "/home/kim/kim/platform/freelang-v11-fx/bootstrap.js"
                                        "/home/kim/kim/platform/freelang-v11/bootstrap.js"
                                        "/home/kim/freelang-v11/bootstrap.js"])
+    (if (= dialect "TOOLS") (str root "/scripts/fl-tools")
     (if (= dialect "AIA") (if (has-file? root "tools/verify-aia-cold-boot.sh") (str root "/tools/verify-aia-cold-boot.sh") "none")
       (if (= dialect "FRONT") (if (has-file? root "fl-front-build.js") (str root "/fl-front-build.js")
                                   (if (has-file? root "web/fl-front-build.js") (str root "/web/fl-front-build.js") "none")
         (if (= dialect "SCRIPT") (if (has-file? root "bin/fl-script-unified.js") (str root "/bin/fl-script-unified.js") "none")
           (if (= dialect "AFJ") "none"
             (if (= dialect "FX") (if (has-file? root "fl-test.sh") (str root "/fl-test.sh") "none")
-              (if (= dialect "NODE") (str root "/package.json") "none")))))))))
+              (if (= dialect "NODE") (str root "/package.json") "none"))))))))))
 
 (defn detect [root]
   {:context "Detect project dialect, runner, tests, and source extensions"
@@ -100,32 +102,35 @@
         flx? (has-suffix? files ".flx")
         aia? (has-suffix? files ".aia")
         airc? (has-suffix? files ".airc")
-        detectedDialect (if (or (has-file? root "airc.fl")
+        detectedDialect (if (and native-tools? (has-file? root "scripts/fl-tools")) "TOOLS"
+                  (if (or (has-file? root "airc.fl")
                         (and (has-file? root "SPEC.airc") airc?)) "AIRC"
                   (if (or (has-file? root "tools/verify-aia-cold-boot.sh") aia?) "AIA"
                     (if (or (has-file? root "fl-front-build.js") (has-file? root "web/fl-front-build.js") flx?) "FRONT"
                       (if (or (has-file? root "freelang.json") (has-file? root "bin/fl-script-unified.js") fls?) "SCRIPT"
                         (if (or fl? (has-suffix? files ".fl")) "AFJ" (if (has-file? root "package.json") "NODE"
-                                          (if (or (has-file? root "fl-test.sh") (has-file? root "fl-run.sh") (has-file? root "fx-std.fl")) "FX" "UNKNOWN")))))))
+                                          (if (or (has-file? root "fl-test.sh") (has-file? root "fl-run.sh") (has-file? root "fx-std.fl")) "FX" "UNKNOWN"))))))))
         familyValue (if (= detectedDialect "AIRC") "AIRC"
+                     (if (= detectedDialect "TOOLS") "FREELANG_TOOLS"
                      (if (= detectedDialect "AIA") "AIA"
                        (if (= detectedDialect "FRONT") "FRONT"
                          (if (= detectedDialect "SCRIPT") "SCRIPT"
                            (if (= detectedDialect "AFJ") "AFJ"
                              (if (= detectedDialect "FX") "FX"
-                               (if (= detectedDialect "NODE") "NODE" "UNKNOWN")))))))
+                               (if (= detectedDialect "NODE") "NODE" "UNKNOWN"))))))))
         runnerValue (if (= detectedDialect "AIRC") (first-existing [
                                                    (str root "/bootstrap.js")
                                                    "/home/kim/kim/platform/freelang-v11-fx/bootstrap.js"
                                                    "/home/kim/kim/platform/freelang-v11/bootstrap.js"
                                                    "/home/kim/freelang-v11/bootstrap.js"])
+                         (if (= detectedDialect "TOOLS") (str root "/scripts/fl-tools")
                          (if (= detectedDialect "AFJ") "none"
                          (if (= detectedDialect "AIA") (if (has-file? root "tools/verify-aia-cold-boot.sh") (str root "/tools/verify-aia-cold-boot.sh") "none")
                            (if (= detectedDialect "FRONT") (if (has-file? root "fl-front-build.js") (str root "/fl-front-build.js")
                                                        (if (has-file? root "web/fl-front-build.js") (str root "/web/fl-front-build.js") "none")
                              (if (= detectedDialect "SCRIPT") (if (has-file? root "bin/fl-script-unified.js") (str root "/bin/fl-script-unified.js") "none")
                                (if (= detectedDialect "FX") (if (has-file? root "fl-test.sh") (str root "/fl-test.sh") "none")
-                                 (if (= detectedDialect "NODE") (str root "/package.json") "none"))))))))
+                                 (if (= detectedDialect "NODE") (str root "/package.json") "none")))))))))
         discoveredTests (direct-test-files root)]
     {"project" (first (reverse (str-split root "/")))
      "root" root

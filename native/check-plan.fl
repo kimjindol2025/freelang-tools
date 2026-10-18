@@ -26,7 +26,7 @@
 (let [root (shell_env "FL_TOOLS_PLAN_ROOT")
       dialectValue (plan-dialect (shell_env "FL_TOOLS_PLAN_DIALECT"))
       runnerValue (plan-runner (shell_env "FL_TOOLS_PLAN_RUNNER"))
-      sourceListing (if (= dialectValue "AFJ")
+      sourceListing (if (or (= dialectValue "AFJ") (= dialectValue "TOOLS"))
                       (str-join "\n" (sort (concat (fl-files (str root "/src"))
                                                    (concat (fl-files (str root "/native"))
                                                            (fl-files root)))))

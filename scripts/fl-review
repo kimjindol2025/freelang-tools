@@ -35,8 +35,33 @@ run_gate() {
   fi
 }
 
-run_gate CHECK "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
-run_gate TEST "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+if [[ "${FREELANG_TRUST_REUSE_GATE_OUTPUTS:-NO}" == YES && \
+      -r "${FREELANG_TRUST_CHECK_OUTPUT_FILE:-}" && \
+      -r "${FREELANG_TRUST_TEST_OUTPUT_FILE:-}" && \
+      "${FREELANG_TRUST_CHECK_CODE:-invalid}" =~ ^[0-9]+$ && \
+      "${FREELANG_TRUST_TEST_CODE:-invalid}" =~ ^[0-9]+$ ]]; then
+  cat "$FREELANG_TRUST_CHECK_OUTPUT_FILE"
+  if [[ "$FREELANG_TRUST_CHECK_CODE" -eq 0 ]]; then
+    echo "CHECK=PASS (reused trust gate)"
+    GATE_CHECK_STATUS=PASS
+  else
+    echo "CHECK=FAIL (reused trust gate)"
+    GATE_CHECK_STATUS=FAIL
+    FAIL=1
+  fi
+  cat "$FREELANG_TRUST_TEST_OUTPUT_FILE"
+  if [[ "$FREELANG_TRUST_TEST_CODE" -eq 0 ]]; then
+    echo "TEST=PASS (reused trust gate)"
+    GATE_TEST_STATUS=PASS
+  else
+    echo "TEST=FAIL (reused trust gate)"
+    GATE_TEST_STATUS=FAIL
+    FAIL=1
+  fi
+else
+  run_gate CHECK "$TOOLS_ROOT/scripts/fl-check" "$ROOT"
+  run_gate TEST "$TOOLS_ROOT/scripts/fl-test" "$ROOT"
+fi
 run_gate NATIVE_INSPECT "$TOOLS_ROOT/scripts/fl-inspect" "$ROOT"
 
 if [[ -f "$ROOT/package.json" ]] && "$TOOLS_ROOT/scripts/fl-native-package-script" "$ROOT" lint >/dev/null 2>&1; then
